@@ -13,7 +13,7 @@ _Complete custom toolchain for the future Demi programming language - the Vim of
 
 **Demi will be the Vim of programming languages** - infinitely customizable, with every aspect configurable to match your exact needs. Just as Vim lets you tailor your editor to perfection, Demi will let you customize syntax, semantics, behavior, and tooling on a per-project basis.
 
-DemiEngine is the foundational backend for **Demi**, a revolutionary programming language that will offer unprecedented customization capabilities. With a rock-solid virtual machine featuring 134 registers, 94+ implemented opcodes (including 8 SIMD foundation operations and 23+ FPU floating-point instructions), and **519 tests (145 unit tests + 374 in-assembly tests; 3 skipped; 0 failing)**, DemiEngine provides the infrastructure for a dual-mode execution system: rapid interpretation for development and native compilation for production performance.
+DemiEngine is the foundational backend for **Demi**, a revolutionary programming language that will offer unprecedented customization capabilities. With a rock-solid virtual machine featuring 134 registers, 175 defined opcodes (143 implemented — 81.7% coverage, including SIMD, SSE, and FPU), and **822 tests (283 unit + 539 assembly; 0 failing, 9 skipped)**, DemiEngine provides the infrastructure for a dual-mode execution system: rapid interpretation for development and native compilation for production performance.
 
 ---
 
@@ -34,8 +34,8 @@ DemiEngine serves as the foundation for the upcoming **Demi programming language
 | Stage       | Status        | Target  | Description                                  |
 | ----------- | ------------- | ------- | -------------------------------------------- |
 | **Stage 1** | ✅ Complete   | Q4 2025 | Core VM Backend (63 opcodes, 134 registers)  |
-| **Stage 2** | � In Progress | Q1 2026 | Assembly Language Expansion (SIMD, FPU, AVX) |
-| **Stage 3** | 🔜 Next       | Q2 2026 | Native x86-64 Code Generation                |
+| **Stage 2** | 🚧 In Progress | Q1 2026 | Assembly Language Expansion (SIMD, FPU, AVX) |
+| **Stage 3** | 🚧 In Progress | Q2 2026 | Native x86-64 Code Generation                |
 | **Stage 4** | 🔜 Planning   | Q3 2026 | Demi Language Frontend (High-level syntax)   |
 | **Stage 5** | 🔜 Planning   | Q4 2026 | D-ISA Assembler Integration                  |
 | **Stage 6** | 🔜 Planning   | Q1 2027 | Custom Linker                                |
@@ -142,11 +142,13 @@ Debugging:
 ### 🖥️ **Advanced Virtual Machine**
 
 - **134-Register Architecture**: Comprehensive register set with x86-64 style registers
-- **94+ Opcode Instruction Set**: Arithmetic, logic, memory, I/O, control flow, **SIMD foundation operations**, and **FPU floating-point arithmetic**
-- **SIMD Foundation**: 8 fundamental vector instructions for parallel computation (VADD, VMUL, VDOT, VMAX, etc.)
-- **FPU Arithmetic Operations**: 23+ floating-point instructions (FADD, FSIN, FSQRT, etc.) with full mathematical support
+- **175 Opcode Instruction Set**: Arithmetic, logic, memory, I/O, control flow, SIMD, SSE, FPU, and 64-bit extensions (143 implemented — 81.7% coverage)
+- **Custom SIMD Operations**: 8 fundamental vector instructions for parallel computation (VADD, VMUL, VDOT, VMAX, etc.)
+- **SSE/SSE2 Operations**: 26 packed single/double floating-point operations (ADDPS-SQRTPD)
+- **FPU Arithmetic Operations**: 23 floating-point instructions (FADD, FSIN, FSQRT, etc.) with full mathematical support
+- **64-bit Extensions**: 16 extended-width ALU and logic operations (ADD64-MOD64)
 - **Dynamic Memory System**: 1MB default, auto-scales up to 4GB based on system resources
-- **Device I/O System**: Modular devices (console, file, counter, RAM disk) with port-based communication
+- **Device I/O System**: Modular devices (console, file, counter, serial port, RAM disk) with port-based communication
 - **Professional Debugging**: ImGui-based visual debugger with real-time inspection
 
 ### 🔧 **Development Tools**
@@ -257,15 +259,12 @@ DemiEngine maintains exceptional quality through comprehensive testing with **99
 # Test specific files only
 ./bin/demi-engine -t tests/algorithms.test.asm    # Test single file
 ./bin/demi-engine -atq tests/stack.test.asm       # Single file, quiet mode
-
-# Achieved results:
-┌──────────────────────────────────────────────────────────┐
-│     DemiEngine Test Results - NEAR PERFECT COVERAGE      │
-└──────────────────────────────────────────────────────────┘
-Unit Tests: 144 passed / 145 total [optimized execution]
-Assembly Tests: 177 passed / 177 total [34 test files]
-TOTAL: 321 tests passing (99.7% coverage, 1 failure)
 ```
+
+**Achieved results:**
+- Unit Tests: 283 passed / 283 total
+- Assembly Tests: 539 passed / 548 total (9 skipped)
+- TOTAL: 822 tests (0 failures)
 
 ### Test Suite Flags
 
@@ -304,12 +303,11 @@ TOTAL: 321 tests passing (99.7% coverage, 1 failure)
 
 ### Test Coverage Achievements
 
-- **🏆 99.3% Unit Test Coverage**: 144/145 tests passing - Core functionality validated
-- **🏆 100% Assembly Test Coverage**: 177/177 tests passing - All real-world scenarios tested
-- **🏆 Near Perfect Test Suite**: 321/322 tests passing across all categories
-- **🏆 Comprehensive Validation**: Every major feature and edge case covered
-- **🏆 Production Ready**: Highest quality standards achieved
-- **🏆 Professional Test Organization**: Organized test suites in `tests/`, `examples/`, `benchmarks/`
+- **🏆 100% Unit Test Pass Rate**: 283/283 tests — Core VM, sandbox, VFS, and fusion all validated
+- **🏆 98.4% Assembly Test Pass Rate**: 539/548 — 9 skipped (sandbox e2e, vdisk integration require flags)
+- **🏆 0 Failing Tests**: Production quality across all categories
+- **🏆 143 Implemented Opcodes**: Covers core ISA, I/O, 64-bit, SSE2, FPU, custom SIMD operations
+- **🏆 Professional Test Organization**: Organized suites in `tests/`, `tests/opcodes/`, `tests/fpu/`, `tests/sse/`
 
 ### Test Organization
 
@@ -337,24 +335,29 @@ benchmarks/     # Performance testing and stress tests
 
 ### Current Capabilities and Limitations
 
-**Fully Implemented** (63 opcodes):
+**Fully Implemented** (143 opcodes):
 
-- ✅ Core arithmetic: ADD, SUB, MUL, DIV, INC, DEC
+- ✅ Core arithmetic: ADD, SUB, MUL, DIV, INC, DEC, MOD
 - ✅ Bitwise logic: AND, OR, XOR, NOT, SHL, SHR
 - ✅ Control flow: JMP, JZ, JNZ, JS, JNS, JC, JNC, JO, JNO, JG, JL, JGE, JLE
-- ✅ Memory: LOAD, STORE, LEA, SWAP, MOV
-- ✅ Stack: PUSH, POP, PUSH_FLAG, POP_FLAG, CALL, RET
+- ✅ Memory: LOAD, STORE, LEA, SWAP, MOV, LOADR, STORER
+- ✅ Stack: PUSH, POP, PUSH_FLAG, POP_FLAG, PUSH_ARG, POP_ARG, CALL, RET
 - ✅ I/O: IN, OUT, INB, OUTB, INW, OUTW, INL, OUTL, INSTR, OUTSTR
-- ✅ Extended: MOVEX, ADDEX, SUBEX, ADD64, SUB64, MOV64, LOAD_IMM64
+- ✅ 64-bit ALU: ADD64, SUB64, MOV64, LOAD_IMM64, MUL64, DIV64, AND64, OR64, XOR64, NOT64, SHL64, SHR64, CMP64, INC64, DEC64, MOD64
+- ✅ Extended Regs: MOVEX, ADDEX, SUBEX, MULEX, DIVEX, CMPEX, LOADEX, STOREX, PUSHEX, POPEX
 - ✅ Modes: MODE32, MODE64, MODECMP
+- ✅ SSE2 Float: 26 packed single/double ops (ADDPS through CMPPD)
+- ✅ FPU: 23 floating-point ops (FLD through FUCOMPP)
+- ✅ Custom SIMD: VADD, VMUL, VDOT, VMAX, VBROADCAST, VCMPGT, PACKB, UNPACKB
+- ✅ Interrupts: INT, IRET, CLI, STI
+- ✅ DB, HALT, NOP
 
-**Not Yet Implemented** (88 opcodes defined but not functional):
+**Not Yet Implemented** (32 opcodes):
 
-- ⚠️ SIMD/SSE operations (planned)
-- ⚠️ FPU floating-point operations (planned)
-- ⚠️ AVX vector operations (planned)
-- ⚠️ MMX multimedia operations (planned)
-- ⚠️ Some 64-bit extended operations (partial)
+- ⚠️ DEBUG (0x42) — Debug directive, pending VM integration
+- ⚠️ MODEFLAG (0x73) — Mode flag setter
+- ⚠️ AVX reg-reg ops (20 ops from VADDPS-VXORPD): Defined but no VM handler
+- ⚠️ MMX operations (11 ops MOVQ-EMMS): Defined but no VM handler
 
 ---
 
@@ -547,19 +550,17 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 🎯 **Project Status Summary**
 
-| Metric                 | Current Status    | Target                |
-| ---------------------- | ----------------- | --------------------- |
-| **Backend Completion** | 🏆 100%           | ✅ Complete (Q4 2025) |
-| **Test Coverage**      | 🏆 100/100 (100%) | ✅ Perfect Coverage   |
-| **Unit Tests**         | 🏆 59/59 (100%)   | ✅ Complete           |
-| **Integration Tests**  | 🏆 41/41 (100%)   | ✅ Complete           |
-| **Core Features**      | ✅ Complete       | ✅ Complete           |
-| **Documentation**      | ✅ Complete       | ✅ Complete           |
-| **Demi Language**      | 🔜 Planning       | Q1-Q2 2026            |
-| **Native Compilation** | 🔜 Planning       | Q3 2026               |
+| Metric                 | Current Status       | Target                |
+| ---------------------- | -------------------- | --------------------- |
+| **Core Backend**       | ✅ Complete          | ✅ Complete (Q4 2025) |
+| **Opcode Implementation** | 🚧 143/175 (81.7%) | 175/175              |
+| **Unit Tests**         | 🏆 283/283 (100%)   | ✅ Complete           |
+| **Assembly Tests**     | 🏆 539/548 (98.4%)  | ✅ Complete           |
+| **Native Codegen**     | 🚧 DISA pipeline    | Q2 2026               |
+| **Demi Language**      | 🔜 Planning          | Q3-Q4 2026            |
+| **AVX/MMX Ops**        | 🔜 Planning          | 2026                  |
 
-**🎉 MILESTONE ACHIEVED**: Stage 1 (DemiEngine Backend) Complete with Perfect Test Coverage!  
-**Next Target**: Begin Stage 2 (Demi Language Frontend)
+**Current Focus**: Assembly Language Expansion (Stage 2 — remaining AVX/MMX handlers) + Native Code Generation (Stage 3 — finishing .data support, HALT→exit, section awareness)
 
 ---
 

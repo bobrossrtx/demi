@@ -177,9 +177,9 @@ enum class Opcode : uint8_t {
     VADDPD = 0xCA,      // AVX Add Packed Double
     VSUBPD = 0xCB,      // AVX Subtract Packed Double
     VMULPD = 0xCC,      // AVX Multiply Packed Double
-    VDIVPD = 0xCD,      // AVX Divide Packed Double
-    VSQRTPD = 0xCE,     // AVX Square Root Packed Double
-    VMAXPD = 0xCF,      // AVX Maximum Packed Double
+    VDIVPD = 0xCE,      // AVX Divide Packed Double
+    VSQRTPD = 0xDD,     // AVX Square Root Packed Double
+    VMAXPD = 0xDC,      // AVX Maximum Packed Double
     VMINPD = 0xD0,      // AVX Minimum Packed Double
     VANDPD = 0xD1,      // AVX Bitwise AND Packed Double
     VORPD = 0xD2,       // AVX Bitwise OR Packed Double

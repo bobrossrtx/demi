@@ -209,12 +209,13 @@ enum class Opcode : uint8_t {
     VMULPD = 0xCC,      // AVX Multiply Packed Double
     INT = 0xCD,         // Software interrupt (syscall)
     VDIVPD = 0xCE,      // AVX Divide Packed Double (moved from 0xCD)
-    VSQRTPD = 0xCF,     // AVX Square Root Packed Double (moved from 0xCE)
-    VMAXPD = 0xCF,      // AVX Maximum Packed Double
+    IRET = 0xCF,        // Interrupt return
     VMINPD = 0xD0,      // AVX Minimum Packed Double
     VANDPD = 0xD1,      // AVX Bitwise AND Packed Double
     VORPD = 0xD2,       // AVX Bitwise OR Packed Double
     VXORPD = 0xD3,      // AVX Bitwise XOR Packed Double
+    VMAXPD = 0xDC,      // AVX Maximum Packed Double
+    VSQRTPD = 0xDD,     // AVX Square Root Packed Double
 
     // SIMD Vector Operations (0xD4-0xDB range)
     VADD = 0xD4,        // Vector Add (R0-R3 + R4-R7 → R0-R3)
@@ -238,6 +239,10 @@ enum class Opcode : uint8_t {
     PCMPEQW = 0xE8,     // Compare Packed Words for Equality
     PCMPEQD = 0xE9,     // Compare Packed Doublewords for Equality
     EMMS = 0xEA,        // Empty MMX State
+
+    // Interrupt control
+    CLI = 0xFA,         // Clear interrupt flag
+    STI = 0xFB,         // Set interrupt flag
 
     HALT = 0xFF         // Halt execution
 };
