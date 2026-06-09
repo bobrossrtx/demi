@@ -12,12 +12,14 @@ namespace CodeGen {
 class RegisterAllocator {
 private:
     // Physical x86 registers available for allocation
+    // RSI and RDI are reserved as runtime base pointers:
+    //   RSI = VM memory base, RDI = VM register file base
+    // RSP and RBP reserved for native stack operations
     static constexpr X86Register ALLOCATABLE_REGS[] = {
         X86Register::RAX, X86Register::RCX, X86Register::RDX, X86Register::RBX,
-        X86Register::RSI, X86Register::RDI, X86Register::R8,  X86Register::R9,
-        X86Register::R10, X86Register::R11, X86Register::R12, X86Register::R13,
-        X86Register::R14, X86Register::R15
-        // RSP and RBP reserved for stack operations
+        X86Register::R8,  X86Register::R9,  X86Register::R10, X86Register::R11,
+        X86Register::R12, X86Register::R13, X86Register::R14, X86Register::R15
+        // RSP, RBP, RSI, RDI reserved
     };
 
     // Current allocation state

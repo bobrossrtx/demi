@@ -305,16 +305,25 @@ void X86Encoder::emit_mov_reg_mem(X86Register dst, X86Register base, int32_t off
     emit_rex_if_needed(dst, base);
     code_buffer.push_back(0x8B);   // MOV r64, r/m64
     
-    if (offset == 0 && base != X86Register::RBP) {
-        // [reg] - no displacement
-        emit_modrm(0b00, reg_to_modrm(dst), reg_to_modrm(base));
+    uint8_t base_modrm = reg_to_modrm(base);
+    bool needs_sib = (base_modrm == 4); // RSP or R12+ require SIB byte
+    
+    if (offset == 0 && base != X86Register::RBP && !needs_sib) {
+        // [reg] - no displacement, no SIB
+        emit_modrm(0b00, reg_to_modrm(dst), base_modrm);
+    } else if (offset == 0 && needs_sib) {
+        // [reg] with SIB (no displacement)
+        emit_modrm(0b00, reg_to_modrm(dst), 4);
+        code_buffer.push_back(0x24);  // SIB: scale=0, index=none, base=ESP/R12
     } else if (offset >= -128 && offset <= 127) {
         // [reg + disp8]
-        emit_modrm(0b01, reg_to_modrm(dst), reg_to_modrm(base));
+        emit_modrm(0b01, reg_to_modrm(dst), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
         code_buffer.push_back(static_cast<uint8_t>(offset));
     } else {
         // [reg + disp32]
-        emit_modrm(0b10, reg_to_modrm(dst), reg_to_modrm(base));
+        emit_modrm(0b10, reg_to_modrm(dst), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
         for (int i = 0; i < 4; i++) {
             code_buffer.push_back((offset >> (i * 8)) & 0xFF);
         }
@@ -325,13 +334,21 @@ void X86Encoder::emit_mov_mem_reg(X86Register base, int32_t offset, X86Register 
     emit_rex_if_needed(src, base);
     code_buffer.push_back(0x89);   // MOV r/m64, r64
     
-    if (offset == 0 && base != X86Register::RBP) {
-        emit_modrm(0b00, reg_to_modrm(src), reg_to_modrm(base));
+    uint8_t base_modrm = reg_to_modrm(base);
+    bool needs_sib = (base_modrm == 4);
+    
+    if (offset == 0 && base != X86Register::RBP && !needs_sib) {
+        emit_modrm(0b00, reg_to_modrm(src), base_modrm);
+    } else if (offset == 0 && needs_sib) {
+        emit_modrm(0b00, reg_to_modrm(src), 4);
+        code_buffer.push_back(0x24);
     } else if (offset >= -128 && offset <= 127) {
-        emit_modrm(0b01, reg_to_modrm(src), reg_to_modrm(base));
+        emit_modrm(0b01, reg_to_modrm(src), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
         code_buffer.push_back(static_cast<uint8_t>(offset));
     } else {
-        emit_modrm(0b10, reg_to_modrm(src), reg_to_modrm(base));
+        emit_modrm(0b10, reg_to_modrm(src), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
         for (int i = 0; i < 4; i++) {
             code_buffer.push_back((offset >> (i * 8)) & 0xFF);
         }

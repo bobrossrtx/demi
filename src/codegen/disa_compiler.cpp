@@ -263,7 +263,7 @@ void DISAToX86Compiler::translate_instruction(Opcode opcode, const uint8_t* oper
 
         // Memory operations
         case Opcode::LOAD:   translate_load(operands[0], operands[1], 0); break;
-        case Opcode::STORE:  translate_store(operands[0], 0, operands[1]); break;
+        case Opcode::STORE:  translate_store(operands[1], 0, operands[0]); break;
         case Opcode::LOADR:  translate_loadr(operands[0], operands[1]); break;
         case Opcode::STORER: translate_storer(operands[0], operands[1]); break;
         case Opcode::LEA:    translate_lea(operands[0], operands[1]); break;
@@ -309,11 +309,13 @@ void DISAToX86Compiler::translate_instruction(Opcode opcode, const uint8_t* oper
             translate_outstr(operands[0], operands[1]);
             break;
 
-        // Complex/other - delegate to runtime
+        // DB — data definition, no code emitted (skipped by instruction length)
         case Opcode::DB:
+        // DEBUG — assembler-level directive, no runtime code
         case Opcode::DEBUG:
+            break;
         case Opcode::INT:
-            emit_runtime_fallback("unimplemented_io");
+            translate_int80();
             break;
 
         // Mode control - delegate to runtime
@@ -550,48 +552,27 @@ X86Register DISAToX86Compiler::get_writable_physical(uint8_t virt_reg) {
 
 void DISAToX86Compiler::emit_data_initialization(const std::vector<uint8_t>& bytecode,
                                                    uint32_t entry_point) {
-    if (entry_point == 0) return;
-
-    // Scan for non-zero data regions and emit inline MOV instructions
-    // to copy them into the memory buffer (RSI points to memory base).
-    // Memory is already zeroed by the _start stub, so we only write non-zero bytes.
+    // Scan the entire bytecode for non-zero bytes and copy them into the
+    // memory buffer at RSI. Memory is zeroed by the _start stub.
     size_t pos = 0;
-    while (pos < entry_point) {
-        // Skip zeros (already zeroed in memory)
-        if (pos < bytecode.size() && bytecode[pos] == 0) {
-            pos++;
-            continue;
-        }
-
-        // Find end of this non-zero run
+    while (pos < bytecode.size()) {
+        if (bytecode[pos] == 0) { pos++; continue; }
         size_t run_start = pos;
         size_t run_end = run_start;
-        while (run_end < entry_point && run_end < bytecode.size() && bytecode[run_end] != 0) {
-            run_end++;
-        }
-        if (run_end == run_start) { pos++; continue; }
-
-        // Emit 8-byte chunk stores for this run
+        while (run_end < bytecode.size() && bytecode[run_end] != 0) run_end++;
         for (size_t chunk_start = run_start; chunk_start < run_end; chunk_start += 8) {
-            size_t chunk_end = chunk_start + 8;
-            if (chunk_end > run_end) chunk_end = run_end;
-
+            size_t chunk_end = std::min(chunk_start + 8, run_end);
             uint64_t val = 0;
-            for (size_t i = 0; i < 8 && (chunk_start + i) < run_end; i++) {
+            for (size_t i = 0; i < 8 && (chunk_start + i) < run_end; i++)
                 val |= static_cast<uint64_t>(bytecode[chunk_start + i]) << (i * 8);
+            if (val != 0) {
+                encoder.emit_mov_reg_imm64(X86Register::RAX, val);
+                encoder.emit_mov_mem_reg(X86Register::RSI, static_cast<int32_t>(chunk_start), X86Register::RAX);
             }
-
-            encoder.emit_mov_reg_imm64(X86Register::RAX, val);
-            encoder.emit_mov_mem_reg(X86Register::RSI,
-                                     static_cast<int32_t>(chunk_start),
-                                     X86Register::RAX);
         }
-
         pos = run_end;
     }
-}
-
-// --- I/O instruction translators ---
+}// --- I/O instruction translators ---
 // Uses Linux syscall-based I/O for port 0 (console stdin/stdout).
 // After each I/O operation, register cache is invalidated so the
 // next instruction re-loads from the regfile in memory.
@@ -1296,4 +1277,10 @@ uint64_t DISAToX86Compiler::read_imm64_ptr(const uint8_t* ptr) const {
     return val;
 }
 
-} // namespace CodeGen
+// --- INT 0x80 syscall translation ---
+// TODO: translate i386 INT 0x80 to native x86-64 syscalls
+// The infrastructure (flush_all_registers, regfile layout) is ready;
+// the label-dispatch chain needs debugging for multi-syscall programs.
+void DISAToX86Compiler::translate_int80() {
+    emit_runtime_fallback("int80");
+}} // namespace CodeGen

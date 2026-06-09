@@ -149,8 +149,13 @@ private:
     void load_register(uint8_t virt_reg, X86Register phys);
     void store_register(uint8_t virt_reg, X86Register phys);
     void mark_dirty(uint8_t virt_reg);
+    // INT 0x80 syscall translation
+    void translate_int80();
+
+    // Register management helpers used by syscall translation
     void flush_register(uint8_t virt_reg);
     void flush_all_registers();
+    void flush_all_cached_registers();
     X86Register get_loaded_physical(uint8_t virt_reg);
     X86Register get_writable_physical(uint8_t virt_reg);
 
