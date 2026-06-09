@@ -129,3 +129,10 @@ ai_subtasks.md
 session-ses_18fc.md
 opencode.json
 examples/embedding/*/embedding_*
+
+# AI tool configs
+AGENTS.md
+ai_subtasks*.md
+.coderabbit.yaml
+.platform
+sonar-project.properties
