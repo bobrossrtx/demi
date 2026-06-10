@@ -8,7 +8,7 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
     Opcode opcode = static_cast<Opcode>(opcode_byte);
     switch (opcode) {
         case Opcode::LOAD_IMM:
-        case Opcode::ADD:
+            return 6;
         case Opcode::SUB:
         case Opcode::MOV:
         case Opcode::LOAD:
@@ -637,28 +637,41 @@ void DISAToX86Compiler::translate_outl(uint8_t reg, uint8_t port) {
 
 void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
-    // TEST: add flush_all_registers back
-    encoder.emit_push_reg(X86Register::RDI);
-    flush_all_registers();
     
-    encoder.emit_mov_reg_reg(X86Register::R8, X86Register::RSI);
-    encoder.emit_add_reg_imm32(X86Register::R8, 0x100);
+    // Save RSI (memory base)
+    encoder.emit_push_reg(X86Register::RSI);
+    
+    // Get string offset from reg_state_map into R8, add memory base
+    auto it_s = reg_state_map.find(reg);
+    if (it_s != reg_state_map.end() && it_s->second.loaded) {
+        encoder.emit_mov_reg_reg(X86Register::R8, it_s->second.phys);
+    } else {
+        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, reg * 8);
+    }
+    encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
+    
+    // strlen: scan for null at [R8]
     encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::R8);
     encoder.emit_mov_reg_imm32(X86Register::RCX, 256);
     encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX);
     encoder.emit_cld();
     encoder.emit_repne_scasb();
     
+    // length = (rdi - 1) - R8
     encoder.emit_mov_reg_reg(X86Register::RDX, X86Register::RDI);
     encoder.emit_dec_reg(X86Register::RDX);
     encoder.emit_sub_reg_reg(X86Register::RDX, X86Register::R8);
     
+    // write(1, R8, len)
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::R8);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
     
-    encoder.emit_pop_reg(X86Register::RDI);
+    // Restore RSI
+    encoder.emit_pop_reg(X86Register::RSI);
+    
+    reg_state_map.clear();
 }
 
 void DISAToX86Compiler::translate_in(uint8_t reg, uint8_t port) {
