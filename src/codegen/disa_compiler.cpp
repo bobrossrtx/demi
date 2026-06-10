@@ -319,12 +319,9 @@ void DISAToX86Compiler::translate_instruction(Opcode opcode, const uint8_t* oper
             translate_int80();
             break;
 
-        // Mode control - delegate to runtime
+        // Mode control — no-op in native compilation (already x86-64)
         case Opcode::MODE32:
         case Opcode::MODE64:
-        case Opcode::MODECMP:
-        case Opcode::MODEFLAG:
-            emit_runtime_fallback("unimplemented_mode");
             break;
 
         // SIMD - delegate to runtime
@@ -582,19 +579,26 @@ void DISAToX86Compiler::emit_data_initialization(const std::vector<uint8_t>& byt
 
 void DISAToX86Compiler::translate_out(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
-    flush_all_registers();
-    reg_state_map.clear();
-
-    // write(1, &regfile[reg], 1)
+    
     encoder.emit_push_reg(X86Register::RDI);
-    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RDI);
-    if (reg > 0)
-        encoder.emit_add_reg_imm32(X86Register::RSI, reg * 8);
+    
+    auto it = reg_state_map.find(reg);
+    X86Register phys = X86Register::RAX;
+    if (it != reg_state_map.end() && it->second.loaded)
+        phys = it->second.phys;
+    else
+        encoder.emit_mov_reg_mem(phys, X86Register::RDI, reg * 8);
+    
+    encoder.emit_push_reg(phys);
+    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 1);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
+    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     encoder.emit_pop_reg(X86Register::RDI);
+    
+    if (it != reg_state_map.end()) it->second.loaded = false;
 }
 
 void DISAToX86Compiler::translate_outb(uint8_t reg, uint8_t port) {
