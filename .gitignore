@@ -136,3 +136,4 @@ ai_subtasks*.md
 .coderabbit.yaml
 .platform
 sonar-project.properties
+examples/bin/
