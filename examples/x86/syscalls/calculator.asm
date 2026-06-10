@@ -41,6 +41,8 @@ _start:
     LOAD_IMM ECX, input_buffer
     LOAD_IMM EDX, 32
     INT 0x80
+    CMP EAX, 0
+    JLE exit_program        ; EOF or error
     
     ; Convert string to integer (atoi)
     LOAD_IMM ESI, input_buffer
@@ -60,6 +62,8 @@ _start:
     LOAD_IMM ECX, operator_buffer
     LOAD_IMM EDX, 2
     INT 0x80
+    CMP EAX, 0
+    JLE exit_program        ; EOF or error
     
     ; Load operator into BL
     LOAD EBX, operator_buffer
@@ -77,6 +81,8 @@ _start:
     LOAD_IMM ECX, input_buffer
     LOAD_IMM EDX, 32
     INT 0x80
+    CMP EAX, 0
+    JLE exit_program        ; EOF or error
     
     ; Convert string to integer
     LOAD_IMM ESI, input_buffer

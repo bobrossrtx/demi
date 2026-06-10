@@ -77,6 +77,12 @@ Complex algorithms and computations:
 - **factorial.asm** - Iterative factorial calculation (supports larger values)
 - **factorial_recursive.asm** - Recursive factorial with stack frames
 
+### games/
+
+Small interactive programs:
+
+- **number_guess.asm** - Three-try number guessing game using stdin/stdout syscalls
+
 ## Running Examples
 
 ```bash

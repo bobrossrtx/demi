@@ -459,6 +459,168 @@ PXOR   (0x7A) - Packed bitwise XOR
 
 ---
 
+## Phase 6: Multithreading Support — MEDIUM PRIORITY
+
+**Opcodes**: 10  
+**Timeline**: Q2-Q3 2026 (3-5 weeks)  
+**Rationale**: Enable concurrent execution within a single VM instance
+
+### Why Multithreading?
+
+1. **Modern workloads**: Parallel computation is the norm — data processing, servers, simulations
+2. **Host OS utilization**: Demi threads map 1:1 to OS threads via `clone()`, letting the kernel schedule across real CPU cores
+3. **Shared-memory model**: All threads share the Demi VM's flat memory space (the `memory[]` array), matching the x86 threading model
+4. **Foundation for Demi language**: The high-level Demi language will need `spawn`/`sync` primitives; threading in DASM provides the ISA-level substrate
+
+### Threading Model
+
+- **1:1 threading**: Each DASM thread is a real OS thread created via `SYS_CLONE`
+- **Shared everything**: All threads share the VM's 64KB memory space, register file, and I/O state
+- **Cooperative by default**: Threads run independently; synchronization is explicit via atomics and futexes
+- **Sandbox-aware**: Thread creation is gated by `--allow-exec` capability flag; without it, `THREAD_SPAWN` returns `-EPERM`
+
+### New Opcodes
+
+#### Thread Lifecycle
+
+```
+THREAD_SPAWN (0x??) - Spawn a new thread
+  Input:  RDI = entry point address, RSI = initial stack pointer
+  Output: RAX = thread ID on success, negative errno on failure
+
+THREAD_JOIN  (0x??) - Wait for a thread to exit
+  Input:  RDI = thread ID
+  Output: RAX = exit code of the joined thread, or negative errno
+
+THREAD_EXIT  (0x??) - Terminate the calling thread
+  Input:  RDI = exit code
+  Output: Does not return
+```
+
+#### Atomic Operations (LOCK prefix)
+
+```
+LOCK ADD  (0x??) - Atomic add to memory
+LOCK SUB  (0x??) - Atomic subtract from memory
+LOCK XCHG (0x??) - Atomic exchange register with memory
+```
+
+#### Atomic Compare-and-Exchange
+
+```
+CMPXCHG (0x??) - Compare and exchange
+  Compares RAX with memory at [RDI]. If equal, stores RSI to [RDI] and sets ZF.
+  If not equal, loads [RDI] into RAX and clears ZF.
+```
+
+#### Memory Ordering
+
+```
+MFENCE (0x??) - Full memory fence (StoreLoad barrier)
+LFENCE (0x??) - Load fence (LoadLoad + LoadStore barrier)
+SFENCE (0x??) - Store fence (StoreStore barrier)
+```
+
+#### Thread Introspection
+
+```
+THREAD_ID (0x??) - Get current thread ID
+  Output: RAX = calling thread's ID
+```
+
+### New Syscalls Required
+
+| Syscall | Number (x86-64) | Purpose |
+|---|---|---|
+| `SYS_CLONE` | 56 | Create child thread/process |
+| `SYS_FUTEX` | 202 | Fast userspace mutex (used by THREAD_JOIN) |
+| `SYS_SET_TID_ADDRESS` | 218 | Set pointer to thread ID for robust futexes |
+| `SYS_EXIT` | 60 | Already wired — used by THREAD_EXIT |
+
+### x86-64 Translation
+
+The native compiler already emits `syscall` (0F 05) for INT 0x80. Threading opcodes translate directly to x86-64 instructions, keeping the zero-VM-overhead guarantee:
+
+| DASM Instruction | x86-64 Translation | Notes |
+|---|---|---|
+| `THREAD_SPAWN rdi, rsi` | `mov rax, 56`<br>`mov rdi, 0x3D0F00`<br>`mov rsi, [entry]`<br>`mov rdx, [stack]`<br>`xor r10, r10`<br>`xor r8, r8`<br>`xor r9, r9`<br>`syscall` | `0x3D0F00` = CLONE_VM\|CLONE_FS\|CLONE_FILES\|CLONE_SIGHAND\|CLONE_THREAD\|CLONE_SYSVSEM\|CLONE_SETTLS\|CLONE_PARENT_SETTID\|CLONE_CHILD_CLEARTID. Child starts at `entry`, uses `stack`. Returns child TID in RAX. |
+| `THREAD_JOIN rdi` | Futex wait loop:<br>`mov [clear_tid], rdi`<br>`mov rax, 202`<br>`lea rdi, [join_word]`<br>`mov rsi, 0` (FUTEX_WAIT)<br>`mov rdx, 0`<br>`syscall` | Spins on a futex word the child clears on exit via CLONE_CHILD_CLEARTID. Falls through when child terminates. |
+| `THREAD_EXIT rdi` | `mov rax, 60`<br>`syscall` | SYS_EXIT. Kernel clears the child_tid word (set by CLONE_CHILD_CLEARTID) and wakes any futex waiters. |
+| `LOCK ADD r32, [mem]` | `lock add [mem], r32` | Hardware atomic. `lock` prefix (F0) + `add` opcode. |
+| `LOCK CMPXCHG r32, [mem]` | `lock cmpxchg [mem], r32` | Hardware CAS. Implicitly uses RAX as the comparand. |
+| `CMPXCHG r32, [mem]` | `cmpxchg [mem], r32` | Non-atomic variant for single-threaded optimization. |
+| `MFENCE` | `mfence` | Full barrier (0F AE F0). Drains store buffer + load queue. |
+| `LFENCE` | `lfence` | Load barrier (0F AE E8). Serializes load execution. |
+| `SFENCE` | `sfence` | Store barrier (0F AE F8). Flushes write-combining buffer. |
+| `THREAD_ID` | `mov rax, [fs:0x2D0]` | Reads the thread's TID from the TLS area (offset depends on glibc internals; use `syscall(SYS_gettid)` as fallback: `mov rax, 186; syscall`). |
+
+### Thread Lifecycle in Detail
+
+```
+  Main thread                          Child thread
+  ──────────                           ────────────
+  THREAD_SPAWN entry, stack ──────→    starts at entry
+    returns child TID                    uses provided stack
+       │                                  │
+       │  (main continues)                │  (child works)
+       │                                  │
+  THREAD_JOIN child_tid                   │
+    blocks on futex ←───────────────    THREAD_EXIT 0
+    wakes with exit code                  kernel clears clear_tid
+       │                                  futex wakes waiter
+       ▼                                  thread terminates
+  continues with result
+```
+
+### Example: Parallel Sum with LOCK ADD
+
+```asm
+; Spawn 4 threads, each adds a quarter of an array to shared sum
+; shared_sum is a memory location protected by LOCK ADD
+; Demo of: THREAD_SPAWN, THREAD_JOIN, LOCK ADD
+
+LOAD_IMM R1, shared_sum_ptr
+STORE 0, [R1]                 ; shared_sum = 0
+
+; Spawn 4 workers
+LOAD_IMM RDI, worker_entry
+LOAD_IMM RSI, worker_stack_1
+THREAD_SPAWN                   ; RAX = tid1
+MOV R8, RAX
+; ... repeat for 3 more threads ...
+
+; Join all 4
+MOV RDI, R8
+THREAD_JOIN                    ; wait for tid1
+; ... repeat for other 3 ...
+
+; shared_sum now holds the total
+HALT
+
+worker_entry:
+; compute partial sum into a register...
+LOAD_IMM R10, partial_sum
+LOAD_IMM R11, shared_sum_ptr
+LOCK ADD [R11], R10            ; atomically add to shared sum
+THREAD_EXIT 0
+```
+
+### Sandbox Considerations
+
+- `THREAD_SPAWN` → gated by `--allow-exec` (spawning threads is process creation)
+- `SYS_CLONE` → blocked by sandbox unless `--allow-exec` is set
+- Child threads inherit the parent's VFS jail — they can't escape the sandbox
+- `CLONE_VM` flag means all threads share the same virtual memory; this is safe because the sandbox already prevents guest code from accessing host memory
+
+### Implementation Notes
+
+1. **Thread safety of the VM**: The DASM interpreter is single-threaded per CPU. When THREAD_SPAWN is called, the interpreter spawns a new OS thread that runs its own interpreter loop on a cloned CPU state. The shared `memory[]` array needs a mutex for the interpreter (or we switch to lock-free per-byte access).
+2. **Register file sharing**: Each thread gets its own register context (134 registers). The register file is NOT shared — this prevents data races on register state.
+3. **elf_emitter changes**: Threaded native executables need `PT_TLS` segment for thread-local storage (CLONE_SETTLS requires it). The ELF emitter currently only generates `PT_LOAD` segments.
+4. **Futex word layout**: THREAD_JOIN uses a per-thread futex word in the VM's shared memory to implement joining. The parent writes the child's TID to the futex word, then FUTEX_WAITs. When the child calls THREAD_EXIT → SYS_EXIT, the kernel atomically clears the word at CLONE_CHILD_CLEARTID and wakes the futex.
+
+---
+
 ## Previously Claimed Features
 
 **Note**: Earlier documentation claimed these features were implemented. They are now correctly marked as **planned additions** for Q1-Q2 2026:

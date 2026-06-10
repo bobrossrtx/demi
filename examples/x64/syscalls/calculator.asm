@@ -43,6 +43,8 @@ _start:
     LOAD_IMM RCX, input_buffer
     LOAD_IMM RDX, 32
     INT 0x80
+    CMP RAX, 0
+    JLE exit_program        ; EOF or error
     
     ; Convert string to integer (atoi)
     LOAD_IMM RSI, input_buffer
@@ -62,6 +64,8 @@ _start:
     LOAD_IMM RCX, operator_buffer
     LOAD_IMM RDX, 2
     INT 0x80
+    CMP RAX, 0
+    JLE exit_program        ; EOF or error
 
     
     ; === Get second number ===
@@ -77,6 +81,8 @@ _start:
     LOAD_IMM RCX, input_buffer
     LOAD_IMM RDX, 32
     INT 0x80
+    CMP RAX, 0
+    JLE exit_program        ; EOF or error
     
     ; Convert string to integer
     LOAD_IMM RSI, input_buffer

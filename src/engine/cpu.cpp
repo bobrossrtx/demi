@@ -467,16 +467,6 @@ bool CPU::validate_stack_pop(size_t bytes) const {
 }
 
 uint32_t CPU::read_mem32(uint32_t addr) const {
-    if (addr % 4 != 0) {
-#ifndef NDEBUG
-        Logging::ErrorHandler::instance().report_runtime(
-            Logging::ErrorCode::CPU_MEMORY_OUT_OF_BOUNDS,
-            fmt::format("Unaligned 32-bit read at address=0x{:08X}", addr),
-            get_pc(),
-            "Unaligned memory access (read)");
-#endif
-        return 0;
-    }
     if (!validate_memory_read(addr, 4)) {
         return 0;
     }
@@ -488,16 +478,6 @@ uint32_t CPU::read_mem32(uint32_t addr) const {
 }
 
 void CPU::write_mem32(uint32_t addr, uint32_t value) {
-    if (addr % 4 != 0) {
-#ifndef NDEBUG
-        Logging::ErrorHandler::instance().report_runtime(
-            Logging::ErrorCode::CPU_MEMORY_OUT_OF_BOUNDS,
-            fmt::format("Unaligned 32-bit write at address=0x{:08X}", addr),
-            get_pc(),
-            "Unaligned memory access (write)");
-#endif
-        return;
-    }
     if (!validate_memory_write(addr, 4)) {
         return;
     }

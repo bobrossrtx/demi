@@ -396,34 +396,62 @@ This document outlines future features and enhancements for DemiEngine, prioriti
 
 ---
 
-### 5.3 Multi-core Support
+### 5.3 Multithreading Support
 
 **Status**: Not Implemented  
-**Priority**: LOW  
-**Effort**: Very High
+**Priority**: MEDIUM (bumped from LOW — foundation for Demi high-level language)  
+**Effort**: High
 
-**Description**: Multiple CPU core simulation with synchronization.
+**Description**: Shared-memory multithreading with 1:1 OS thread mapping and atomic synchronization.
+
+**Design doc**: `docs/development/FUTURE_OPCODES.md#phase-6-multithreading-support---medium-priority`
 
 **Features**:
 
-- Multiple CPU instances
-- Shared memory
-- Atomic operations
-- Memory barriers
-- Inter-core communication
+- Multiple threads sharing the VM's flat 64KB memory space
+- 1:1 thread mapping via Linux `SYS_CLONE` (or `pthread_create` for portability)
+- Per-thread register file (134 registers each — no shared register state)
+- Hardware atomics via `LOCK` prefix (ADD, SUB, XCHG, CMPXCHG)
+- Memory ordering with `MFENCE`/`LFENCE`/`SFENCE`
+- Futex-based `THREAD_JOIN` for waiting on thread completion
+- Sandbox-gated: thread creation requires `--allow-exec` capability flag
 
-**New Instructions**:
+**New Instructions (10 opcodes)**:
 
-- `LOCK` prefix for atomic operations
-- `MFENCE`, `LFENCE`, `SFENCE` - Memory fences
-- `CMPXCHG` - Compare and exchange
-- `XADD` - Exchange and add
+| Opcode | Purpose |
+|---|---|
+| `THREAD_SPAWN` | Create thread at entry point |
+| `THREAD_JOIN` | Wait for thread to exit |
+| `THREAD_EXIT` | Terminate calling thread |
+| `LOCK ADD` | Atomic add to memory |
+| `LOCK SUB` | Atomic subtract from memory |
+| `LOCK XCHG` | Atomic exchange |
+| `CMPXCHG` | Compare and exchange |
+| `MFENCE` / `LFENCE` / `SFENCE` | Memory barriers |
+| `THREAD_ID` | Get current thread ID |
+
+**New Syscalls**: `SYS_CLONE` (56), `SYS_FUTEX` (202), `SYS_SET_TID_ADDRESS` (218)
+
+**x86-64 Translation**: Each threading opcode maps directly to native instructions:
+- `THREAD_SPAWN` → `syscall` with `SYS_clone` + `CLONE_VM|CLONE_THREAD|...` flags (0x3D0F00)
+- `LOCK ADD` → `lock add` (F0 prefix + ADD opcode)
+- `CMPXCHG` → `cmpxchg` (or `lock cmpxchg` for atomic variant)
+- `MFENCE` → `mfence` (0F AE F0)
+- `THREAD_EXIT` → `syscall` with `SYS_exit` (already wired, already translates)
+
+See `docs/development/FUTURE_OPCODES.md#phase-6` for full translation table, thread lifecycle diagram, and example DASM code.
 
 **Benefits**:
 
-- Parallel programming
-- Multi-threaded applications
-- Modern computing paradigm
+- Parallel programming within Demi programs
+- Foundation for Demi language `spawn`/`sync` primitives
+- Zero-overhead native threading when compiled with `-o`
+- Safe: sandbox prevents guest code from DoS via thread bombs (threads inherit VFS jail)
+
+**Implementation dependencies**:
+- `elf_emitter.cpp` needs `PT_TLS` segment support for CLONE_SETTLS
+- Interpreter needs thread-safe memory access (mutex or lock-free) for the shared `memory[]` array
+- `SYS_CLONE` and `SYS_FUTEX` must be wired through the INT 0x80 gateway
 
 ---
 
@@ -445,7 +473,7 @@ This document outlines future features and enhancements for DemiEngine, prioriti
 | MMU                  | LOW      | Very High | Low    | 4     |
 | FPU Enhancements     | LOW      | Medium    | Low    | 5     |
 | Cryptographic        | LOW      | High      | Low    | 5     |
-| Multi-core           | LOW      | Very High | Low    | 5     |
+| Multi-core           | MEDIUM   | High      | High   | 5     |
 
 ---
 
@@ -482,5 +510,5 @@ When implementing new features:
 
 ---
 
-**Last Updated**: May 28, 2026  
+**Last Updated**: June 9, 2026  
 **Next Review**: After Phase 2 completion

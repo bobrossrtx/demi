@@ -1319,9 +1319,9 @@ TEST_CASE(org_and_db_integration, "assembler") {
         ; Data section at 0x50
         .org 0x50
         str1:
-        DB "First string", 12
+        DB "First string", 10, 0
         str2:
-        DB "Second string", 13
+        DB "Second string", 10, 0
         
         ; More code at 0x100
         .org 0x100
