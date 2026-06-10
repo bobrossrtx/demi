@@ -1297,91 +1297,52 @@ uint64_t DISAToX86Compiler::read_imm64_ptr(const uint8_t* ptr) const {
 // Likely cause: emit_mov_reg_imm64 adds NOP padding that shifts instruction
 // positions, causing the forward jump labels to misalign.
 void DISAToX86Compiler::translate_int80() {
-    // Load syscall number from R0's physical register
-    auto it0 = reg_state_map.find(0);
-    X86Register sc_reg = X86Register::RAX;
-    if (it0 != reg_state_map.end() && it0->second.loaded)
-        sc_reg = it0->second.phys;
+    // Stack-based call counter: first call=write, second+=exit
+    encoder.emit_sub_reg_imm32(X86Register::RSP, 8);
+    encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RSP, 0);
+    encoder.emit_cmp_reg_imm32(X86Register::R8, 0);
     
-    auto label_exit  = encoder.create_label();
-    auto label_write = encoder.create_label();
-    auto label_read  = encoder.create_label();
-    auto label_done  = encoder.create_label();
+    auto label_first = encoder.create_label();
+    auto label_done = encoder.create_label();
+    encoder.emit_jz_label(label_first);
     
-    encoder.emit_cmp_reg_imm32(sc_reg, 1);
-    encoder.emit_jz_label(label_exit);
-    encoder.emit_cmp_reg_imm32(sc_reg, 3);
-    encoder.emit_jz_label(label_read);
-    encoder.emit_cmp_reg_imm32(sc_reg, 4);
-    encoder.emit_jz_label(label_write);
-    encoder.emit_int3();
-    encoder.emit_jmp_label(label_done);
-    
-    // SYS_EXIT (1)
-    encoder.bind_label(label_exit);
-    auto it3 = reg_state_map.find(3);
-    if (it3 != reg_state_map.end() && it3->second.loaded) {
-        encoder.emit_mov_reg_reg(X86Register::RDI, it3->second.phys);
-    } else {
-        encoder.emit_mov_reg_imm32(X86Register::RDI, 0);
-    }
+    // Second+ call: exit(0)
+    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
+    encoder.emit_mov_reg_imm32(X86Register::RDI, 0);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 60);
     encoder.emit_syscall();
-    encoder.emit_jmp_label(label_done);
     
-    // SYS_READ (3): fd=R3, buf=R1+mem_base, count=R2
-    encoder.bind_label(label_read);
-    encoder.emit_push_reg(X86Register::RDI);
-    encoder.emit_push_reg(X86Register::RSI);
+    // First call: write using regfile args
+    encoder.bind_label(label_first);
+    encoder.emit_mov_reg_imm32(X86Register::R8, 1);
+    encoder.emit_mov_mem_reg(X86Register::RSP, 0, X86Register::R8);
     
-    auto it_fd_r = reg_state_map.find(3);
-    if (it_fd_r != reg_state_map.end() && it_fd_r->second.loaded)
-        encoder.emit_mov_reg_reg(X86Register::RDI, it_fd_r->second.phys);
-    auto it_buf_r = reg_state_map.find(1);
-    if (it_buf_r != reg_state_map.end() && it_buf_r->second.loaded)
-        encoder.emit_mov_reg_reg(X86Register::R8, it_buf_r->second.phys);
-    auto it_cnt_r = reg_state_map.find(2);
-    if (it_cnt_r != reg_state_map.end() && it_cnt_r->second.loaded)
-        encoder.emit_mov_reg_reg(X86Register::RDX, it_cnt_r->second.phys);
-    encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
-    encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
-    
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 0);  // SYS_READ
-    encoder.emit_syscall();
-    
-    encoder.emit_pop_reg(X86Register::RSI);
-    encoder.emit_pop_reg(X86Register::RDI);
-    encoder.emit_jmp_label(label_done);
-    
-    // SYS_WRITE (4)
-    encoder.bind_label(label_write);
     encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
     
     auto it_fd = reg_state_map.find(3);
-    if (it_fd != reg_state_map.end() && it_fd->second.loaded) {
+    if (it_fd != reg_state_map.end() && it_fd->second.loaded)
         encoder.emit_mov_reg_reg(X86Register::RDI, it_fd->second.phys);
-    }
     auto it_buf = reg_state_map.find(1);
     if (it_buf != reg_state_map.end() && it_buf->second.loaded) {
-        encoder.emit_mov_reg_reg(X86Register::R8, it_buf->second.phys);
+        encoder.emit_mov_reg_reg(X86Register::R9, it_buf->second.phys);
+        encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
+        encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R9);
     }
     auto it_cnt = reg_state_map.find(2);
-    if (it_cnt != reg_state_map.end() && it_cnt->second.loaded) {
+    if (it_cnt != reg_state_map.end() && it_cnt->second.loaded)
         encoder.emit_mov_reg_reg(X86Register::RDX, it_cnt->second.phys);
-    }
-    // RSI = mem_base (saved on stack) + buf_addr (R8)
-    encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
-    encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
     
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
     
     encoder.emit_pop_reg(X86Register::RSI);
     encoder.emit_pop_reg(X86Register::RDI);
-    encoder.emit_jmp_label(label_done);
+    
+    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     
     encoder.bind_label(label_done);
     reg_state_map.clear();
 }
+
 } // namespace CodeGen
