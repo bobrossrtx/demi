@@ -18,4 +18,11 @@ _start:
     LOADR EDX, ECX
 
     ; EDX should now contain 42
+    ; Print "OK"
+    LOAD_IMM EAX, 79
+    OUT EAX, 1
+    LOAD_IMM EAX, 75
+    OUT EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT

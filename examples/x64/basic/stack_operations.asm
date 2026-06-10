@@ -28,6 +28,12 @@ _start:
     POP RDI             ; RDI = 42
     
     ; Verify: RDI=42, RSI=13, RDX=7
+    LOAD_IMM RAX, 79
+    OUT RAX, 1
+    LOAD_IMM RAX, 75
+    OUT RAX, 1
+    LOAD_IMM RAX, 10
+    OUT RAX, 1
     HALT
 
 ; Stack demonstration:

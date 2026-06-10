@@ -41,4 +41,8 @@ reverse_loop:
     JMP reverse_loop
 
 done:
+    LOAD_IMM RAX, 0x50
+    OUTSTR RAX, 1
+    LOAD_IMM RAX, 10
+    OUT RAX, 1
     HALT

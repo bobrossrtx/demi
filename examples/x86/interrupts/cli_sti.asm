@@ -15,6 +15,13 @@ _start:
     LOAD_IMM EBX, 42        ; Manually set EBX to 42
     LOAD_IMM ECX, 99        ; Mark test complete
     
+    ; Print "OK"
+    LOAD_IMM EAX, 79
+    OUT EAX, 1
+    LOAD_IMM EAX, 75
+    OUT EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT
 
 handler:

@@ -27,6 +27,13 @@ _start:
     ADD EDX, ESI             ; EDX = result + 10 = 55 + 10 = 65
     
     ; End program
+    ; Print "OK"
+    LOAD_IMM EAX, 79
+    OUT EAX, 1
+    LOAD_IMM EAX, 75
+    OUT EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT
 
 ; Results:

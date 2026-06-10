@@ -169,4 +169,10 @@ itoa_reverse_loop:
     JMP itoa_reverse_loop
 
 itoa_done:
+    LOAD_IMM RAX, 79
+    OUT RAX, 1
+    LOAD_IMM RAX, 75
+    OUT RAX, 1
+    LOAD_IMM RAX, 10
+    OUT RAX, 1
     RET

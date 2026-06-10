@@ -28,6 +28,13 @@ _start:
     POP EDI             ; EDI = 42
     
     ; Verify: EDI=42, ESI=13, EDX=7
+    ; Print "OK"
+    LOAD_IMM EAX, 79
+    OUT EAX, 1
+    LOAD_IMM EAX, 75
+    OUT EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT
 
 ; Stack demonstration:

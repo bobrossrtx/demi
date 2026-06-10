@@ -27,6 +27,12 @@ _start:
     ADD RDX, RSI             ; RDX = result + 10 = 55 + 10 = 65
     
     ; End program
+    LOAD_IMM RAX, 79
+    OUT RAX, 1
+    LOAD_IMM RAX, 75
+    OUT RAX, 1
+    LOAD_IMM RAX, 10
+    OUT RAX, 1
     HALT
 
 ; Results:

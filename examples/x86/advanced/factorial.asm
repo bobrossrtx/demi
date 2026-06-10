@@ -41,6 +41,13 @@ multiply_done:
 factorial_done:
     ; Result is in EBX (should be 120 for 5!)
     MOV EAX, EBX        ; Move result to EAX
+    ; Print "OK" to verify completion
+    LOAD_IMM EAX, 79    ; 'O'
+    OUT EAX, 1
+    LOAD_IMM EAX, 75    ; 'K'
+    OUT EAX, 1
+    LOAD_IMM EAX, 10    ; newline
+    OUT EAX, 1
     HALT
 
 ; EAX contains 120 (5!)

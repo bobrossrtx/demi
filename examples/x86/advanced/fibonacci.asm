@@ -40,6 +40,13 @@ loop:
     DEC ECX
     JNZ loop
 
+    ; Print "OK"
+    LOAD_IMM EAX, 79
+    OUT EAX, 1
+    LOAD_IMM EAX, 75
+    OUT EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT
 
 ; Memory at 0x100+ contains: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34

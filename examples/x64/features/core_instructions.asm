@@ -52,4 +52,10 @@ _start:
     NOT RBP                 ; RBP = ~RBP
 
     ; End program
+    LOAD_IMM RAX, 79
+    OUT RAX, 1
+    LOAD_IMM RAX, 75
+    OUT RAX, 1
+    LOAD_IMM RAX, 10
+    OUT RAX, 1
     HALT

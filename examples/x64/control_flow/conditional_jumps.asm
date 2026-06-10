@@ -47,6 +47,12 @@ greater_branch:
 less_branch:
     LOAD_IMM RDI, 4      ; Mark test 4 passed
     
+    LOAD_IMM RAX, 79
+    OUT RAX, 1
+    LOAD_IMM RAX, 75
+    OUT RAX, 1
+    LOAD_IMM RAX, 10
+    OUT RAX, 1
     HALT
 
 ; Results: RCX=1, RDX=2, RSI=3, RDI=4

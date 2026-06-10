@@ -41,4 +41,9 @@ reverse_loop:
     JMP reverse_loop
 
 done:
+    ; Print reversed string
+    LOAD_IMM EAX, 0x50
+    OUTSTR EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT

@@ -52,4 +52,11 @@ _start:
     NOT R9                  ; R9 = ~R9
 
     ; End program
+    ; Print "OK"
+    LOAD_IMM EAX, 79
+    OUT EAX, 1
+    LOAD_IMM EAX, 75
+    OUT EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT

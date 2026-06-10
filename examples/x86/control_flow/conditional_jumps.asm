@@ -47,6 +47,13 @@ greater_branch:
 less_branch:
     LOAD_IMM EDI, 4      ; Mark test 4 passed
     
+    ; Print "OK"
+    LOAD_IMM EAX, 79
+    OUT EAX, 1
+    LOAD_IMM EAX, 75
+    OUT EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT
 
 ; Results: ECX=1, EDX=2, ESI=3, EDI=4

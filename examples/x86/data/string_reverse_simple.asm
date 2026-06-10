@@ -8,5 +8,8 @@ mystring: DB "Hello", 0
 
 _start:
     LOAD_IMM EAX, 0x50
-    MOV EBX, EAX
+    ; Print the string
+    OUTSTR EAX, 1
+    LOAD_IMM EAX, 10
+    OUT EAX, 1
     HALT

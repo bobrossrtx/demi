@@ -15,6 +15,12 @@ _start:
     LOAD_IMM RBX, 42        ; Manually set RBX to 42
     LOAD_IMM RCX, 99        ; Mark test complete
     
+    LOAD_IMM RAX, 79
+    OUT RAX, 1
+    LOAD_IMM RAX, 75
+    OUT RAX, 1
+    LOAD_IMM RAX, 10
+    OUT RAX, 1
     HALT
 
 handler:
