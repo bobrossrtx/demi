@@ -93,6 +93,7 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
         case Opcode::POP_FLAG:
         case Opcode::MODE32:
         case Opcode::MODE64:
+            return 1;
         case Opcode::INT:       // INT is 2 bytes: opcode + interrupt number
             return 2;
         case Opcode::LOAD_IMM64:
@@ -1311,11 +1312,10 @@ void DISAToX86Compiler::translate_int80() {
     encoder.emit_jz_label(label_exit);
     encoder.emit_cmp_reg_imm32(sc_reg, 4);
     encoder.emit_jz_label(label_write);
-    
-    // Unknown syscall — no-op
+    encoder.emit_int3();
     encoder.emit_jmp_label(label_done);
     
-    // SYS_EXIT (1): load exit code from R3, call exit
+    // SYS_EXIT (1)
     encoder.bind_label(label_exit);
     auto it3 = reg_state_map.find(3);
     if (it3 != reg_state_map.end() && it3->second.loaded) {
@@ -1325,28 +1325,37 @@ void DISAToX86Compiler::translate_int80() {
     }
     encoder.emit_mov_reg_imm32(X86Register::RAX, 60);
     encoder.emit_syscall();
-    // unreachable
     encoder.emit_jmp_label(label_done);
     
-            // SYS_WRITE (4): write to fd — diagnostic: hardcoded
+    // SYS_WRITE (4)
     encoder.bind_label(label_write);
     encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 0x0A5821); // "!X\n" (LE: 0x0A58 = X! newline... wait)
-    // Actually: push "OK\n"
-    // 0x0A4B4F = "OK\n" in little-endian (O=0x4F, K=0x4B, \n=0x0A, padding=0x00)
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 0x000A4B4F);
-    encoder.emit_push_reg(X86Register::RAX);
-    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
-    encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
-    encoder.emit_mov_reg_imm32(X86Register::RDX, 3);
+    
+    auto it_fd = reg_state_map.find(3);
+    if (it_fd != reg_state_map.end() && it_fd->second.loaded) {
+        encoder.emit_mov_reg_reg(X86Register::RDI, it_fd->second.phys);
+    }
+    auto it_buf = reg_state_map.find(1);
+    if (it_buf != reg_state_map.end() && it_buf->second.loaded) {
+        encoder.emit_mov_reg_reg(X86Register::R8, it_buf->second.phys);
+    }
+    auto it_cnt = reg_state_map.find(2);
+    if (it_cnt != reg_state_map.end() && it_cnt->second.loaded) {
+        encoder.emit_mov_reg_reg(X86Register::RDX, it_cnt->second.phys);
+    }
+    // RSI = mem_base (saved on stack) + buf_addr (R8)
+    encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
+    encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
+    
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
-    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
+    
     encoder.emit_pop_reg(X86Register::RSI);
     encoder.emit_pop_reg(X86Register::RDI);
     encoder.emit_jmp_label(label_done);
     
-encoder.bind_label(label_done);
+    encoder.bind_label(label_done);
     reg_state_map.clear();
-}} // namespace CodeGen
+}
+} // namespace CodeGen
