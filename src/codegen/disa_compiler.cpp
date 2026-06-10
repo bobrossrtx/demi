@@ -522,6 +522,8 @@ void DISAToX86Compiler::flush_register(uint8_t virt_reg) {
 }
 
 void DISAToX86Compiler::flush_all_registers() {
+    encoder.emit_push_reg(X86Register::RDI);
+    
     for (auto& pair : reg_state_map) {
         if (pair.second.dirty) {
             int32_t offset = static_cast<int32_t>(pair.first) * 8;
@@ -529,6 +531,8 @@ void DISAToX86Compiler::flush_all_registers() {
             pair.second.dirty = false;
         }
     }
+    
+    encoder.emit_pop_reg(X86Register::RDI);
 }
 
 X86Register DISAToX86Compiler::get_loaded_physical(uint8_t virt_reg) {
