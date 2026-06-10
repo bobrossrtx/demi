@@ -16,14 +16,14 @@ _start:
     LOAD_IMM EAX, 4         ; sys_write (syscall number 4)
     LOAD_IMM EBX, 1         ; fd = stdout
     LOAD_IMM ECX, msg1      ; buffer address
-    LOAD_IMM EDX, 47        ; message length
+    LOAD_IMM EDX, 46        ; message length
     INT 0x80                ; REAL KERNEL SYSCALL
     
     ; Example 2: Write to stderr  
     LOAD_IMM EAX, 4         ; sys_write
     LOAD_IMM EBX, 2         ; fd = stderr
     LOAD_IMM ECX, msg2      ; buffer address
-    LOAD_IMM EDX, 34        ; message length  
+    LOAD_IMM EDX, 33        ; message length  
     INT 0x80                ; REAL KERNEL SYSCALL
     
     ; Example 3: Close a file descriptor (safe to call on invalid fd)
