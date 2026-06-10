@@ -142,10 +142,9 @@ std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_
 
     emit_function_prologue();
 
-    // Emit data initialization for bytes before entry point
-    if (entry_point > 0) {
-        emit_data_initialization(disa_bytecode, entry_point);
-    }
+    // Emit data initialization for the entire bytecode (code + data)
+    // Even when entry_point=0, data may be interleaved with or follow code.
+    emit_data_initialization(disa_bytecode, entry_point);
 
     // Compile code starting from entry_point
     current_bytecode_pos = entry_point;
@@ -1306,10 +1305,13 @@ void DISAToX86Compiler::translate_int80() {
     
     auto label_exit  = encoder.create_label();
     auto label_write = encoder.create_label();
+    auto label_read  = encoder.create_label();
     auto label_done  = encoder.create_label();
     
     encoder.emit_cmp_reg_imm32(sc_reg, 1);
     encoder.emit_jz_label(label_exit);
+    encoder.emit_cmp_reg_imm32(sc_reg, 3);
+    encoder.emit_jz_label(label_read);
     encoder.emit_cmp_reg_imm32(sc_reg, 4);
     encoder.emit_jz_label(label_write);
     encoder.emit_int3();
@@ -1325,6 +1327,30 @@ void DISAToX86Compiler::translate_int80() {
     }
     encoder.emit_mov_reg_imm32(X86Register::RAX, 60);
     encoder.emit_syscall();
+    encoder.emit_jmp_label(label_done);
+    
+    // SYS_READ (3): fd=R3, buf=R1+mem_base, count=R2
+    encoder.bind_label(label_read);
+    encoder.emit_push_reg(X86Register::RDI);
+    encoder.emit_push_reg(X86Register::RSI);
+    
+    auto it_fd_r = reg_state_map.find(3);
+    if (it_fd_r != reg_state_map.end() && it_fd_r->second.loaded)
+        encoder.emit_mov_reg_reg(X86Register::RDI, it_fd_r->second.phys);
+    auto it_buf_r = reg_state_map.find(1);
+    if (it_buf_r != reg_state_map.end() && it_buf_r->second.loaded)
+        encoder.emit_mov_reg_reg(X86Register::R8, it_buf_r->second.phys);
+    auto it_cnt_r = reg_state_map.find(2);
+    if (it_cnt_r != reg_state_map.end() && it_cnt_r->second.loaded)
+        encoder.emit_mov_reg_reg(X86Register::RDX, it_cnt_r->second.phys);
+    encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
+    encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
+    
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 0);  // SYS_READ
+    encoder.emit_syscall();
+    
+    encoder.emit_pop_reg(X86Register::RSI);
+    encoder.emit_pop_reg(X86Register::RDI);
     encoder.emit_jmp_label(label_done);
     
     // SYS_WRITE (4)
