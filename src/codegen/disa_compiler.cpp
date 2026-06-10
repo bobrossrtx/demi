@@ -561,6 +561,8 @@ void DISAToX86Compiler::emit_data_initialization(const std::vector<uint8_t>& byt
         size_t run_start = pos;
         size_t run_end = run_start;
         while (run_end < bytecode.size() && bytecode[run_end] != 0) run_end++;
+        // Include one trailing zero byte so null-terminated strings work
+        if (run_end < bytecode.size()) run_end++;
         for (size_t chunk_start = run_start; chunk_start < run_end; chunk_start += 8) {
             size_t chunk_end = std::min(chunk_start + 8, run_end);
             uint64_t val = 0;
