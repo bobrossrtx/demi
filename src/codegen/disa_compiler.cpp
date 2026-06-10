@@ -637,50 +637,28 @@ void DISAToX86Compiler::translate_outl(uint8_t reg, uint8_t port) {
 
 void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
+    // TEST: add flush_all_registers back
+    encoder.emit_push_reg(X86Register::RDI);
     flush_all_registers();
-    reg_state_map.clear();
-
-    // OUTSTR: write null-terminated string from memory to port
-    // reg contains the string address (offset from memory base pointed to by RSI)
-    // memory_base = RSI, string offset = regfile[reg]
-
-    // Save both pointers
-    encoder.emit_push_reg(X86Register::RDI);  // [RSP+8]
-    encoder.emit_push_reg(X86Register::RSI);  // [RSP+0]
-
-    // Get string offset from regfile
-    encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::RDI, reg * 8);
-    // Combine with memory base to get absolute address: RSI = memory_base + offset
-    encoder.emit_add_reg_reg(X86Register::RAX, X86Register::RSI);
-
-    // Save absolute string address
-    encoder.emit_push_reg(X86Register::RAX);  // [RSP+0], old [RSP+8]=RSI, [RSP+16]=RDI
-
-    // Find null terminator: strlen(string_addr)
-    encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::RAX);
-    encoder.emit_mov_reg_imm32(X86Register::RCX, 0x10000);
+    
+    encoder.emit_mov_reg_reg(X86Register::R8, X86Register::RSI);
+    encoder.emit_add_reg_imm32(X86Register::R8, 0x100);
+    encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::R8);
+    encoder.emit_mov_reg_imm32(X86Register::RCX, 256);
     encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX);
     encoder.emit_cld();
     encoder.emit_repne_scasb();
-
-    // Compute length = (rdi - 1) - string_addr
-    encoder.emit_pop_reg(X86Register::RSI);  // RSI = string_addr
-    // rdi points past null, so rdi-1 = address of null
-    // save a temp copy of rdi
-    encoder.emit_push_reg(X86Register::RDI);
-    encoder.emit_pop_reg(X86Register::RDX);
-    encoder.emit_dec_reg(X86Register::RDX);  // RDX = &null
-    encoder.emit_sub_reg_reg(X86Register::RDX, X86Register::RSI);  // RDX = length
-
-    // write(1, string_addr, length)
-    // RSI = string_addr (already set from pop)
+    
+    encoder.emit_mov_reg_reg(X86Register::RDX, X86Register::RDI);
+    encoder.emit_dec_reg(X86Register::RDX);
+    encoder.emit_sub_reg_reg(X86Register::RDX, X86Register::R8);
+    
+    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::R8);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
-
-    // Restore mem pointer and regfile pointer
-    encoder.emit_pop_reg(X86Register::RSI);  // restore mem ptr
-    encoder.emit_pop_reg(X86Register::RDI);  // restore regfile ptr
+    
+    encoder.emit_pop_reg(X86Register::RDI);
 }
 
 void DISAToX86Compiler::translate_in(uint8_t reg, uint8_t port) {
@@ -809,12 +787,9 @@ void DISAToX86Compiler::translate_nop() {
 }
 
 void DISAToX86Compiler::translate_halt() {
-    flush_all_registers();
-    // Exit syscall: exit(0) - cleanly terminates the process
-    encoder.emit_xor_reg_reg(X86Register::RDI, X86Register::RDI);
+    encoder.emit_mov_reg_imm32(X86Register::RDI, 0);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 60);
     encoder.emit_syscall();
-    // Fallback infinite loop if syscall fails
     encoder.emit_raw_byte(0xEB);
     encoder.emit_raw_byte(0xFE);
 }
