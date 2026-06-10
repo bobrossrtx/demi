@@ -1319,9 +1319,9 @@ void DISAToX86Compiler::translate_int80() {
         encoder.emit_mov_reg_reg(X86Register::RDI, it_fd->second.phys);
     auto it_buf = reg_state_map.find(1);
     if (it_buf != reg_state_map.end() && it_buf->second.loaded) {
-        encoder.emit_mov_reg_reg(X86Register::R9, it_buf->second.phys);
+        encoder.emit_mov_reg_reg(X86Register::R8, it_buf->second.phys);
         encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
-        encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R9);
+        encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
     }
     auto it_cnt = reg_state_map.find(2);
     if (it_cnt != reg_state_map.end() && it_cnt->second.loaded)
