@@ -11,9 +11,9 @@
 
 ; Define multiple labeled strings
 greeting: 
-    DB 'Hi!\n', 3
+    DB 'Hi!', 10, 0
 message: 
-    DB 'Labels work!\n', 12
+    DB 'Labels work!', 10, 0
 
 _start:
     ; Use both labels

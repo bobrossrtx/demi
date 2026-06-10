@@ -31,8 +31,10 @@ _start:
     LOAD_IMM EDX, 10
     INT 0x80
     
-    ; Convert ASCII to number: load byte, subtract '0' (48)
+    ; Convert ASCII to number: load byte, mask, subtract '0' (48)
     LOAD EAX, input_buffer
+    LOAD_IMM EBX, 0xFF
+    AND EAX, EBX            ; Mask to single byte
     LOAD_IMM EBX, 48
     SUB EAX, EBX
     MOV EDI, EAX            ; Store first number in EDI
@@ -53,6 +55,8 @@ _start:
     
     ; Convert ASCII to number
     LOAD EAX, input_buffer
+    LOAD_IMM EBX, 0xFF
+    AND EAX, EBX            ; Mask to single byte
     LOAD_IMM EBX, 48
     SUB EAX, EBX
     

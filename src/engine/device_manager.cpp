@@ -110,8 +110,6 @@ void DeviceManager::writePortString(uint8_t port, const std::string& str) {
         for (char c : str) {
             writePort(port, static_cast<uint8_t>(c));
         }
-        // Write null terminator
-        writePort(port, 0);
     } catch (const std::exception& e) {
         Logging::DebugHandler::instance().report(Logging::DebugCategory::IO_DEVICE, fmt::format("Exception in writePortString: {}", e.what()), Logging::DebugLevel::CRITICAL);
     }

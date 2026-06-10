@@ -26,13 +26,13 @@ _start:
     ; Comparison (sets flags)
     CMP EAX, EBX            ; Compare 150 vs 25
 
-    ; Logical operations
-    LOAD_IMM ESP, 0xFF
-    LOAD_IMM EBP, 0x0F
-    AND ESP, EBP            ; ESP = 0xFF & 0x0F = 0x0F
+    ; Logical operations (using R8/R9 instead of ESP/EBP)
+    LOAD_IMM R8, 0xFF
+    LOAD_IMM R9, 0x0F
+    AND R8, R9              ; R8 = 0xFF & 0x0F = 0x0F
 
-    OR ESP, EAX             ; ESP = bitwise OR
-    XOR EBP, EBX            ; EBP = bitwise XOR
+    OR R8, EAX              ; R8 = bitwise OR
+    XOR R9, EBX             ; R9 = bitwise XOR
 
     ; Stack operations
     PUSH EAX                ; Push 150 onto stack
@@ -49,7 +49,7 @@ _start:
     DEC EBX                 ; EBX = 24
 
     ; Bitwise NOT
-    NOT EBP                 ; EBP = ~EBP
+    NOT R9                  ; R9 = ~R9
 
     ; End program
     HALT

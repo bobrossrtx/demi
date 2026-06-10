@@ -13,14 +13,14 @@
     prompt1: DB "Enter first number: ", 0
     prompt1_len EQU 20
     prompt2: DB "Enter operator (+,-,*,/): ", 0
-    prompt2_len EQU 27
+    prompt2_len EQU 26
     prompt3: DB "Enter second number: ", 0
     prompt3_len EQU 21
     result_msg: DB "Result: ", 0
     result_msg_len EQU 8
     newline: DB 10
     error_msg: DB "Error: Invalid input or division by zero", 10, 0
-    error_msg_len EQU 42
+    error_msg_len EQU 41
     
     input_buffer: RESB 32   ; Buffer for number input
     operator_buffer: RESB 2  ; Buffer for operator

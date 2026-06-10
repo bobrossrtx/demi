@@ -155,8 +155,8 @@ void handle_add(CPU& cpu, const std::vector<uint8_t>& program, [[maybe_unused]] 
             
             // For backward compatibility, allow access to the full register array but warn
             // This prevents crashes while highlighting that extended operations should be used
-            if (reg1 >= cpu.get_registers().size() || reg2 >= cpu.get_registers().size()) {
-                std::string context = fmt::format("Register R{} or R{} out of range (max: R{})", reg1, reg2, cpu.get_registers().size() - 1);
+            if (reg1 >= DemiEngine_Registers::TOTAL_REGISTERS || reg2 >= DemiEngine_Registers::TOTAL_REGISTERS) {
+                std::string context = fmt::format("Register R{} or R{} out of range (max: R{})", reg1, reg2, DemiEngine_Registers::TOTAL_REGISTERS - 1);
                 std::string message = "Invalid register access in ADD instruction";
                 ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
                 cpu.set_pc(cpu.get_pc() + 3);
@@ -245,7 +245,7 @@ void handle_and(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg1 = program[pc + 1];
         uint8_t reg2 = program[pc + 2];
 
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
             uint64_t result = val1 & val2;
@@ -345,7 +345,7 @@ void handle_cmp(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
     if (cpu.get_pc() + 2 < program.size()) {
         uint8_t reg1 = program[cpu.get_pc() + 1];
         uint8_t reg2 = program[cpu.get_pc() + 2];
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
             
@@ -461,7 +461,7 @@ void handle_dec(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
     if (cpu.get_pc() + 1 < program.size()) {
         uint8_t reg = program[cpu.get_pc() + 1];
         DEBUG_INSTRUCTION("DEC", cpu.get_pc(), fmt::format("R{}", static_cast<int>(reg)), "");
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
             uint64_t result = val - 1;
             uint64_t mask = cpu.get_operand_mask();
@@ -507,7 +507,7 @@ void handle_div(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg1 = program[cpu.get_pc() + 1];
         uint8_t reg2 = program[cpu.get_pc() + 2];
         DEBUG_INSTRUCTION("DIV", cpu.get_pc(), fmt::format("R{} /= R{}", reg1, reg2), "");
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
 
@@ -546,7 +546,7 @@ void handle_mod(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg1 = program[cpu.get_pc() + 1];
         uint8_t reg2 = program[cpu.get_pc() + 2];
         DEBUG_INSTRUCTION("MOD", cpu.get_pc(), fmt::format("R{} %= R{}", reg1, reg2), "");
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
 
@@ -674,7 +674,7 @@ void handle_inb(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, reg, port
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint8_t value = cpu.read_port(port);
             cpu.get_registers()[reg] = value;
 
@@ -697,7 +697,7 @@ void handle_inc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
     if (cpu.get_pc() + 1 < program.size()) {
         uint8_t reg = program[cpu.get_pc() + 1];
         DEBUG_INSTRUCTION("INC", cpu.get_pc(), fmt::format("R{}", static_cast<int>(reg)), "");
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
             uint64_t result = val + 1;
             uint64_t mask = cpu.get_operand_mask();
@@ -751,7 +751,7 @@ void handle_in(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, reg, port
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint8_t value = cpu.read_port(port);
             cpu.get_registers()[reg] = value;
 
@@ -782,10 +782,10 @@ void handle_inl(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, reg, port
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint32_t value = cpu.read_port_dword(port);
             // Store bytes in reg, reg+1, reg+2, reg+3 if available
-            for (size_t i = 0; i < 4 && (reg + i) < cpu.get_registers().size(); ++i) {
+            for (size_t i = 0; i < 4 && (reg + i) < DemiEngine_Registers::TOTAL_REGISTERS; ++i) {
                 cpu.get_registers()[reg + i] = static_cast<uint8_t>((value >> (8 * i)) & 0xFF);
             }
         }
@@ -811,7 +811,7 @@ void handle_instr(CPU& cpu, const std::vector<uint8_t>& program, bool& running) 
             pc, pc, reg, port
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint8_t maxLength = cpu.get_registers()[reg]; // Use register value as max length
             std::string value = cpu.read_port_string(port, maxLength);
 
@@ -845,18 +845,18 @@ void handle_inw(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, reg, port
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint16_t value = cpu.read_port_word(port);
             // Store lower 8 bits in reg, upper 8 bits in next reg (if exists)
             cpu.get_registers()[reg] = static_cast<uint8_t>(value & 0xFF);
-            if (static_cast<size_t>(reg + 1) < cpu.get_registers().size()) {
+            if (static_cast<size_t>(reg + 1) < DemiEngine_Registers::TOTAL_REGISTERS) {
                 cpu.get_registers()[reg + 1] = static_cast<uint8_t>((value >> 8) & 0xFF);
             }
 
             DebugHandler::instance().report(DebugCategory::IO_DEVICE, fmt::format(
                 "[PC=0x{:04X}] [INW] R{} = {}, R{} = {}",
                 pc, reg, cpu.get_registers()[reg], reg + 1,
-                (static_cast<size_t>(reg + 1) < cpu.get_registers().size() ? cpu.get_registers()[reg + 1] : 0)
+                (static_cast<size_t>(reg + 1) < DemiEngine_Registers::TOTAL_REGISTERS ? cpu.get_registers()[reg + 1] : 0)
             ), DebugLevel::DETAIL);
         }
 
@@ -1007,8 +1007,8 @@ void handle_load(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint64_t addr = cpu.read_address_from_program(program, cpu.get_pc() + 2);
         
         // Check register bounds
-        if (reg >= cpu.get_registers().size()) {
-            std::string context = fmt::format("Register R{} out of range (0-{})", reg, cpu.get_registers().size() - 1);
+        if (reg >= DemiEngine_Registers::TOTAL_REGISTERS) {
+            std::string context = fmt::format("Register R{} out of range (0-{})", reg, DemiEngine_Registers::TOTAL_REGISTERS - 1);
             std::string message = "Invalid register in LOAD instruction";
             ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
             running = false;
@@ -1043,9 +1043,9 @@ void handle_loadr(CPU& cpu, const std::vector<uint8_t>& program, bool& running) 
         uint8_t dest_reg = program[cpu.get_pc() + 1];
         uint8_t addr_reg = program[cpu.get_pc() + 2];
         
-        // Check destination register bounds
-        if (dest_reg >= cpu.get_registers().size()) {
-            std::string context = fmt::format("Register R{} out of range (0-{})", dest_reg, cpu.get_registers().size() - 1);
+        // Check destination register bounds (use 64-bit register array for extended support)
+        if (dest_reg >= DemiEngine_Registers::TOTAL_REGISTERS) {
+            std::string context = fmt::format("Register R{} out of range (0-{})", dest_reg, DemiEngine_Registers::TOTAL_REGISTERS - 1);
             std::string message = "Invalid destination register in LOADR instruction";
             ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
             running = false;
@@ -1053,8 +1053,8 @@ void handle_loadr(CPU& cpu, const std::vector<uint8_t>& program, bool& running) 
         }
         
         // Check address register bounds
-        if (addr_reg >= cpu.get_registers().size()) {
-            std::string context = fmt::format("Register R{} out of range (0-{})", addr_reg, cpu.get_registers().size() - 1);
+        if (addr_reg >= DemiEngine_Registers::TOTAL_REGISTERS) {
+            std::string context = fmt::format("Register R{} out of range (0-{})", addr_reg, DemiEngine_Registers::TOTAL_REGISTERS - 1);
             std::string message = "Invalid address register in LOADR instruction";
             ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
             running = false;
@@ -1100,8 +1100,8 @@ void handle_storer(CPU& cpu, const std::vector<uint8_t>& program, bool& running)
         uint8_t value_reg = program[cpu.get_pc() + 2];
         
         // Check address register bounds
-        if (addr_reg >= cpu.get_registers().size()) {
-            std::string context = fmt::format("Register R{} out of range (0-{})", addr_reg, cpu.get_registers().size() - 1);
+        if (addr_reg >= DemiEngine_Registers::TOTAL_REGISTERS) {
+            std::string context = fmt::format("Register R{} out of range (0-{})", addr_reg, DemiEngine_Registers::TOTAL_REGISTERS - 1);
             std::string message = "Invalid address register in STORER instruction";
             ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
             running = false;
@@ -1109,8 +1109,8 @@ void handle_storer(CPU& cpu, const std::vector<uint8_t>& program, bool& running)
         }
 
         // Check value register bounds
-        if (value_reg >= cpu.get_registers().size()) {
-            std::string context = fmt::format("Register R{} out of range (0-{})", value_reg, cpu.get_registers().size() - 1);
+        if (value_reg >= DemiEngine_Registers::TOTAL_REGISTERS) {
+            std::string context = fmt::format("Register R{} out of range (0-{})", value_reg, DemiEngine_Registers::TOTAL_REGISTERS - 1);
             std::string message = "Invalid value register in STORER instruction";
             ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
             running = false;
@@ -1196,7 +1196,7 @@ void handle_lea(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             cpu.get_pc(), cpu.get_pc(), addr, reg
         ), DebugLevel::DETAIL);
         
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             cpu.set_register_mode_aware(static_cast<Register>(reg), static_cast<uint64_t>(addr));  // Load the address itself
             DebugHandler::instance().report(DebugCategory::CPU_REGISTERS, fmt::format(
                 "[PC=0x{:04X}] [LEA] R{} = 0x{:X} (address)",
@@ -1232,7 +1232,7 @@ void handle_mul(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg1 = program[cpu.get_pc() + 1];
         uint8_t reg2 = program[cpu.get_pc() + 2];
         DEBUG_INSTRUCTION("MUL", cpu.get_pc(), fmt::format("R{} *= R{}", reg1, reg2), "");
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
 
@@ -1309,7 +1309,7 @@ void handle_not(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
     if (pc + 1 < program.size()) {
         uint8_t reg = program[pc + 1];
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
             uint64_t result = ~val;
             cpu.set_register_mode_aware(static_cast<Register>(reg), result);
@@ -1331,7 +1331,7 @@ void handle_or(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg1 = program[pc + 1];
         uint8_t reg2 = program[pc + 2];
 
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
             uint64_t result = val1 | val2;
@@ -1374,7 +1374,7 @@ void handle_outb(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, port, reg, cpu.get_registers()[reg]
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             cpu.write_port(port, cpu.get_registers()[reg]);
         }
 
@@ -1399,7 +1399,7 @@ void handle_out(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, port, reg, cpu.get_registers()[reg]
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             cpu.write_port(port, cpu.get_registers()[reg]);
         }
 
@@ -1424,9 +1424,9 @@ void handle_outl(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, port, reg
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint32_t value = 0;
-            for (size_t i = 0; i < 4 && (reg + i) < cpu.get_registers().size(); ++i) {
+            for (size_t i = 0; i < 4 && (reg + i) < DemiEngine_Registers::TOTAL_REGISTERS; ++i) {
                 value |= (static_cast<uint32_t>(cpu.get_registers()[reg + i]) << (8 * i));
             }
             cpu.write_port_dword(port, value);
@@ -1453,7 +1453,7 @@ void handle_outstr(CPU& cpu, const std::vector<uint8_t>& program, bool& running)
             pc, pc, port
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             // Build string from memory starting at address in register
             uint32_t addr = cpu.get_register_32(static_cast<Register>(reg));
             std::string str;
@@ -1490,9 +1490,9 @@ void handle_outw(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             pc, pc, port, reg
         ), DebugLevel::DETAIL);
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint16_t value = cpu.get_registers()[reg];
-            if (static_cast<size_t>(reg + 1) < cpu.get_registers().size()) {
+            if (static_cast<size_t>(reg + 1) < DemiEngine_Registers::TOTAL_REGISTERS) {
                 value |= (static_cast<uint16_t>(cpu.get_registers()[reg + 1]) << 8);
             }
             cpu.write_port_word(port, value);
@@ -1770,7 +1770,7 @@ void handle_shl(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg = program[pc + 1];
         uint8_t imm = program[pc + 2];
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
             uint64_t result = val << imm;
             uint64_t mask = cpu.get_operand_mask();
@@ -1840,7 +1840,7 @@ void handle_shr(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg = program[pc + 1];
         uint8_t imm = program[pc + 2];
 
-        if (reg < cpu.get_registers().size()) {
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
             uint64_t result = val >> imm;
             
@@ -1899,8 +1899,8 @@ void handle_store(CPU& cpu, const std::vector<uint8_t>& program, bool& running) 
         uint64_t addr = cpu.read_address_from_program(program, cpu.get_pc() + 2);
         
         // Check register bounds
-        if (reg >= cpu.get_registers().size()) {
-            std::string context = fmt::format("Register R{} out of range (0-{})", reg, cpu.get_registers().size() - 1);
+        if (reg >= DemiEngine_Registers::TOTAL_REGISTERS) {
+            std::string context = fmt::format("Register R{} out of range (0-{})", reg, DemiEngine_Registers::TOTAL_REGISTERS - 1);
             std::string message = "Invalid register in STORE instruction";
             ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
             running = false;
@@ -1935,7 +1935,7 @@ void handle_sub(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
             "[PC=0x{:04X}] [SUB] PC={} R{} -= R{}",
             cpu.get_pc(), cpu.get_pc(), reg1, reg2
         ), DebugLevel::DETAIL);
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
             uint64_t result = val1 - val2;
@@ -2023,8 +2023,8 @@ void handle_swap(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         ), DebugLevel::DETAIL);
 
         // Validate register bounds
-        if (reg >= cpu.get_registers().size()) {
-            std::string context = fmt::format("Register R{} out of range (0-{})", reg, cpu.get_registers().size() - 1);
+        if (reg >= DemiEngine_Registers::TOTAL_REGISTERS) {
+            std::string context = fmt::format("Register R{} out of range (0-{})", reg, DemiEngine_Registers::TOTAL_REGISTERS - 1);
             std::string message = "Invalid register in SWAP instruction";
             ErrorHandler::instance().report_runtime(ErrorCode::CPU_INVALID_REGISTER, message, cpu.get_pc(), context);
             running = false;
@@ -2074,7 +2074,7 @@ void handle_xor(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         uint8_t reg1 = program[pc + 1];
         uint8_t reg2 = program[pc + 2];
 
-        if (reg1 < cpu.get_registers().size() && reg2 < cpu.get_registers().size()) {
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
             uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
             uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
             uint64_t result = val1 ^ val2;
@@ -3948,9 +3948,9 @@ void handle_modecmp(CPU& cpu, const std::vector<uint8_t>& program, bool& running
         } else {
             // 32-bit comparison (MODE_32BIT or default)
             // Use legacy registers for R0-R7 in 32-bit mode
-            uint32_t value1 = (reg1 < cpu.get_registers().size()) ? 
+            uint32_t value1 = (reg1 < DemiEngine_Registers::TOTAL_REGISTERS) ? 
                 cpu.get_registers()[reg1] : static_cast<uint32_t>(cpu.get_register(static_cast<Register>(reg1)));
-            uint32_t value2 = (reg2 < cpu.get_registers().size()) ? 
+            uint32_t value2 = (reg2 < DemiEngine_Registers::TOTAL_REGISTERS) ? 
                 cpu.get_registers()[reg2] : static_cast<uint32_t>(cpu.get_register(static_cast<Register>(reg2)));
             
             // Perform subtraction for comparison (don't store result)

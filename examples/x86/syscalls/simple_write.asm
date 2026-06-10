@@ -8,7 +8,7 @@ _start:
     ; sys_write: write to stdout
     LOAD_IMM EAX, 4         ; sys_write
     LOAD_IMM EBX, 1         ; stdout (fd=1)
-    LOAD_IMM ECX, 15        ; buffer address
+    LOAD_IMM ECX, msg       ; buffer address
     LOAD_IMM EDX, 14        ; count
     INT 0x80
     
@@ -19,5 +19,5 @@ _start:
     
     HALT
 
-    ; Message data
+msg:
     DB "Hello, World!", 10
