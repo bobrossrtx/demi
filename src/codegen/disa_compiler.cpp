@@ -1278,9 +1278,11 @@ uint64_t DISAToX86Compiler::read_imm64_ptr(const uint8_t* ptr) const {
 }
 
 // --- INT 0x80 syscall translation ---
-// TODO: translate i386 INT 0x80 to native x86-64 syscalls
-// The infrastructure (flush_all_registers, regfile layout) is ready;
-// the label-dispatch chain needs debugging for multi-syscall programs.
+// WORK IN PROGRESS: first-call dispatch works, multi-call RAX tracking broken.
+// The push/pop RDI mechanism is correct; the issue is that between INT80 calls,
+// the LOAD_IMM→RAX value isn't visible to the second call's comparison.
+// Likely cause: emit_mov_reg_imm64 adds NOP padding that shifts instruction
+// positions, causing the forward jump labels to misalign.
 void DISAToX86Compiler::translate_int80() {
     emit_runtime_fallback("int80");
 }} // namespace CodeGen

@@ -1064,7 +1064,7 @@ void Assembler::AssemblerEngine::enc_load_imm64(const Instruction& instr, uint8_
     else { for (int i = 0; i < 8; ++i) { emit_byte(static_cast<uint8_t>((value >> (8 * i)) & 0xFF)); } }
 }
 
-void Assembler::AssemblerEngine::enc_mov(const Instruction& instr, uint8_t opcode) {
+void Assembler::AssemblerEngine::enc_mov(const Instruction& instr, [[maybe_unused]] uint8_t opcode) {
     if (instr.operands.size() != 2) { add_error(instr.mnemonic + " requires 2 operands", instr.line, instr.column); return; }
     auto dst = instr.operands[0].get();
     auto src = instr.operands[1].get();
