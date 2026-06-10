@@ -89,6 +89,7 @@ public:
 
     // Memory operations
     void translate_load(uint8_t dst_reg, uint8_t addr_reg, int32_t offset);
+    void translate_store_imm(uint8_t src_reg, const uint8_t* operands);
     void translate_store(uint8_t addr_reg, int32_t offset, uint8_t src_reg);
     void translate_loadr(uint8_t dst_reg, uint8_t addr_reg);
     void translate_storer(uint8_t addr_reg, uint8_t src_reg);

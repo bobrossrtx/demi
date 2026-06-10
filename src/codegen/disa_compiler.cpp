@@ -263,7 +263,7 @@ void DISAToX86Compiler::translate_instruction(Opcode opcode, const uint8_t* oper
 
         // Memory operations
         case Opcode::LOAD:   translate_load(operands[0], operands[1], 0); break;
-        case Opcode::STORE:  translate_store(operands[1], 0, operands[0]); break;
+        case Opcode::STORE:  translate_store_imm(operands[0], operands + 1); break;
         case Opcode::LOADR:  translate_loadr(operands[0], operands[1]); break;
         case Opcode::STORER: translate_storer(operands[0], operands[1]); break;
         case Opcode::LEA:    translate_lea(operands[0], operands[1]); break;
@@ -983,6 +983,14 @@ void DISAToX86Compiler::translate_load(uint8_t dst_reg, uint8_t addr_reg, int32_
     }
 }
 
+void DISAToX86Compiler::translate_store_imm(uint8_t src_reg, const uint8_t* operands) {
+    // STORE src, imm_addr — store to VM address (direct)
+    X86Register src = get_loaded_physical(src_reg);
+    uint32_t vm_addr = read_imm32(operands);
+    // RSI + vm_addr = real address
+    encoder.emit_mov_mem_reg(X86Register::RSI, static_cast<int32_t>(vm_addr), src);
+}
+
 void DISAToX86Compiler::translate_store(uint8_t addr_reg, int32_t offset, uint8_t src_reg) {
     X86Register addr = get_loaded_physical(addr_reg);
     X86Register src = get_loaded_physical(src_reg);
@@ -992,13 +1000,19 @@ void DISAToX86Compiler::translate_store(uint8_t addr_reg, int32_t offset, uint8_
 void DISAToX86Compiler::translate_loadr(uint8_t dst_reg, uint8_t addr_reg) {
     X86Register addr = get_loaded_physical(addr_reg);
     X86Register dst = get_writable_physical(dst_reg);
-    encoder.emit_mov_reg_mem(dst, addr, 0);
+    // VM address in addr_reg → real address = RSI + VM_address
+    encoder.emit_add_reg_reg(addr, X86Register::RSI); // addr += memory base
+    encoder.emit_mov_reg_mem(dst, addr, 0);           // load from real addr
+    encoder.emit_sub_reg_reg(addr, X86Register::RSI); // restore VM addr
 }
 
 void DISAToX86Compiler::translate_storer(uint8_t addr_reg, uint8_t src_reg) {
     X86Register addr = get_loaded_physical(addr_reg);
     X86Register src = get_loaded_physical(src_reg);
-    encoder.emit_mov_mem_reg(addr, 0, src);
+    // VM address in addr_reg → real address = RSI + VM_address
+    encoder.emit_add_reg_reg(addr, X86Register::RSI); // addr += memory base
+    encoder.emit_mov_mem_reg(addr, 0, src);           // store to real addr
+    encoder.emit_sub_reg_reg(addr, X86Register::RSI); // restore addr
 }
 
 void DISAToX86Compiler::translate_lea(uint8_t dst_reg, uint8_t addr_reg) {
@@ -1129,18 +1143,16 @@ void DISAToX86Compiler::translate_jle(uint32_t target_address) {
 
 void DISAToX86Compiler::translate_call(uint32_t target_address) {
     flush_all_registers();
-
-    // x86 CALL pushes return address and jumps
     auto& label = get_or_create_label(target_address);
-    encoder.emit_call_rel32(0); // Will be patched
-    // Actually use the label mechanism
-    size_t call_pos = encoder.size();
-    encoder.emit_call_rel32(0);
-    // Patch to use label
-    int32_t offset = static_cast<int32_t>(label.position - (call_pos + 5));
-    auto& code = const_cast<std::vector<uint8_t>&>(encoder.get_code());
-    for (int i = 0; i < 4; i++) {
-        code[call_pos + 1 + i] = (offset >> (i * 8)) & 0xFF;
+    
+    if (label.bound) {
+        // Backward reference — compute offset now
+        int32_t offset = static_cast<int32_t>(label.position - (encoder.size() + 5));
+        encoder.emit_call_rel32(offset);
+    } else {
+        // Forward reference — emit placeholder, patch later
+        label.unresolved_jumps.push_back(encoder.size() + 1);
+        encoder.emit_call_rel32(0);
     }
 }
 
