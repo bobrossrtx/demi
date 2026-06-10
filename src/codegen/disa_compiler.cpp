@@ -642,7 +642,8 @@ void DISAToX86Compiler::translate_outl(uint8_t reg, uint8_t port) {
 void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
     
-    // Save RSI (memory base)
+    // Save RDI (regfile base) and RSI (memory base)
+    encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
     
     // Get string offset from reg_state_map into R8, add memory base
@@ -672,8 +673,9 @@ void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
     
-    // Restore RSI
+    // Restore RSI and RDI
     encoder.emit_pop_reg(X86Register::RSI);
+    encoder.emit_pop_reg(X86Register::RDI);
     
     reg_state_map.clear();
 }
