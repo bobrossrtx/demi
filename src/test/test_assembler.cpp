@@ -851,6 +851,49 @@ void run_builtin_tests() {
                 if ((read_u32(rel_text, 4) & 0xFF) != 1)
                     fail_test("Expected R_386_32 relocation for LEA");
             }
+        },
+        {
+            "x86_32_backend_assembles_indexed_addressing_and_reg_indirect_calls",
+            []() {
+                auto program = parse_program_or_fail(
+                    ".text\n"
+                    "MOV EAX, [EBP+ECX*4]\n"
+                    "MOV EAX, [ECX*4]\n"
+                    "LEA EAX, [EBP+ECX*4]\n"
+                    "ADD [EBP+ECX*4], EAX\n"
+                    "CALL EAX\n"
+                    "JMP EAX\n"
+                    "RET\n");
+                auto lowered = Assembler::lower_program(*program);
+                lowered.target = Assembler::IRTarget::X86Elf32;
+
+                Assembler::X86Backend backend(Assembler::X86BackendMode::X86_32);
+                auto artifact = backend.emit(lowered);
+                if (!artifact.ok()) {
+                    std::ostringstream oss;
+                    oss << "x86 backend errors:";
+                    for (const auto& error : artifact.errors) {
+                        oss << "\n  " << error;
+                    }
+                    fail_test(oss.str());
+                }
+
+                const auto text = read_section_bytes(artifact.bytes, ".text");
+                // MOV EAX,[EBP+ECX*4] = 8B 44 8D 00 (4 bytes, EBP requires disp8=0)
+                if (text[0] != 0x8B || text[1] != 0x44 || text[2] != 0x8D || text[3] != 0x00)
+                    fail_test("Expected MOV EAX,[EBP+ECX*4] (8B 44 8D 00)");
+                // MOV EAX,[ECX*4] = 8B 04 8D 00 00 00 00 (7 bytes, no base = disp32)
+                if (text[4] != 0x8B || text[5] != 0x04 || text[6] != 0x8D)
+                    fail_test("Expected MOV EAX,[ECX*4] (8B 04 8D ...)");
+                // CALL EAX = FF D0 (2 bytes) — should be near end
+                size_t call_off = text.size() - 5; // RET(1) + JMP(2) + CALL(2) = 5, so CALL at size-5
+                if (text[call_off] != 0xFF || text[call_off+1] != 0xD0)
+                    fail_test("Expected CALL EAX (FF D0)");
+                if (text[call_off+2] != 0xFF || text[call_off+3] != 0xE0)
+                    fail_test("Expected JMP EAX (FF E0)");
+                if (text[text.size()-1] != 0xC3)
+                    fail_test("Expected RET at end");
+            }
         }
     };
 

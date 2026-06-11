@@ -77,11 +77,6 @@ EncodedMemoryOperand encode_memory_operand32(
     std::vector<std::string>& errors) {
     EncodedMemoryOperand encoded;
 
-    if (memory.index) {
-        errors.push_back("x86 backend does not yet support indexed memory operands");
-        return encoded;
-    }
-
     if (memory.base && memory.symbol) {
         errors.push_back("x86 backend does not yet support base register plus symbolic displacement");
         return encoded;
@@ -103,7 +98,16 @@ EncodedMemoryOperand encode_memory_operand32(
         append_i32(encoded.bytes, disp);
     };
 
-    if (memory.symbol) {
+    auto sib_byte = [](uint8_t scale, uint8_t idx, uint8_t base) -> uint8_t {
+        uint8_t s = 0;
+        if (scale == 2) s = 1;
+        else if (scale == 4) s = 2;
+        else if (scale == 8) s = 3;
+        return (s << 6) | ((idx & 0x7) << 3) | (base & 0x7);
+    };
+
+    // Symbol-only memory (no base, no index)
+    if (memory.symbol && !memory.base && !memory.index) {
         encoded.bytes.push_back(static_cast<uint8_t>((0b00 << 6) | ((reg_field & 0x7) << 3) | 0b101));
         encoded.displacement_offset = encoded.bytes.size();
         encoded.displacement_size = 4;
@@ -114,14 +118,64 @@ EncodedMemoryOperand encode_memory_operand32(
         return encoded;
     }
 
+    // Indexed addressing: [base + index*scale + disp] or [index*scale + disp]
+    if (memory.index) {
+        const auto idx = parse_reg_id(upper_copy(*memory.index));
+        if (!idx) { errors.push_back("unsupported index register"); return encoded; }
+
+        const bool has_base = memory.base.has_value();
+        uint8_t base_id = 5; // default: no base
+        if (has_base) {
+            const auto b = parse_reg_id(upper_copy(*memory.base));
+            if (!b) { errors.push_back("unsupported base register"); return encoded; }
+            base_id = *b & 0x7;
+        }
+
+        const uint8_t sib = sib_byte(memory.scale, *idx, base_id);
+        const uint8_t modrm_base = static_cast<uint8_t>((0b00 << 6) | ((reg_field & 0x7) << 3) | 0b100);
+        const int64_t disp = memory.displacement;
+
+        // No base register: must use mod=00 with disp32
+        if (!has_base) {
+            encoded.bytes.push_back(modrm_base);
+            encoded.bytes.push_back(sib);
+            encoded.displacement_offset = encoded.bytes.size();
+            encoded.displacement_size = 4;
+            append_i32(encoded.bytes, static_cast<int32_t>(disp));
+            return encoded;
+        }
+
+        // Special: EBP as base in SIB requires disp even for disp=0
+        const bool base_is_ebp = has_base && base_id == 5;
+
+        if (disp == 0 && !base_is_ebp) {
+            encoded.bytes.push_back(modrm_base);
+            encoded.bytes.push_back(sib);
+        } else if (fits_i8(disp)) {
+            encoded.bytes.push_back(static_cast<uint8_t>((0b01 << 6) | ((reg_field & 0x7) << 3) | 0b100));
+            encoded.bytes.push_back(sib);
+            encoded.displacement_offset = encoded.bytes.size();
+            encoded.displacement_size = 1;
+            encoded.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(disp)));
+        } else {
+            encoded.bytes.push_back(static_cast<uint8_t>((0b10 << 6) | ((reg_field & 0x7) << 3) | 0b100));
+            encoded.bytes.push_back(sib);
+            encoded.displacement_offset = encoded.bytes.size();
+            encoded.displacement_size = 4;
+            append_i32(encoded.bytes, static_cast<int32_t>(disp));
+        }
+        return encoded;
+    }
+
+    // Base-only addressing (no index)
     if (!memory.base) {
-        errors.push_back("x86 backend requires a base register or symbol for MOV memory operands");
+        errors.push_back("x86 backend requires a base register, index, or symbol for memory operand");
         return encoded;
     }
 
     const auto base = parse_reg_id(upper_copy(*memory.base));
     if (!base) {
-        errors.push_back("x86 backend does not support that base register in MOV memory operand");
+        errors.push_back("x86 backend does not support that base register in memory operand");
         return encoded;
     }
 
@@ -131,25 +185,18 @@ EncodedMemoryOperand encode_memory_operand32(
 
     if (disp == 0 && *base != 5) {
         encoded.bytes.push_back(static_cast<uint8_t>((0b00 << 6) | ((reg_field & 0x7) << 3) | rm_field));
-        if (needs_sib) {
-            encoded.bytes.push_back(0x24);
-        }
+        if (needs_sib) encoded.bytes.push_back(0x24);
         return encoded;
     }
 
     if (fits_i8(disp)) {
         emit_disp8(static_cast<uint8_t>((0b01 << 6) | ((reg_field & 0x7) << 3) | rm_field), static_cast<int8_t>(disp));
-        if (needs_sib) {
-            // SIB must come before displacement; reorder
-            encoded.bytes.insert(encoded.bytes.end() - 1, 0x24);
-        }
+        if (needs_sib) encoded.bytes.insert(encoded.bytes.end() - 1, 0x24);
         return encoded;
     }
 
     emit_disp32(static_cast<uint8_t>((0b10 << 6) | ((reg_field & 0x7) << 3) | rm_field), static_cast<int32_t>(disp));
-    if (needs_sib) {
-        encoded.bytes.insert(encoded.bytes.end() - 4, 0x24);
-    }
+    if (needs_sib) encoded.bytes.insert(encoded.bytes.end() - 4, 0x24);
     return encoded;
 }
 
@@ -218,9 +265,19 @@ std::optional<uint8_t> X86Backend::encode_register_id(const std::string& name) c
 }
 
 size_t compute_memory_operand_size(const IRMemoryOperand& mem, std::vector<std::string>& errors) {
+    if (mem.symbol && !mem.base && !mem.index) {
+        return 6; // opcode + modrm + disp32
+    }
     if (mem.index) {
-        errors.push_back("x86 backend does not yet support indexed memory operands");
-        return 0;
+        // Indexed: opcode + modrm + sib + disp
+        size_t size = 3; // opcode + modrm + sib
+        if (!mem.base) {
+            return size + 4; // no base → always disp32
+        }
+        const auto b = parse_reg_id(upper_copy(*mem.base));
+        if (!b) { errors.push_back("bad base register"); return 0; }
+        if (mem.displacement == 0 && *b != 5) return size;
+        return size + (fits_i8(mem.displacement) ? 1 : 4);
     }
     if (!mem.base) {
         errors.push_back("x86 backend requires a base register for memory operand");
@@ -249,6 +306,11 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
     }
 
     if (mnemonic == "CALL" || mnemonic == "JMP") {
+        // Register-indirect: CALL reg / JMP reg (2 bytes)
+        if (instruction.operands.size() == 1 &&
+            instruction.operands[0].kind == IROperandKind::Register) {
+            return 2;
+        }
         return 5;
     }
 
@@ -282,30 +344,10 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
                 return 0;
             }
             const auto& mem = std::get<IRMemoryOperand>(src.value);
-            if (mem.index) {
-                errors.push_back("x86 backend does not yet support indexed memory operands in MOV");
-                return 0;
-            }
-            if (mem.symbol) {
+            if (mem.symbol && !mem.base && !mem.index) {
                 return 6;
             }
-            if (!mem.base) {
-                errors.push_back("x86 backend requires a base register or symbol for MOV memory operands");
-                return 0;
-            }
-            const auto base = encode_register_id(*mem.base);
-            if (!base) {
-                errors.push_back("x86 backend does not support that base register in MOV memory operand");
-                return 0;
-            }
-            size_t size = 2;
-            if (*base == 4) {
-                size += 1;
-            }
-            if (mem.displacement == 0 && *base != 5) {
-                return size;
-            }
-            return size + (fits_i8(mem.displacement) ? 1 : 4);
+            return compute_memory_operand_size(mem, errors);
         }
 
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
@@ -314,30 +356,10 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
                 return 0;
             }
             const auto& mem = std::get<IRMemoryOperand>(dst.value);
-            if (mem.index) {
-                errors.push_back("x86 backend does not yet support indexed memory operands in MOV");
-                return 0;
-            }
-            if (mem.symbol) {
+            if (mem.symbol && !mem.base && !mem.index) {
                 return 6;
             }
-            if (!mem.base) {
-                errors.push_back("x86 backend requires a base register or symbol for MOV memory operands");
-                return 0;
-            }
-            const auto base = encode_register_id(*mem.base);
-            if (!base) {
-                errors.push_back("x86 backend does not support that base register in MOV memory operand");
-                return 0;
-            }
-            size_t size = 2;
-            if (*base == 4) {
-                size += 1;
-            }
-            if (mem.displacement == 0 && *base != 5) {
-                return size;
-            }
-            return size + (fits_i8(mem.displacement) ? 1 : 4);
+            return compute_memory_operand_size(mem, errors);
         }
 
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
@@ -473,22 +495,10 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return 0;
         }
         const auto& mem = std::get<IRMemoryOperand>(instruction.operands[1].value);
-        if (mem.symbol && !mem.base) {
-            return 6; // opcode + modrm + disp32
+        if (mem.symbol && !mem.base && !mem.index) {
+            return 6;
         }
-        if (!mem.base) {
-            errors.push_back("x86 backend requires a base register for LEA memory operand");
-            return 0;
-        }
-        const auto base = encode_register_id(*mem.base);
-        if (!base) {
-            errors.push_back("x86 backend does not support that base register in LEA");
-            return 0;
-        }
-        size_t size = 2;
-        if (*base == 4) size += 1;
-        if (mem.displacement == 0 && *base != 5) return size;
-        return size + (fits_i8(mem.displacement) ? 1 : 4);
+        return compute_memory_operand_size(mem, errors);
     }
 
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);
@@ -528,6 +538,19 @@ EncodedInstructionResult X86Backend::encode_instruction(
     }
 
     if (mnemonic == "CALL" || mnemonic == "JMP" || jcc_opcode(mnemonic)) {
+        // Register-indirect: CALL reg / JMP reg
+        if ((mnemonic == "CALL" || mnemonic == "JMP") &&
+            instruction.operands.size() == 1 &&
+            instruction.operands[0].kind == IROperandKind::Register) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+            if (!reg) {
+                errors.push_back("unsupported register in " + instruction.mnemonic);
+                return result;
+            }
+            result.bytes = {0xFF, static_cast<uint8_t>((mnemonic == "CALL" ? 0xD0 : 0xE0) | (*reg & 0x7))};
+            return result;
+        }
+
         if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Symbol) {
             errors.push_back("x86 backend currently supports symbolic control-flow operands only");
             return result;
@@ -1093,37 +1116,10 @@ EncodedInstructionResult X86Backend::encode_instruction(
             return result;
         }
 
-        if (mem.index) {
-            errors.push_back("x86 backend does not yet support indexed memory operands in LEA");
-            return result;
-        }
-        if (!mem.base) {
-            errors.push_back("x86 backend requires a base register for LEA memory operand");
-            return result;
-        }
-        const auto base = parse_reg_id(upper_copy(*mem.base));
-        if (!base) {
-            errors.push_back("x86 backend does not support that base register in LEA");
-            return result;
-        }
-
-        result.bytes.push_back(0x8D);
-        const int64_t disp = mem.displacement;
-        const bool needs_sib = *base == 4;
-        const uint8_t rm_field = needs_sib ? 4 : *base;
-
-        if (disp == 0 && *base != 5) {
-            result.bytes.push_back(static_cast<uint8_t>((0b00 << 6) | ((*dst_reg & 0x7) << 3) | rm_field));
-            if (needs_sib) result.bytes.push_back(0x24);
-        } else if (fits_i8(disp)) {
-            result.bytes.push_back(static_cast<uint8_t>((0b01 << 6) | ((*dst_reg & 0x7) << 3) | rm_field));
-            if (needs_sib) result.bytes.push_back(0x24);
-            result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(disp)));
-        } else {
-            result.bytes.push_back(static_cast<uint8_t>((0b10 << 6) | ((*dst_reg & 0x7) << 3) | rm_field));
-            if (needs_sib) result.bytes.push_back(0x24);
-            append_i32(result.bytes, static_cast<int32_t>(disp));
-        }
+        // Base-only, indexed, or base+index: use shared memory encoder
+        const auto encoded_mem = encode_memory_operand32(mem, *dst_reg, 0x8D, errors);
+        if (!errors.empty()) return result;
+        result.bytes = encoded_mem.bytes;
         return result;
     }
 
