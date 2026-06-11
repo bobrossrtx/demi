@@ -439,19 +439,28 @@ void DISAToX86Compiler::emit_function_prologue() {
     encoder.emit_push_reg(X86Register::RBP);
     encoder.emit_mov_reg_reg(X86Register::RBP, X86Register::RSP);
 
-    // Save ALL allocatable registers so caller state is preserved across CALL
-    encoder.emit_push_reg(X86Register::RAX);
-    encoder.emit_push_reg(X86Register::RCX);
-    encoder.emit_push_reg(X86Register::RDX);
-    encoder.emit_push_reg(X86Register::RBX);
-    encoder.emit_push_reg(X86Register::R8);
-    encoder.emit_push_reg(X86Register::R9);
-    encoder.emit_push_reg(X86Register::R10);
-    encoder.emit_push_reg(X86Register::R11);
-    encoder.emit_push_reg(X86Register::R12);
-    encoder.emit_push_reg(X86Register::R13);
-    encoder.emit_push_reg(X86Register::R14);
-    encoder.emit_push_reg(X86Register::R15);
+    if (function_has_calls) {
+        // Full save: all allocatable registers (caller state must survive CALL)
+        encoder.emit_push_reg(X86Register::RAX);
+        encoder.emit_push_reg(X86Register::RCX);
+        encoder.emit_push_reg(X86Register::RDX);
+        encoder.emit_push_reg(X86Register::RBX);
+        encoder.emit_push_reg(X86Register::R8);
+        encoder.emit_push_reg(X86Register::R9);
+        encoder.emit_push_reg(X86Register::R10);
+        encoder.emit_push_reg(X86Register::R11);
+        encoder.emit_push_reg(X86Register::R12);
+        encoder.emit_push_reg(X86Register::R13);
+        encoder.emit_push_reg(X86Register::R14);
+        encoder.emit_push_reg(X86Register::R15);
+    } else {
+        // Minimal save: only callee-saved
+        encoder.emit_push_reg(X86Register::RBX);
+        encoder.emit_push_reg(X86Register::R12);
+        encoder.emit_push_reg(X86Register::R13);
+        encoder.emit_push_reg(X86Register::R14);
+        encoder.emit_push_reg(X86Register::R15);
+    }
 
     encoder.emit_sub_reg_imm32(X86Register::RSP, 128);
 }
@@ -460,18 +469,27 @@ void DISAToX86Compiler::emit_function_epilogue() {
     flush_all_registers();
 
     encoder.emit_add_reg_imm32(X86Register::RSP, 128);
-    encoder.emit_pop_reg(X86Register::R15);
-    encoder.emit_pop_reg(X86Register::R14);
-    encoder.emit_pop_reg(X86Register::R13);
-    encoder.emit_pop_reg(X86Register::R12);
-    encoder.emit_pop_reg(X86Register::R11);
-    encoder.emit_pop_reg(X86Register::R10);
-    encoder.emit_pop_reg(X86Register::R9);
-    encoder.emit_pop_reg(X86Register::R8);
-    encoder.emit_pop_reg(X86Register::RBX);
-    encoder.emit_pop_reg(X86Register::RDX);
-    encoder.emit_pop_reg(X86Register::RCX);
-    encoder.emit_pop_reg(X86Register::RAX);
+    
+    if (function_has_calls) {
+        encoder.emit_pop_reg(X86Register::R15);
+        encoder.emit_pop_reg(X86Register::R14);
+        encoder.emit_pop_reg(X86Register::R13);
+        encoder.emit_pop_reg(X86Register::R12);
+        encoder.emit_pop_reg(X86Register::R11);
+        encoder.emit_pop_reg(X86Register::R10);
+        encoder.emit_pop_reg(X86Register::R9);
+        encoder.emit_pop_reg(X86Register::R8);
+        encoder.emit_pop_reg(X86Register::RBX);
+        encoder.emit_pop_reg(X86Register::RDX);
+        encoder.emit_pop_reg(X86Register::RCX);
+        encoder.emit_pop_reg(X86Register::RAX);
+    } else {
+        encoder.emit_pop_reg(X86Register::R15);
+        encoder.emit_pop_reg(X86Register::R14);
+        encoder.emit_pop_reg(X86Register::R13);
+        encoder.emit_pop_reg(X86Register::R12);
+        encoder.emit_pop_reg(X86Register::RBX);
+    }
     encoder.emit_pop_reg(X86Register::RBP);
     encoder.emit_ret();
 }
@@ -1177,20 +1195,23 @@ void DISAToX86Compiler::translate_ret() {
     flush_all_registers();
     reg_state_map.clear();
     
-    // Restore all allocatable registers from [RBP - offset]
-    // Push order: RBP, RAX, RCX, RDX, RBX, R8, R9, R10, R11, R12, R13, R14, R15
-    encoder.emit_mov_reg_mem(X86Register::R15, X86Register::RBP, -96);
-    encoder.emit_mov_reg_mem(X86Register::R14, X86Register::RBP, -88);
-    encoder.emit_mov_reg_mem(X86Register::R13, X86Register::RBP, -80);
-    encoder.emit_mov_reg_mem(X86Register::R12, X86Register::RBP, -72);
-    encoder.emit_mov_reg_mem(X86Register::R11, X86Register::RBP, -64);
-    encoder.emit_mov_reg_mem(X86Register::R10, X86Register::RBP, -56);
-    encoder.emit_mov_reg_mem(X86Register::R9,  X86Register::RBP, -48);
-    encoder.emit_mov_reg_mem(X86Register::R8,  X86Register::RBP, -40);
-    encoder.emit_mov_reg_mem(X86Register::RBX, X86Register::RBP, -32);
-    encoder.emit_mov_reg_mem(X86Register::RDX, X86Register::RBP, -24);
-    encoder.emit_mov_reg_mem(X86Register::RCX, X86Register::RBP, -16);
-    encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::RBP, -8);
+    if (function_has_calls) {
+        // Restore full set: R15..RAX from [RBP-offset]
+        encoder.emit_mov_reg_mem(X86Register::R15, X86Register::RBP, -96);
+        encoder.emit_mov_reg_mem(X86Register::R14, X86Register::RBP, -88);
+        encoder.emit_mov_reg_mem(X86Register::R13, X86Register::RBP, -80);
+        encoder.emit_mov_reg_mem(X86Register::R12, X86Register::RBP, -72);
+        encoder.emit_mov_reg_mem(X86Register::R11, X86Register::RBP, -64);
+        encoder.emit_mov_reg_mem(X86Register::R10, X86Register::RBP, -56);
+        encoder.emit_mov_reg_mem(X86Register::R9,  X86Register::RBP, -48);
+        encoder.emit_mov_reg_mem(X86Register::R8,  X86Register::RBP, -40);
+        encoder.emit_mov_reg_mem(X86Register::RBX, X86Register::RBP, -32);
+        encoder.emit_mov_reg_mem(X86Register::RDX, X86Register::RBP, -24);
+        encoder.emit_mov_reg_mem(X86Register::RCX, X86Register::RBP, -16);
+        encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::RBP, -8);
+    }
+    // Note: minimal-save programs don't use RET (they use HALT/epilogue)
+    // If they do use RET, the callee-saved regs are already on stack from prologue
     
     // Restore stack pointer and caller's RBP
     encoder.emit_mov_reg_reg(X86Register::RSP, X86Register::RBP);
@@ -1227,6 +1248,7 @@ void DISAToX86Compiler::scan_for_jump_targets(const std::vector<uint8_t>& byteco
             case Opcode::JGE:
             case Opcode::JLE:
             case Opcode::CALL:
+                function_has_calls = true;
                 if (pos + 5 <= bytecode.size()) {
                     uint32_t target = 0;
                     for (int i = 0; i < 4; i++) {

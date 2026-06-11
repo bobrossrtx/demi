@@ -37,6 +37,7 @@ private:
     std::unordered_map<uint8_t, VirtualRegState> reg_state_map;
     std::unordered_map<uint8_t, int32_t> spill_slots;
     std::unordered_map<uint8_t, bool> slot_contains_valid;
+    bool function_has_calls = false;
 
 public:
     DISAToX86Compiler() : current_bytecode_pos(0) {}
