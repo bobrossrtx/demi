@@ -1179,18 +1179,18 @@ void DISAToX86Compiler::translate_ret() {
     
     // Restore all allocatable registers from [RBP - offset]
     // Push order: RBP, RAX, RCX, RDX, RBX, R8, R9, R10, R11, R12, R13, R14, R15
-    encoder.emit_mov_reg_mem(X86Register::R15, X86Register::RBP, -104);
-    encoder.emit_mov_reg_mem(X86Register::R14, X86Register::RBP, -96);
-    encoder.emit_mov_reg_mem(X86Register::R13, X86Register::RBP, -88);
-    encoder.emit_mov_reg_mem(X86Register::R12, X86Register::RBP, -80);
-    encoder.emit_mov_reg_mem(X86Register::R11, X86Register::RBP, -72);
-    encoder.emit_mov_reg_mem(X86Register::R10, X86Register::RBP, -64);
-    encoder.emit_mov_reg_mem(X86Register::R9,  X86Register::RBP, -56);
-    encoder.emit_mov_reg_mem(X86Register::R8,  X86Register::RBP, -48);
-    encoder.emit_mov_reg_mem(X86Register::RBX, X86Register::RBP, -40);
-    encoder.emit_mov_reg_mem(X86Register::RDX, X86Register::RBP, -32);
-    encoder.emit_mov_reg_mem(X86Register::RCX, X86Register::RBP, -24);
-    encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::RBP, -16);
+    encoder.emit_mov_reg_mem(X86Register::R15, X86Register::RBP, -96);
+    encoder.emit_mov_reg_mem(X86Register::R14, X86Register::RBP, -88);
+    encoder.emit_mov_reg_mem(X86Register::R13, X86Register::RBP, -80);
+    encoder.emit_mov_reg_mem(X86Register::R12, X86Register::RBP, -72);
+    encoder.emit_mov_reg_mem(X86Register::R11, X86Register::RBP, -64);
+    encoder.emit_mov_reg_mem(X86Register::R10, X86Register::RBP, -56);
+    encoder.emit_mov_reg_mem(X86Register::R9,  X86Register::RBP, -48);
+    encoder.emit_mov_reg_mem(X86Register::R8,  X86Register::RBP, -40);
+    encoder.emit_mov_reg_mem(X86Register::RBX, X86Register::RBP, -32);
+    encoder.emit_mov_reg_mem(X86Register::RDX, X86Register::RBP, -24);
+    encoder.emit_mov_reg_mem(X86Register::RCX, X86Register::RBP, -16);
+    encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::RBP, -8);
     
     // Restore stack pointer and caller's RBP
     encoder.emit_mov_reg_reg(X86Register::RSP, X86Register::RBP);
