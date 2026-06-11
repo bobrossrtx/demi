@@ -2,6 +2,56 @@
 
 All notable changes to DemiEngine will be documented in this file.
 
+## [Unreleased] — DASM x86/x64 Cross-Assembler
+
+### ✨ Multi-Target Assembler Backend
+- Target-neutral assembler IR with lowering pass and pluggable backends
+- CLI: `--assembly-target demi-bytecode|x86-elf32|x86-elf64`
+- Demi bytecode path preserved unchanged (284 unit tests)
+
+### x86-32 Backend (23 instructions)
+- Data: MOV (reg/imm/mem/symbol/indexed)
+- Stack: PUSH, POP
+- Arithmetic: ADD, SUB, INC, DEC, NEG
+- Logic: AND, OR, XOR, NOT
+- Compare: CMP, TEST
+- Shift: SHL, SHR (imm8 and ECX/CL)
+- Address: LEA (base+disp, indexed, symbol)
+- Control: CALL, JMP, Jcc(12), RET (register-indirect CALL/JMP)
+- System: INT, NOP
+- Full operand coverage: reg-reg, reg-imm, [base+disp], [base+idx*scale+disp], [symbol], mem-reg, mem-imm
+
+### x86-64 Backend
+- Full instruction parity with x86-32, REX.W prefix throughout
+- Memory operations with REX.W for 64-bit operand size
+
+### ELF Output
+- ELF32 relocatable objects: .text, .data, .rodata, .bss, .rel.*, .symtab, .strtab
+- ELF64 relocatable objects with RELA relocations
+- R_386_32, R_386_PC32, R_X86_64_64, R_X86_64_PC32, R_X86_64_32
+
+### ABI-Aware Lowering
+- `.function` directive: auto prologue (PUSH EBP; MOV EBP,ESP) and epilogue (LEAVE)
+- Verified end-to-end: sum_to_n assembles → links → runs correctly
+
+### Preprocessor
+- `.rept`/`.endr` — block repetition
+- `.include`, `.define`, `.undef`, `.ifdef`/`.ifndef`/`.elif`/`.else`/`.endif`
+
+### New Data Directives
+- `.dq` (quad-word), `.asciz`, `.zero`, `.align`
+
+### Parser Fixes
+- Negative displacement sign handling in `[EBP-4]` memory operands
+- `.function` symbol merging (global + label → single GLOBAL defined symbol)
+- String directives no longer create spurious relocations
+
+### Tests
+- 18 built-in assembler tests, 284 unit tests, 0 warnings
+- hello world assembles → links → runs correctly
+
+## [1.0.0] - 2025-12-13
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

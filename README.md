@@ -34,8 +34,8 @@ DemiEngine serves as the foundation for the upcoming **Demi programming language
 | Stage       | Status        | Target  | Description                                  |
 | ----------- | ------------- | ------- | -------------------------------------------- |
 | **Stage 1** | ✅ Complete   | Q4 2025 | Core VM Backend (63 opcodes, 134 registers)  |
-| **Stage 2** | 🚧 In Progress | Q1 2026 | Assembly Language Expansion (SIMD, FPU, AVX) |
-| **Stage 3** | 🚧 In Progress | Q2 2026 | Native x86-64 Code Generation                |
+| **Stage 2** | ✅ Complete   | Q1 2026 | Assembly Language Expansion (SIMD, FPU, AVX) |
+| **Stage 3** | ✅ Complete   | Q2 2026 | DASM x86/x64 Cross-Assembler + ELF Output    |
 | **Stage 4** | 🔜 Planning   | Q3 2026 | Demi Language Frontend (High-level syntax)   |
 | **Stage 5** | 🔜 Planning   | Q4 2026 | D-ISA Assembler Integration                  |
 | **Stage 6** | 🔜 Planning   | Q1 2027 | Custom Linker                                |
@@ -134,6 +134,81 @@ Debugging:
 - **Enhanced Test Output**: Category grouping, timing information, and performance metrics
 - **Unified Test Command**: `--test` now runs both unit and assembly tests
 - **Quiet Mode**: Suppresses logs while showing useful results and timing
+
+---
+
+## 🔧 **DASM Cross-Assembler — x86 & x64 Native Output**
+
+> **New in v1.0:** DASM can now target real x86 and x64 processors, not just the Demi VM.
+
+DASM (Demi ASseMbler) preserves its own syntax while emitting native x86/x64 machine code and ELF object files. The same `.asm` source can target the Demi VM, x86-32 Linux ELF, or x86-64 Linux ELF:
+
+```bash
+# Target the Demi VM (default)
+demi-engine -A program.asm
+
+# Target x86-32 native code → linkable .o file
+demi-engine -A program.asm --assembly-target x86-elf32 -o program.o
+ld -m elf_i386 -o program program.o
+
+# Target x86-64 native code
+demi-engine -A program.asm --assembly-target x86-elf64 -o program.o
+```
+
+### Instruction Coverage (x86-32)
+
+**23 instructions** with comprehensive operand forms — enough for all examples from *Programming from the Ground Up*:
+
+| Category | Instructions |
+|---|---|
+| Data movement | MOV (reg, imm, mem, symbol, indexed) |
+| Stack | PUSH, POP |
+| Arithmetic | ADD, SUB, INC, DEC, NEG |
+| Logic | AND, OR, XOR, NOT |
+| Comparison | CMP, TEST |
+| Shift | SHL, SHR (imm8 and ECX/CL) |
+| Address | LEA (base+disp, indexed, symbol) |
+| Control flow | CALL, JMP, Jcc (12 conditions), RET |
+| System | INT, NOP |
+
+**Operand forms:** reg-reg, reg-imm, [base+disp], [base+idx*scale+disp], [idx*scale+disp], [symbol±disp], mem→reg, reg→mem, mem+imm, register-indirect CALL/JMP, PC-relative branches.
+
+**x86-64 backend:** Full instruction parity with REX.W prefix support.
+
+### ELF Output
+
+- **ELF32**: `.text`, `.data`, `.rodata`, `.bss` sections with `R_386_32` / `R_386_PC32` relocations
+- **ELF64**: Same sections with `RELA` relocations (`R_X86_64_64`, `R_X86_64_PC32`, `R_X86_64_32`)
+- **Verified**: hello world and sum_to_n functions assemble → link with GCC → run correctly
+
+### ABI-Aware Lowering
+
+Use `.function` to declare a function — prologue (`PUSH EBP; MOV EBP,ESP`) and epilogue (`LEAVE`) are auto-emitted:
+
+```asm
+.function sum_to_n
+sum_to_n:
+    MOV ECX, [EBP+8]     ; parameter access
+    MOV EAX, 0
+loop:
+    CMP ECX, 0
+    JLE done
+    ADD EAX, ECX
+    DEC ECX
+    JMP loop
+done:
+    RET                  ; LEAVE auto-inserted
+```
+
+### Preprocessor
+
+`.include`, `.define`, `.undef`, `.ifdef`/`.ifndef`/`.elif`/`.else`/`.endif`, `.rept`/`.endr`
+
+### Data Directives
+
+DB, `.dw`, `.dd`, `.dq`, `.string`/`.asciz`, `.resb`/`.zero`/`.bss`, `.align`
+
+See `/home/bobrossrtx/notes/demi/dasm-x86-x64-compatibility-research.md` for a comprehensive 59-item gap analysis toward production status.
 
 ---
 

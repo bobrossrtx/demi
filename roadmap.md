@@ -1,9 +1,32 @@
 # DemiEngine Development Roadmap
 
-> **Last Updated:** May 28, 2026
-> **Project Status:** Phase 2 Native Code Generation Complete - Full .asm → native ELF pipeline operational
+> **Last Updated:** June 11, 2026
+> **Project Status:** Phase 3 Complete — DASM x86/x64 Cross-Assembler with ELF32/64 output, ABI-aware lowering, preprocessor
 
 ---
+
+## Recent Milestone: DASM Cross-Assembler (Phase 3 Complete)
+
+The DASM assembler now supports three backends from the same source:
+
+| Backend | Output | Status |
+|---|---|---|
+| `demi-bytecode` | Demi VM bytecode (default) | Mature, 284 unit tests |
+| `x86-elf32` | ELF32 relocatable `.o` files | 23 instructions, full operand coverage |
+| `x86-elf64` | ELF64 relocatable `.o` files | Full parity with x86-32, REX.W support |
+
+**Key capabilities:**
+- Target-neutral IR with lowering pass, pluggable backends
+- Indexed addressing (`[base + index*scale + disp]`)
+- Symbolic memory operands with `R_386_32` relocations
+- PC-relative branches with `R_386_PC32` relocations
+- `.function` directive with auto prologue/epilogue (ABI-aware lowering)
+- Preprocessor: `.include`, `.define`, `.undef`, `.ifdef`/`.ifndef`, `.rept`/`.endr`
+- Data directives: DB, `.dw`, `.dd`, `.dq`, `.string`/`.asciz`, `.resb`/`.zero`/`.bss`
+- 18 built-in assembler tests, 0 warnings
+- Verified end-to-end: hello world and sum_to_n assemble → link → run correctly
+
+**Remaining gaps to production status:** 59 items catalogued in `/home/bobrossrtx/notes/demi/dasm-x86-x64-compatibility-research.md`
 
 ## Project Overview
 
