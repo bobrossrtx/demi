@@ -33,6 +33,12 @@ void Lexer::init_tables() {
     keywords[".bss"] = TokenType::DIRECTIVE;
     keywords[".resb"] = TokenType::DIRECTIVE;
     keywords[".zero"] = TokenType::DIRECTIVE;
+    keywords[".comm"] = TokenType::DIRECTIVE;
+    // GNU-style aliases
+    keywords[".byte"] = TokenType::DIRECTIVE;
+    keywords[".word"] = TokenType::DIRECTIVE;
+    keywords[".long"] = TokenType::DIRECTIVE;
+    keywords[".quad"] = TokenType::DIRECTIVE;
     keywords["RESB"] = TokenType::DIRECTIVE;
     keywords[".end"] = TokenType::DIRECTIVE;
     keywords[".memory"] = TokenType::DIRECTIVE;
@@ -122,6 +128,7 @@ void Lexer::init_tables() {
     mnemonics["JGE"] = TokenType::MNEMONIC;
     mnemonics["JLE"] = TokenType::MNEMONIC;
     mnemonics["MUL"] = TokenType::MNEMONIC;
+    mnemonics["IMUL"] = TokenType::MNEMONIC;
     mnemonics["DIV"] = TokenType::MNEMONIC;
     mnemonics["MOD"] = TokenType::MNEMONIC;
     mnemonics["INC"] = TokenType::MNEMONIC;

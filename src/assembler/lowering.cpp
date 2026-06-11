@@ -106,6 +106,31 @@ void LoweringContext::lower_directive(const Directive& directive, IRProgram& ir_
         return;
     }
 
+    if (directive.name == ".comm") {
+        // .comm name, size — common symbol in BSS
+        if (directive.arguments.size() >= 2) {
+            auto name_ident = dynamic_cast<const IdentifierExpression*>(directive.arguments[0].get());
+            auto size_imm = dynamic_cast<const ImmediateExpression*>(directive.arguments[1].get());
+            if (name_ident && size_imm) {
+                IRSymbol symbol;
+                symbol.name = name_ident->name;
+                symbol.section = IRSectionKind::Bss;
+                symbol.offset = bss_offset_;
+                symbol.binding = IRSymbolBinding::Global;
+                symbol.defined = true;
+                ir_program.symbols.push_back(std::move(symbol));
+
+                IRDataRecord record;
+                record.section = IRSectionKind::Bss;
+                record.directive = ".resb";
+                record.values.push_back({IROperandKind::Immediate, IRImmediateOperand{size_imm->value}});
+                ir_program.data_records.push_back(std::move(record));
+                bss_offset_ += static_cast<size_t>(std::max<int64_t>(0, size_imm->value));
+            }
+        }
+        return;
+    }
+
     if (directive.name == "global" || directive.name == ".global" || directive.name == ".function") {
         for (const auto& arg : directive.arguments) {
             if (auto ident = dynamic_cast<const IdentifierExpression*>(arg.get())) {
@@ -151,9 +176,16 @@ void LoweringContext::lower_directive(const Directive& directive, IRProgram& ir_
     }
 
     if (is_data_directive(directive.name)) {
+        // Normalize GNU-style aliases
+        std::string canonical = directive.name;
+        if (canonical == ".byte") canonical = "DB";
+        else if (canonical == ".word") canonical = ".dw";
+        else if (canonical == ".long") canonical = ".dd";
+        else if (canonical == ".quad") canonical = ".dq";
+
         IRDataRecord record;
         record.section = current_section_;
-        record.directive = directive.name;
+        record.directive = canonical;
         record.line = directive.line;
         record.column = directive.column;
 
@@ -323,7 +355,8 @@ bool LoweringContext::is_data_directive(const std::string& name) const {
     return name == ".dw" || name == ".dd" || name == ".dq" ||
            name == ".string" || name == ".asciz" ||
            name == ".resb" || name == "RESB" || name == ".bss" ||
-           name == ".zero";
+           name == ".zero" ||
+           name == ".byte" || name == ".word" || name == ".long" || name == ".quad";
 }
 
 bool LoweringContext::is_data_instruction(const std::string& mnemonic) const {

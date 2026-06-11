@@ -603,6 +603,34 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         return 2;
     }
 
+    if (mnemonic == "IMUL") {
+        if (instruction.operands.size() == 1) {
+            if (instruction.operands[0].kind != IROperandKind::Register) {
+                errors.push_back("x86 backend expects IMUL reg, IMUL reg,reg, or IMUL reg,reg,imm");
+                return 0;
+            }
+            return 2; // F7 /5
+        }
+        if (instruction.operands.size() == 2) {
+            if (instruction.operands[0].kind != IROperandKind::Register ||
+                instruction.operands[1].kind != IROperandKind::Register) {
+                errors.push_back("x86 backend expects IMUL reg, reg");
+                return 0;
+            }
+            return 3; // 0F AF /r
+        }
+        if (instruction.operands.size() == 3) {
+            if (instruction.operands[0].kind != IROperandKind::Register ||
+                instruction.operands[1].kind != IROperandKind::Register ||
+                instruction.operands[2].kind != IROperandKind::Immediate) {
+                errors.push_back("x86 backend expects IMUL reg, reg, imm");
+                return 0;
+            }
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[2].value).value;
+            return fits_i8(imm) ? 3 : 6; // 6B /r ib or 69 /r id
+        }
+    }
+
     if (mnemonic == "LEA") {
         if (instruction.operands.size() != 2 ||
             instruction.operands[0].kind != IROperandKind::Register ||
@@ -1323,6 +1351,50 @@ EncodedInstructionResult X86Backend::encode_instruction(
         result.bytes.push_back(0xF7);
         result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
         return result;
+    }
+
+    if (mnemonic == "IMUL") {
+        if (instruction.operands.size() == 1 &&
+            instruction.operands[0].kind == IROperandKind::Register) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+            if (!reg) { errors.push_back("bad register in IMUL"); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            result.bytes.push_back(0xF7);
+            result.bytes.push_back(static_cast<uint8_t>(0xE8 | (*reg & 0x7)));
+            return result;
+        }
+        if (instruction.operands.size() == 2 &&
+            instruction.operands[0].kind == IROperandKind::Register &&
+            instruction.operands[1].kind == IROperandKind::Register) {
+            const auto dst = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+            const auto src = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+            if (!dst || !src) { errors.push_back("bad register in IMUL"); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            result.bytes.push_back(0x0F);
+            result.bytes.push_back(0xAF);
+            result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src & 0x7) << 3) | (*dst & 0x7)));
+            return result;
+        }
+        if (instruction.operands.size() == 3 &&
+            instruction.operands[0].kind == IROperandKind::Register &&
+            instruction.operands[1].kind == IROperandKind::Register &&
+            instruction.operands[2].kind == IROperandKind::Immediate) {
+            const auto dst = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+            const auto src = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+            if (!dst || !src) { errors.push_back("bad register in IMUL"); return result; }
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[2].value).value;
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            if (fits_i8(imm)) {
+                result.bytes.push_back(0x6B);
+                result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src & 0x7) << 3) | (*dst & 0x7)));
+                result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(imm)));
+            } else {
+                result.bytes.push_back(0x69);
+                result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src & 0x7) << 3) | (*dst & 0x7)));
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
     }
 
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);
