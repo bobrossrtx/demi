@@ -733,6 +733,53 @@ void run_builtin_tests() {
                 if (text[9] != 0xF7 || text[10] != 0xD0)
                     fail_test("Expected NOT EAX (F7 D0)");
             }
+        },
+        {
+            "x86_32_backend_assembles_memory_destination_arithmetic",
+            []() {
+                auto program = parse_program_or_fail(
+                    ".text\n"
+                    "ADD [EBP-4], EAX\n"
+                    "SUB [EBP-4], EAX\n"
+                    "CMP dword [EBP-4], 0\n"
+                    "AND [EBP-4], EAX\n"
+                    "OR [EBP-4], EAX\n"
+                    "XOR [EBP-4], EAX\n"
+                    "INC dword [EBP-4]\n"
+                    "DEC dword [EBP-4]\n"
+                    "RET\n");
+                auto lowered = Assembler::lower_program(*program);
+                lowered.target = Assembler::IRTarget::X86Elf32;
+
+                Assembler::X86Backend backend(Assembler::X86BackendMode::X86_32);
+                auto artifact = backend.emit(lowered);
+                if (!artifact.ok()) {
+                    std::ostringstream oss;
+                    oss << "x86 backend errors:";
+                    for (const auto& error : artifact.errors) {
+                        oss << "\n  " << error;
+                    }
+                    fail_test(oss.str());
+                }
+
+                const auto text = read_section_bytes(artifact.bytes, ".text");
+                // ADD [EBP-4],EAX = 01 45 FC
+                if (text[0] != 0x01 || text[1] != 0x45 || text[2] != 0xFC)
+                    fail_test("Expected ADD [EBP-4],EAX (01 45 FC)");
+                // SUB [EBP-4],EAX = 29 45 FC
+                if (text[3] != 0x29 || text[4] != 0x45 || text[5] != 0xFC)
+                    fail_test("Expected SUB [EBP-4],EAX (29 45 FC)");
+                // CMP [EBP-4],0 = 83 7D FC 00
+                if (text[6] != 0x83 || text[7] != 0x7D || text[8] != 0xFC || text[9] != 0x00)
+                    fail_test("Expected CMP [EBP-4],0 (83 7D FC 00)");
+                // INC [EBP-4] = FF 45 FC
+                size_t inc_off = 19;
+                if (text[inc_off] != 0xFF || text[inc_off+1] != 0x45 || text[inc_off+2] != 0xFC)
+                    fail_test("Expected INC [EBP-4] (FF 45 FC)");
+                // DEC [EBP-4] = FF 4D FC
+                if (text[inc_off+3] != 0xFF || text[inc_off+4] != 0x4D || text[inc_off+5] != 0xFC)
+                    fail_test("Expected DEC [EBP-4] (FF 4D FC)");
+            }
         }
     };
 
