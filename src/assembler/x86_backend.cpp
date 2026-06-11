@@ -369,6 +369,53 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         }
     }
 
+    if (mnemonic == "XOR" || mnemonic == "AND" || mnemonic == "OR") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " with register destination");
+            return 0;
+        }
+        if (instruction.operands[1].kind == IROperandKind::Register) {
+            return 2;
+        }
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[1].value).value;
+            return fits_i8(imm) ? 3 : 6;
+        }
+    }
+
+    if (mnemonic == "NOT") {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects NOT reg");
+            return 0;
+        }
+        return 2;
+    }
+
+    if (mnemonic == "LEA") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Memory) {
+            errors.push_back("x86 backend expects LEA reg, [mem]");
+            return 0;
+        }
+        const auto& mem = std::get<IRMemoryOperand>(instruction.operands[1].value);
+        if (!mem.base) {
+            errors.push_back("x86 backend requires a base register for LEA memory operand");
+            return 0;
+        }
+        const auto base = encode_register_id(*mem.base);
+        if (!base) {
+            errors.push_back("x86 backend does not support that base register in LEA");
+            return 0;
+        }
+        size_t size = 2;
+        if (*base == 4) size += 1;
+        if (mem.displacement == 0 && *base != 5) return size;
+        return size + (fits_i8(mem.displacement) ? 1 : 4);
+    }
+
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);
     return 0;
 }
@@ -719,6 +766,108 @@ EncodedInstructionResult X86Backend::encode_instruction(
             }
             return result;
         }
+    }
+
+    if (mnemonic == "XOR" || mnemonic == "AND" || mnemonic == "OR") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " with register destination");
+            return result;
+        }
+        const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!dst_reg) {
+            errors.push_back("x86 backend does not support that register in " + instruction.mnemonic);
+            return result;
+        }
+
+        uint8_t reg_opcode = 0x31;
+        uint8_t imm_opcode = 0xF0;
+        if (mnemonic == "AND") { reg_opcode = 0x21; imm_opcode = 0xE0; }
+        if (mnemonic == "OR")  { reg_opcode = 0x09; imm_opcode = 0xC8; }
+
+        if (instruction.operands[1].kind == IROperandKind::Register) {
+            const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+            if (!src_reg) {
+                errors.push_back("x86 backend does not support that register in " + instruction.mnemonic + " reg, reg");
+                return result;
+            }
+            result.bytes = {reg_opcode, static_cast<uint8_t>(0xC0 | ((*src_reg & 0x7) << 3) | (*dst_reg & 0x7))};
+            return result;
+        }
+
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[1].value).value;
+            if (fits_i8(imm)) {
+                result.bytes = {0x83, static_cast<uint8_t>(imm_opcode | *dst_reg), static_cast<uint8_t>(static_cast<int8_t>(imm))};
+            } else {
+                result.bytes = {0x81, static_cast<uint8_t>(imm_opcode | *dst_reg)};
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
+    }
+
+    if (mnemonic == "NOT") {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects NOT reg");
+            return result;
+        }
+        const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!dst_reg) {
+            errors.push_back("x86 backend does not support that register in NOT");
+            return result;
+        }
+        result.bytes = {0xF7, static_cast<uint8_t>(0xD0 | (*dst_reg & 0x7))};
+        return result;
+    }
+
+    if (mnemonic == "LEA") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Memory) {
+            errors.push_back("x86 backend expects LEA reg, [mem]");
+            return result;
+        }
+        const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!dst_reg) {
+            errors.push_back("x86 backend does not support that register in LEA");
+            return result;
+        }
+
+        const auto& mem = std::get<IRMemoryOperand>(instruction.operands[1].value);
+        if (mem.index) {
+            errors.push_back("x86 backend does not yet support indexed memory operands in LEA");
+            return result;
+        }
+        if (!mem.base) {
+            errors.push_back("x86 backend requires a base register for LEA memory operand");
+            return result;
+        }
+        const auto base = parse_reg_id(upper_copy(*mem.base));
+        if (!base) {
+            errors.push_back("x86 backend does not support that base register in LEA");
+            return result;
+        }
+
+        result.bytes.push_back(0x8D);
+        const int64_t disp = mem.displacement;
+        const bool needs_sib = *base == 4;
+        const uint8_t rm_field = needs_sib ? 4 : *base;
+
+        if (disp == 0 && *base != 5) {
+            result.bytes.push_back(static_cast<uint8_t>((0b00 << 6) | ((*dst_reg & 0x7) << 3) | rm_field));
+            if (needs_sib) result.bytes.push_back(0x24);
+        } else if (fits_i8(disp)) {
+            result.bytes.push_back(static_cast<uint8_t>((0b01 << 6) | ((*dst_reg & 0x7) << 3) | rm_field));
+            if (needs_sib) result.bytes.push_back(0x24);
+            result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(disp)));
+        } else {
+            result.bytes.push_back(static_cast<uint8_t>((0b10 << 6) | ((*dst_reg & 0x7) << 3) | rm_field));
+            if (needs_sib) result.bytes.push_back(0x24);
+            append_i32(result.bytes, static_cast<int32_t>(disp));
+        }
+        return result;
     }
 
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);

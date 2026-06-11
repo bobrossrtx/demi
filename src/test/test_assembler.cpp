@@ -688,6 +688,51 @@ void run_builtin_tests() {
                 if (loop_start_sym.shndx != text_idx || loop_done_sym.shndx != text_idx)
                     fail_test("Expected loop labels in .text section");
             }
+        },
+        {
+            "x86_32_backend_assembles_bitwise_and_lea_instructions",
+            []() {
+                auto program = parse_program_or_fail(
+                    ".data\n"
+                    "mask: .dd 0xFF\n"
+                    ".text\n"
+                    "LEA EAX, [EBP-8]\n"
+                    "XOR EAX, EAX\n"
+                    "AND EAX, EBX\n"
+                    "OR EAX, ECX\n"
+                    "NOT EAX\n"
+                    "RET\n");
+                auto lowered = Assembler::lower_program(*program);
+                lowered.target = Assembler::IRTarget::X86Elf32;
+
+                Assembler::X86Backend backend(Assembler::X86BackendMode::X86_32);
+                auto artifact = backend.emit(lowered);
+                if (!artifact.ok()) {
+                    std::ostringstream oss;
+                    oss << "x86 backend errors:";
+                    for (const auto& error : artifact.errors) {
+                        oss << "\n  " << error;
+                    }
+                    fail_test(oss.str());
+                }
+
+                const auto text = read_section_bytes(artifact.bytes, ".text");
+                // LEA EAX,[EBP-8] = 8D 45 F8
+                if (text[0] != 0x8D || text[1] != 0x45 || text[2] != 0xF8)
+                    fail_test("Expected LEA EAX,[EBP-8] (8D 45 F8)");
+                // XOR EAX,EAX = 31 C0
+                if (text[3] != 0x31 || text[4] != 0xC0)
+                    fail_test("Expected XOR EAX,EAX (31 C0)");
+                // AND EAX,EBX = 21 D8
+                if (text[5] != 0x21 || text[6] != 0xD8)
+                    fail_test("Expected AND EAX,EBX (21 D8)");
+                // OR EAX,ECX = 09 C8
+                if (text[7] != 0x09 || text[8] != 0xC8)
+                    fail_test("Expected OR EAX,ECX (09 C8)");
+                // NOT EAX = F7 D0
+                if (text[9] != 0xF7 || text[10] != 0xD0)
+                    fail_test("Expected NOT EAX (F7 D0)");
+            }
         }
     };
 
