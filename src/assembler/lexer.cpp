@@ -439,6 +439,11 @@ Token Lexer::parse_identifier() {
     // Check if it's a keyword (section, global, extern)
     std::string lower_text = text;
     std::transform(lower_text.begin(), lower_text.end(), lower_text.begin(), ::tolower);
+
+    if (lower_text == "byte" || lower_text == "word" || lower_text == "dword" || lower_text == "qword") {
+        return Token(TokenType::SIZE_SPECIFIER, lower_text, start_line, start_column);
+    }
+
     auto keyword_it = keywords.find(lower_text);
     if (keyword_it != keywords.end()) {
         return Token(keyword_it->second, lower_text, start_line, start_column);

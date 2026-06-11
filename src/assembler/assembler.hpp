@@ -169,6 +169,8 @@ private:
     void add_error(const std::string& message, size_t line, size_t column);
     void init_opcode_table();
     void init_register_table();
+    bool is_simple_register_indirect(const MemoryReferenceExpression& mem) const;
+    bool resolve_memory_operand_address(const MemoryReferenceExpression& mem, int64_t& address, bool& is_symbol_ref, std::string& symbol_name);
     
     // Bracket syntax detection helper (static for use in both passes)
     static bool is_bracket_register_syntax(const Expression* operand);

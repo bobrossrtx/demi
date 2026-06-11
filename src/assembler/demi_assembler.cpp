@@ -1,8 +1,11 @@
 #include "demi_assembler.hpp"
+#include "backend.hpp"
 #include "../config.hpp"
+#include "lowering.hpp"
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "preprocessor.hpp"
+#include "x86_backend.hpp"
 #include "../test/in_assembly_test_validator.hpp"
 #include "../debug/debug_handler.hpp"
 #include <fstream>
@@ -64,25 +67,48 @@ std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source,
         return {};
     }
 
-    // Code generation
-    AssemblerEngine assembler;
-    assembler.set_entry_point_symbol(entry_point_symbol);
-    if (Config::architecture == Architecture::AUTO) {
-        Architecture detected = assembler.detect_architecture(*program);
-        Config::architecture = detected;
-    }
-    auto bytecode = assembler.assemble(*program);
+    if (target_ == AssemblyTarget::DemiBytecode) {
+        // Code generation
+        AssemblerEngine assembler;
+        assembler.set_entry_point_symbol(entry_point_symbol);
+        if (Config::architecture == Architecture::AUTO) {
+            Architecture detected = assembler.detect_architecture(*program);
+            Config::architecture = detected;
+        }
+        auto bytecode = assembler.assemble(*program);
 
-    if (assembler.has_errors()) {
-        collect_errors(assembler.get_errors());
+        if (assembler.has_errors()) {
+            collect_errors(assembler.get_errors());
+            return {};
+        }
+
+        symbols = assembler.get_symbols();
+        entry_address = assembler.get_entry_address();
+        memory_size = assembler.get_memory_size();
+
+        return bytecode;
+    }
+
+    auto ir_program = lower_program(*program);
+    ir_program.target = (target_ == AssemblyTarget::X86Elf32) ? IRTarget::X86Elf32 : IRTarget::X86Elf64;
+    ir_program.entry_symbol = entry_point_symbol;
+
+    std::unique_ptr<AssemblerBackend> backend;
+    if (target_ == AssemblyTarget::X86Elf32) {
+        backend = std::make_unique<X86Backend>(X86BackendMode::X86_32);
+    } else {
+        backend = std::make_unique<X86Backend>(X86BackendMode::X86_64);
+    }
+
+    auto artifact = backend->emit(ir_program);
+    if (!artifact.ok()) {
+        collect_errors(artifact.errors);
         return {};
     }
 
-    symbols = assembler.get_symbols();
-    entry_address = assembler.get_entry_address();
-    memory_size = assembler.get_memory_size();
-
-    return bytecode;
+    entry_address = 0;
+    memory_size = 0;
+    return artifact.bytes;
 }
 
 void DemiAssembler::clear_errors() {

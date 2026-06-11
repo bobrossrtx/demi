@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstring>
 #include "assembler.hpp"
+#include "lowering.hpp"
 #include "opcodes.hpp"
 #include "../engine/safe_memcpy.hpp"
 #include "../debug/error_handler.hpp"
@@ -442,6 +443,14 @@ std::vector<uint8_t> AssemblerEngine::assemble(const Program& program) {
     symbol_table.clear();
     forward_refs.clear();
     bytecode.clear();
+
+    try {
+        [[maybe_unused]] IRProgram lowered_program = lower_program(program);
+    } catch (const std::exception& ex) {
+        add_error(std::string("Failed to lower assembler program: ") + ex.what());
+        return {};
+    }
+
     // Do not reset current_address; let directives set it as needed
 
     // Two-pass assembly
@@ -1104,7 +1113,7 @@ void Assembler::AssemblerEngine::enc_mov(const Instruction& instr, [[maybe_unuse
                 else emit_byte((uint8_t)val);
             }
         } else if (auto mem_expr = dynamic_cast<const MemoryReferenceExpression*>(src)) {
-            if (dynamic_cast<const RegisterExpression*>(mem_expr->base.get())) {
+            if (is_simple_register_indirect(*mem_expr)) {
                 emit_byte(static_cast<uint8_t>(Opcode::LOADR)); emit_byte(dst_reg_num);
                 auto base_reg = static_cast<const RegisterExpression*>(mem_expr->base.get());
                 emit_byte(get_register_number(base_reg->name));
@@ -1112,8 +1121,12 @@ void Assembler::AssemblerEngine::enc_mov(const Instruction& instr, [[maybe_unuse
                 if (is_extended) emit_byte(static_cast<uint8_t>(Opcode::LOADEX));
                 else emit_byte(static_cast<uint8_t>(Opcode::LOAD));
                 emit_byte(dst_reg_num);
-                bool is_symbol; std::string symbol_name;
-                int64_t val = evaluate_expression(*mem_expr->base, is_symbol, symbol_name);
+                bool is_symbol = false; std::string symbol_name;
+                int64_t val = 0;
+                if (!resolve_memory_operand_address(*mem_expr, val, is_symbol, symbol_name)) {
+                    add_error("Unsupported memory operand for MOV source", instr.line, instr.column);
+                    return;
+                }
                 if (is_extended) {
                     if (is_symbol) emit_forward_ref(symbol_name, 8);
                     else for(int i=0; i<8; ++i) emit_byte((uint8_t)((val >> (i*8)) & 0xFF));
@@ -1127,7 +1140,7 @@ void Assembler::AssemblerEngine::enc_mov(const Instruction& instr, [[maybe_unuse
          if (auto src_reg = dynamic_cast<const RegisterExpression*>(src)) {
              uint8_t src_reg_num = get_register_number(src_reg->name);
              bool is_extended = (src_reg_num >= 8 && src_reg_num <= 15);
-             if (dynamic_cast<const RegisterExpression*>(dst_mem->base.get())) {
+             if (is_simple_register_indirect(*dst_mem)) {
                  emit_byte(static_cast<uint8_t>(Opcode::STORER)); emit_byte(src_reg_num);
                  auto base_reg = static_cast<const RegisterExpression*>(dst_mem->base.get());
                  emit_byte(get_register_number(base_reg->name));
@@ -1135,8 +1148,12 @@ void Assembler::AssemblerEngine::enc_mov(const Instruction& instr, [[maybe_unuse
                  if (is_extended) emit_byte(static_cast<uint8_t>(Opcode::STOREX));
                  else emit_byte(static_cast<uint8_t>(Opcode::STORE));
                  emit_byte(src_reg_num);
-                 bool is_symbol; std::string symbol_name;
-                 int64_t val = evaluate_expression(*dst_mem->base, is_symbol, symbol_name);
+                 bool is_symbol = false; std::string symbol_name;
+                 int64_t val = 0;
+                 if (!resolve_memory_operand_address(*dst_mem, val, is_symbol, symbol_name)) {
+                     add_error("Unsupported memory operand for MOV destination", instr.line, instr.column);
+                     return;
+                 }
                  if (is_extended) {
                      if (is_symbol) emit_forward_ref(symbol_name, 8);
                      else for(int i=0; i<8; ++i) emit_byte((uint8_t)((val >> (i*8)) & 0xFF));
@@ -1271,8 +1288,16 @@ void Assembler::AssemblerEngine::enc_load_store(const Instruction& instr, uint8_
         if (auto reg_expr = dynamic_cast<const RegisterExpression*>(second_operand.get())) emit_byte(get_register_number(reg_expr->name));
         else { add_error("Second operand must be a register for " + instr.mnemonic, instr.line, instr.column); return; }
     } else {
-        bool is_symbol; std::string symbol_name;
-        int64_t addr_value = evaluate_expression(*second_operand, is_symbol, symbol_name);
+        bool is_symbol = false; std::string symbol_name;
+        int64_t addr_value = 0;
+        if (auto mem_expr = dynamic_cast<const MemoryReferenceExpression*>(second_operand.get())) {
+            if (!resolve_memory_operand_address(*mem_expr, addr_value, is_symbol, symbol_name)) {
+                add_error("Unsupported memory operand for " + instr.mnemonic, instr.line, instr.column);
+                return;
+            }
+        } else {
+            addr_value = evaluate_expression(*second_operand, is_symbol, symbol_name);
+        }
         if (is_symbol) emit_forward_ref(symbol_name, 4);
         else emit_dword(static_cast<uint32_t>(addr_value));
     }
@@ -1443,13 +1468,12 @@ int64_t Assembler::AssemblerEngine::evaluate_expression(const Assembler::Express
         
         case Assembler::ASTNodeType::MEMORY_REF: {
             const auto& mem = static_cast<const Assembler::MemoryReferenceExpression&>(expr);
-            // Recursively evaluate the base expression inside the memory reference
-            if (mem.offset) {
-                // Handle [base + offset] later if needed
-                add_error("Memory reference with offset not yet supported");
+            int64_t address = 0;
+            if (!resolve_memory_operand_address(mem, address, is_symbol_ref, symbol_name)) {
+                add_error("Unsupported memory reference form", expr.line, expr.column);
                 return 0;
             }
-            return evaluate_expression(*mem.base, is_symbol_ref, symbol_name);
+            return address;
         }
 
         case Assembler::ASTNodeType::REGISTER: {
@@ -1520,11 +1544,82 @@ void Assembler::AssemblerEngine::emit_forward_ref(const std::string& symbol, siz
 
 bool Assembler::AssemblerEngine::is_bracket_register_syntax(const Assembler::Expression* operand) {
     if (auto mem_expr = dynamic_cast<const Assembler::MemoryReferenceExpression*>(operand)) {
-        if (dynamic_cast<const Assembler::RegisterExpression*>(mem_expr->base.get())) {
+        if (dynamic_cast<const Assembler::RegisterExpression*>(mem_expr->base.get()) &&
+            !mem_expr->offset && !mem_expr->index && !mem_expr->displacement && !mem_expr->symbol) {
             return true;
         }
     }
     return false;
+}
+
+bool Assembler::AssemblerEngine::is_simple_register_indirect(const MemoryReferenceExpression& mem) const {
+    return dynamic_cast<const RegisterExpression*>(mem.base.get()) != nullptr &&
+           !mem.offset && !mem.index && !mem.displacement && !mem.symbol;
+}
+
+bool Assembler::AssemblerEngine::resolve_memory_operand_address(const MemoryReferenceExpression& mem, int64_t& address, bool& is_symbol_ref, std::string& symbol_name) {
+    address = 0;
+    is_symbol_ref = false;
+    symbol_name.clear();
+
+    if (is_simple_register_indirect(mem)) {
+        return false;
+    }
+
+    if (mem.index) {
+        add_error("Indexed memory operands are not supported by the current backend", mem.line, mem.column);
+        return false;
+    }
+
+    if (dynamic_cast<const RegisterExpression*>(mem.base.get()) != nullptr) {
+        add_error("Register-relative memory operands with displacement are not supported by the current backend", mem.line, mem.column);
+        return false;
+    }
+
+    auto accumulate_term = [&](const Expression* term) -> bool {
+        if (!term) {
+            return true;
+        }
+
+        if (auto imm = dynamic_cast<const ImmediateExpression*>(term)) {
+            address += imm->value;
+            return true;
+        }
+
+        if (auto ident = dynamic_cast<const IdentifierExpression*>(term)) {
+            if (is_symbol_ref && symbol_name != ident->name) {
+                add_error("Multiple symbolic terms in one absolute memory operand are not supported", mem.line, mem.column);
+                return false;
+            }
+
+            auto it = symbol_table.find(ident->name);
+            if (it != symbol_table.end() && it->second.defined) {
+                address += it->second.address;
+            } else {
+                is_symbol_ref = true;
+                symbol_name = ident->name;
+            }
+            return true;
+        }
+
+        add_error("Unsupported term in memory operand", mem.line, mem.column);
+        return false;
+    };
+
+    if (!accumulate_term(mem.base.get())) {
+        return false;
+    }
+    if (!accumulate_term(mem.offset.get())) {
+        return false;
+    }
+    if (!accumulate_term(mem.displacement.get())) {
+        return false;
+    }
+    if (mem.symbol && !accumulate_term(mem.symbol.get())) {
+        return false;
+    }
+
+    return true;
 }
 
 size_t Assembler::AssemblerEngine::get_instruction_size(const std::string& mnemonic, const std::vector<std::unique_ptr<Assembler::Expression>>& operands) {

@@ -104,12 +104,32 @@ class MemoryReferenceExpression : public Expression {
 public:
     std::unique_ptr<Expression> base;           // [base + offset]
     std::unique_ptr<Expression> offset;        // optional offset
+        std::unique_ptr<Expression> index;         // optional index register/expression
+        uint8_t scale = 1;                         // optional scale for indexed addressing
+        std::unique_ptr<Expression> displacement;  // optional displacement expression
+        std::unique_ptr<IdentifierExpression> symbol; // optional symbol component
+        uint8_t size_hint_bits = 0;                // optional size hint for backend lowering
     
     explicit MemoryReferenceExpression(std::unique_ptr<Expression> base_expr, 
                              std::unique_ptr<Expression> offset_expr = nullptr,
                              size_t ln = 0, size_t col = 0)
         : Expression(ASTNodeType::MEMORY_REF, ln, col), 
-          base(std::move(base_expr)), offset(std::move(offset_expr)) {}
+                    base(std::move(base_expr)), offset(std::move(offset_expr)) {}
+
+        MemoryReferenceExpression(std::unique_ptr<Expression> base_expr,
+                                                            std::unique_ptr<Expression> index_expr,
+                                                            uint8_t scale_value,
+                                                            std::unique_ptr<Expression> displacement_expr,
+                                                            std::unique_ptr<IdentifierExpression> symbol_expr,
+                                                            uint8_t size_hint,
+                                                            size_t ln = 0, size_t col = 0)
+                : Expression(ASTNodeType::MEMORY_REF, ln, col),
+                    base(std::move(base_expr)),
+                    index(std::move(index_expr)),
+                    scale(scale_value),
+                    displacement(std::move(displacement_expr)),
+                    symbol(std::move(symbol_expr)),
+                    size_hint_bits(size_hint) {}
 };
 
 // Statement types

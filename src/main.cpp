@@ -927,6 +927,20 @@ public:
                 Config::output_name = value;
             });
 
+        parser.add_value_arg("assembly_target", "--assembly-target", "", "Set assembler output target (demi-bytecode, x86-elf32, x86-elf64)", "Execution",
+            [this](const std::string& value) {
+                if (value == "demi-bytecode" || value == "demi" || value.empty()) {
+                    Config::assembly_target = AssemblyTarget::DemiBytecode;
+                } else if (value == "x86-elf32") {
+                    Config::assembly_target = AssemblyTarget::X86Elf32;
+                } else if (value == "x86-elf64") {
+                    Config::assembly_target = AssemblyTarget::X86Elf64;
+                } else {
+                    std::cerr << "Error: Invalid assembly target '" << value << "'. Use 'demi-bytecode', 'x86-elf32', or 'x86-elf64'." << std::endl;
+                    exit(1);
+                }
+            });
+
         // Memory dump argument
         parser.add_bool_arg("memdump", "--memdump", "-m", "Print memory dump after execution", "Debugging", [this](bool value) { Config::memdump = value; });
 
@@ -1448,6 +1462,7 @@ private:
         // Use DemiAssembler which includes preprocessing
         Assembler::DemiAssembler assembler;
         assembler.set_entry_point_symbol(Config::entry_point_symbol);
+        assembler.set_target(Config::assembly_target);
         auto bytecode = assembler.assemble_file(Config::assembly_file);
 
         if (assembler.has_errors()) {
@@ -1460,9 +1475,10 @@ private:
 
         const auto& symbols = assembler.get_symbols();
         uint32_t entry_addr = assembler.get_entry_address();
+        const bool is_demi_target = Config::assembly_target == AssemblyTarget::DemiBytecode;
 
         if (Config::verbose) {
-            std::cout << "Assembly successful. Generated " << bytecode.size() << " bytes of bytecode." << std::endl;
+            std::cout << "Assembly successful. Generated " << bytecode.size() << " bytes of output." << std::endl;
 
             // Show symbol table if verbose
             if (!symbols.empty()) {
@@ -1483,13 +1499,39 @@ private:
             }
 
             print_compile_detail(fmt::format("[ASM] input            : {}", Config::assembly_file));
-            print_compile_detail(fmt::format("[ASM] entry symbol     : {} @ 0x{:04X}", Config::entry_point_symbol, entry_addr));
-            print_compile_detail(fmt::format("[ASM] bytecode size    : {} bytes (0x{:X})", bytecode.size(), bytecode.size()));
+            if (is_demi_target) {
+                print_compile_detail(fmt::format("[ASM] entry symbol     : {} @ 0x{:04X}", Config::entry_point_symbol, entry_addr));
+                print_compile_detail(fmt::format("[ASM] bytecode size    : {} bytes (0x{:X})", bytecode.size(), bytecode.size()));
+            } else {
+                print_compile_detail(fmt::format("[ASM] target           : {}",
+                    Config::assembly_target == AssemblyTarget::X86Elf32 ? "x86-elf32" : "x86-elf64"));
+                print_compile_detail(fmt::format("[ASM] object size      : {} bytes (0x{:X})", bytecode.size(), bytecode.size()));
+            }
             print_compile_detail(fmt::format("[ASM] symbol count     : {} total ({} defined, {} undefined)", symbols.size(), defined_symbols, undefined_symbols));
             print_compile_detail(fmt::format("[ASM] output mode      : {}",
-                Config::compile_only ? "assemble + native compile" :
+                Config::compile_only && is_demi_target ? "assemble + native compile" :
                 (!Config::assembly_output.empty() ? "assemble-only binary output" :
                 (!Config::hex_out.empty() ? "assemble-only hex output" : "assemble + execute"))));
+        }
+
+        if (!is_demi_target && Config::compile_only) {
+            std::cerr << "Error: Native compile mode is only supported for demi-bytecode assembly target right now" << std::endl;
+            return;
+        }
+
+        if (!is_demi_target && Config::assembly_output.empty()) {
+            std::string output_name;
+            if (Config::output_name.empty()) {
+                fs::path input_path(Config::assembly_file);
+                output_name = input_path.stem().string() + ".o";
+            } else {
+                output_name = sanitize_filename(Config::output_name);
+                if (output_name.empty()) {
+                    std::cerr << "Error: Invalid output filename: " << Config::output_name << std::endl;
+                    return;
+                }
+            }
+            Config::assembly_output = output_name;
         }
 
         // Save bytecode to file if -ao option is specified

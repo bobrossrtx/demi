@@ -42,7 +42,9 @@ private:
     
     std::unique_ptr<Expression> parse_expression();
     std::unique_ptr<Expression> parse_primary_expression();
-    std::unique_ptr<Expression> parse_memory_reference();
+    std::unique_ptr<Expression> parse_memory_reference(uint8_t size_hint_bits = 0);
+    std::unique_ptr<Expression> parse_memory_term(bool allow_negative_immediate = false);
+    uint8_t parse_size_hint_bits(const Token& token) const;
     
     // Utility methods
     void skip_newlines();

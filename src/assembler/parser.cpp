@@ -348,6 +348,19 @@ std::unique_ptr<Label> Parser::parse_label(const std::string& label_name, size_t
 }
 
 std::unique_ptr<Expression> Parser::parse_expression() {
+    if (current_token().type == TokenType::SIZE_SPECIFIER) {
+        const Token size_token = current_token();
+        const uint8_t size_hint_bits = parse_size_hint_bits(size_token);
+        advance();
+
+        if (current_token().type != TokenType::LBRACKET) {
+            add_error("Expected '[' after memory size specifier", current_token());
+            return nullptr;
+        }
+
+        return parse_memory_reference(size_hint_bits);
+    }
+
     // Handle memory references [expression]
     if (current_token().type == TokenType::LBRACKET) {
         return parse_memory_reference();
@@ -443,37 +456,185 @@ std::unique_ptr<Expression> Parser::parse_primary_expression() {
     }
 }
 
-std::unique_ptr<Expression> Parser::parse_memory_reference() {
+std::unique_ptr<Expression> Parser::parse_memory_term(bool allow_negative_immediate) {
+    if (allow_negative_immediate && current_token().type == TokenType::MINUS) {
+        const Token minus_token = current_token();
+        advance();
+
+        if (current_token().type != TokenType::NUMBER || current_token().is_float()) {
+            add_error("Expected integer literal after '-' in memory reference", current_token());
+            return nullptr;
+        }
+
+        const int64_t value = -current_token().as_int();
+        const size_t line = minus_token.line;
+        const size_t column = minus_token.column;
+        advance();
+        return std::make_unique<ImmediateExpression>(value, line, column);
+    }
+
+    return parse_primary_expression();
+}
+
+uint8_t Parser::parse_size_hint_bits(const Token& token) const {
+    if (token.text == "byte") {
+        return 8;
+    }
+    if (token.text == "word") {
+        return 16;
+    }
+    if (token.text == "dword") {
+        return 32;
+    }
+    if (token.text == "qword") {
+        return 64;
+    }
+    return 0;
+}
+
+std::unique_ptr<Expression> Parser::parse_memory_reference(uint8_t size_hint_bits) {
     if (!consume(TokenType::LBRACKET, "Expected '['")) {
         return nullptr;
     }
-    
-    auto base = parse_primary_expression();
-    if (!base) {
-        return nullptr;
-    }
-    
-    std::unique_ptr<Expression> offset = nullptr;
-    
-    // Check for offset: [base + offset] or [base - offset]
-    if (current_token().type == TokenType::PLUS || current_token().type == TokenType::MINUS) {
-        bool is_negative = current_token().type == TokenType::MINUS;
-        advance(); // consume + or -
-        
-        offset = parse_primary_expression();
-        if (offset && is_negative) {
-            // Convert to negative immediate if it's a number
-            if (auto imm = dynamic_cast<ImmediateExpression*>(offset.get())) {
-                imm->value = -imm->value;
-            }
+
+    const Token bracket_token = current_token();
+    std::unique_ptr<Expression> base = nullptr;
+    std::unique_ptr<Expression> simple_offset = nullptr;
+    std::unique_ptr<Expression> index = nullptr;
+    std::unique_ptr<Expression> displacement = nullptr;
+    std::unique_ptr<IdentifierExpression> symbol = nullptr;
+
+    uint8_t scale = 1;
+    int64_t displacement_value = 0;
+    bool has_displacement = false;
+    bool saw_complex_form = false;
+    int sign = 1;
+
+    while (current_token().type != TokenType::RBRACKET && current_token().type != TokenType::END_OF_FILE) {
+        auto term = parse_memory_term(sign < 0);
+        if (!term) {
+            return nullptr;
         }
+
+        int term_sign = sign;
+        sign = 1;
+
+        if (current_token().type == TokenType::ASTERISK) {
+            saw_complex_form = true;
+
+            auto* register_term = dynamic_cast<RegisterExpression*>(term.get());
+            if (!register_term) {
+                add_error("Scaled memory index must start with a register", current_token());
+                return nullptr;
+            }
+
+            advance();
+
+            if (current_token().type != TokenType::NUMBER || current_token().is_float()) {
+                add_error("Expected integer scale after '*' in memory reference", current_token());
+                return nullptr;
+            }
+
+            const int64_t scale_value = current_token().as_int();
+            if (scale_value != 1 && scale_value != 2 && scale_value != 4 && scale_value != 8) {
+                add_error("Memory index scale must be 1, 2, 4, or 8", current_token());
+                return nullptr;
+            }
+
+            advance();
+
+            if (index) {
+                add_error("Memory reference can only contain one scaled index", current_token());
+                return nullptr;
+            }
+
+            index = std::move(term);
+            scale = static_cast<uint8_t>(scale_value);
+
+            if (current_token().type == TokenType::PLUS || current_token().type == TokenType::MINUS) {
+                sign = current_token().type == TokenType::MINUS ? -1 : 1;
+                advance();
+                continue;
+            }
+
+            break;
+        }
+
+        if (dynamic_cast<RegisterExpression*>(term.get())) {
+            if (!base) {
+                base = std::move(term);
+            } else if (!index) {
+                index = std::move(term);
+                saw_complex_form = true;
+            } else {
+                add_error("Memory reference can contain at most two registers", current_token());
+                return nullptr;
+            }
+        } else if (auto* imm = dynamic_cast<ImmediateExpression*>(term.get())) {
+            displacement_value += term_sign * imm->value;
+            has_displacement = true;
+        } else if (auto* ident = dynamic_cast<IdentifierExpression*>(term.get())) {
+            if (!base && !symbol) {
+                base = std::move(term);
+                symbol = std::make_unique<IdentifierExpression>(ident->name, ident->line, ident->column);
+            } else if (!symbol) {
+                symbol = std::make_unique<IdentifierExpression>(ident->name, ident->line, ident->column);
+                saw_complex_form = true;
+            } else {
+                add_error("Memory reference can contain at most one symbolic term", current_token());
+                return nullptr;
+            }
+        } else {
+            add_error("Unsupported term inside memory reference", current_token());
+            return nullptr;
+        }
+
+        if (current_token().type == TokenType::PLUS || current_token().type == TokenType::MINUS) {
+            sign = current_token().type == TokenType::MINUS ? -1 : 1;
+            advance();
+            continue;
+        }
+
+        break;
     }
-    
+
     if (!consume(TokenType::RBRACKET, "Expected ']'")) {
         return nullptr;
     }
-    
-    return std::make_unique<MemoryReferenceExpression>(std::move(base), std::move(offset));
+
+    if (!base && !index && !symbol && !has_displacement) {
+        add_error("Empty memory reference is not allowed", bracket_token);
+        return nullptr;
+    }
+
+    if (has_displacement) {
+        displacement = std::make_unique<ImmediateExpression>(displacement_value, bracket_token.line, bracket_token.column);
+        if (!saw_complex_form && base && !index && !symbol) {
+            simple_offset = std::make_unique<ImmediateExpression>(displacement_value, bracket_token.line, bracket_token.column);
+        }
+    }
+
+    if (!base && symbol) {
+        base = std::make_unique<IdentifierExpression>(symbol->name, symbol->line, symbol->column);
+    }
+
+    if (!base && has_displacement) {
+        base = std::make_unique<ImmediateExpression>(displacement_value, bracket_token.line, bracket_token.column);
+        displacement.reset();
+        simple_offset.reset();
+    }
+
+    auto memory = std::make_unique<MemoryReferenceExpression>(std::move(base), std::move(simple_offset), bracket_token.line, bracket_token.column);
+    memory->index = std::move(index);
+    memory->scale = scale;
+    memory->size_hint_bits = size_hint_bits;
+    memory->symbol = std::move(symbol);
+
+    if (displacement) {
+        memory->displacement = std::move(displacement);
+    }
+
+    return memory;
 }
 
 std::unique_ptr<TestCase> Parser::parse_test_case(size_t line, size_t col) {

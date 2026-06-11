@@ -36,6 +36,12 @@ enum class Architecture {
     X64
 };
 
+enum class AssemblyTarget {
+    DemiBytecode,
+    X86Elf32,
+    X86Elf64
+};
+
 // Memory size mode
 enum class MemorySizeMode {
     DEFAULT,    // Use default 1MB
@@ -79,6 +85,7 @@ public:
 
     // Architecture detection and warning state
     inline static Architecture architecture = Architecture::AUTO;
+    inline static AssemblyTarget assembly_target = AssemblyTarget::DemiBytecode;
     inline static bool arch_warn_silenced = false;
     inline static bool arch_warn_printed = false;
 

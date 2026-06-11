@@ -1,5 +1,6 @@
 #pragma once
 #include "assembler.hpp"
+#include "ir.hpp"
 #include "preprocessor.hpp"
 #include <string>
 #include <vector>
@@ -66,6 +67,7 @@ public:
      * @param symbol Entry point symbol name
      */
     void set_entry_point_symbol(const std::string& symbol) { entry_point_symbol = symbol; }
+    void set_target(AssemblyTarget target) { target_ = target; }
     
     /**
      * Clear all errors and reset state
@@ -85,6 +87,7 @@ private:
     uint32_t entry_address = 0;
     size_t memory_size = 0; // Memory size set by .memory directive
     std::string entry_point_symbol = "_start"; // Entry point symbol name
+    AssemblyTarget target_ = AssemblyTarget::DemiBytecode;
     
     void collect_errors(const std::vector<std::string>& errors);
     std::string read_file(const std::string& filename);
