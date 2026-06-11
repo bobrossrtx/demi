@@ -126,6 +126,8 @@ void Lexer::init_tables() {
     mnemonics["OR"] = TokenType::MNEMONIC;
     mnemonics["XOR"] = TokenType::MNEMONIC;
     mnemonics["NOT"] = TokenType::MNEMONIC;
+    mnemonics["NEG"] = TokenType::MNEMONIC;
+    mnemonics["TEST"] = TokenType::MNEMONIC;
     mnemonics["SHL"] = TokenType::MNEMONIC;
     mnemonics["SHR"] = TokenType::MNEMONIC;
     mnemonics["CALL"] = TokenType::MNEMONIC;

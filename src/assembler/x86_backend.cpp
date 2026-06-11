@@ -487,6 +487,42 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         return 2;
     }
 
+    if (mnemonic == "NEG") {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects NEG reg");
+            return 0;
+        }
+        return 2;
+    }
+
+    if (mnemonic == "TEST") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects TEST reg, reg");
+            return 0;
+        }
+        return 2;
+    }
+
+    if (mnemonic == "SHL" || mnemonic == "SHR") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm8 or reg, CL");
+            return 0;
+        }
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            return 3; // C1 /r ib
+        }
+        if (instruction.operands[1].kind == IROperandKind::Register) {
+            return 2; // D3 /r
+        }
+        if (instruction.operands[1].kind == IROperandKind::Symbol) {
+            return 2; // D3 /r (CL as symbol)
+        }
+    }
+
     if (mnemonic == "LEA") {
         if (instruction.operands.size() != 2 ||
             instruction.operands[0].kind != IROperandKind::Register ||
@@ -1121,6 +1157,73 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (!errors.empty()) return result;
         result.bytes = encoded_mem.bytes;
         return result;
+    }
+
+    if (mnemonic == "NEG") {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects NEG reg");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) { errors.push_back("bad register in NEG"); return result; }
+        if (is_64bit_mode()) result.bytes.push_back(0x48);
+        result.bytes.push_back(0xF7);
+        result.bytes.push_back(static_cast<uint8_t>(0xD8 | (*reg & 0x7)));
+        return result;
+    }
+
+    if (mnemonic == "TEST") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects TEST reg, reg");
+            return result;
+        }
+        const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+        if (!dst_reg || !src_reg) { errors.push_back("bad register in TEST"); return result; }
+        if (is_64bit_mode()) result.bytes.push_back(0x48);
+        result.bytes.push_back(0x85);
+        result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src_reg & 0x7) << 3) | (*dst_reg & 0x7)));
+        return result;
+    }
+
+    if (mnemonic == "SHL" || mnemonic == "SHR") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm8 or reg, CL");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) { errors.push_back("bad register in " + instruction.mnemonic); return result; }
+        const uint8_t subcode = mnemonic == "SHL" ? 0xE0 : 0xE8;
+
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            result.bytes.push_back(0xC1);
+            result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
+            result.bytes.push_back(static_cast<uint8_t>(std::get<IRImmediateOperand>(instruction.operands[1].value).value & 0xFF));
+            return result;
+        }
+
+        if (instruction.operands[1].kind == IROperandKind::Register) {
+            const auto cl = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+            if (!cl || *cl != 1) { errors.push_back("x86 backend only supports ECX register for variable shift"); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            result.bytes.push_back(0xD3);
+            result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
+            return result;
+        }
+
+        if (instruction.operands[1].kind == IROperandKind::Symbol) {
+            const auto& name = std::get<IRSymbolOperand>(instruction.operands[1].value).name;
+            if (upper_copy(name) != "CL") { errors.push_back("x86 backend only supports CL for variable shift"); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            result.bytes.push_back(0xD3);
+            result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
+            return result;
+        }
     }
 
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);

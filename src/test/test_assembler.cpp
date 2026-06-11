@@ -894,6 +894,49 @@ void run_builtin_tests() {
                 if (text[text.size()-1] != 0xC3)
                     fail_test("Expected RET at end");
             }
+        },
+        {
+            "x86_32_backend_assembles_shift_neg_test",
+            []() {
+                auto program = parse_program_or_fail(
+                    ".text\n"
+                    "NEG EAX\n"
+                    "TEST EAX, EAX\n"
+                    "SHL EAX, 1\n"
+                    "SHR EAX, 1\n"
+                    "SHL EAX, ECX\n"
+                    "RET\n");
+                auto lowered = Assembler::lower_program(*program);
+                lowered.target = Assembler::IRTarget::X86Elf32;
+
+                Assembler::X86Backend backend(Assembler::X86BackendMode::X86_32);
+                auto artifact = backend.emit(lowered);
+                if (!artifact.ok()) {
+                    std::ostringstream oss;
+                    oss << "x86 backend errors:";
+                    for (const auto& error : artifact.errors) {
+                        oss << "\n  " << error;
+                    }
+                    fail_test(oss.str());
+                }
+
+                const auto text = read_section_bytes(artifact.bytes, ".text");
+                // NEG EAX = F7 D8 (2 bytes)
+                if (text[0] != 0xF7 || text[1] != 0xD8)
+                    fail_test("Expected NEG EAX (F7 D8)");
+                // TEST EAX,EAX = 85 C0 (2 bytes)
+                if (text[2] != 0x85 || text[3] != 0xC0)
+                    fail_test("Expected TEST EAX,EAX (85 C0)");
+                // SHL EAX,1 = C1 E0 01 (3 bytes)
+                if (text[4] != 0xC1 || text[5] != 0xE0 || text[6] != 0x01)
+                    fail_test("Expected SHL EAX,1 (C1 E0 01)");
+                // SHR EAX,1 = C1 E8 01 (3 bytes)
+                if (text[7] != 0xC1 || text[8] != 0xE8 || text[9] != 0x01)
+                    fail_test("Expected SHR EAX,1 (C1 E8 01)");
+                // SHL EAX,ECX = D3 E0 (2 bytes)
+                if (text[10] != 0xD3 || text[11] != 0xE0)
+                    fail_test("Expected SHL EAX,ECX (D3 E0)");
+            }
         }
     };
 
