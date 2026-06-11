@@ -10,6 +10,7 @@ namespace Assembler {
 struct BackendArtifact {
     std::vector<uint8_t> bytes;
     std::vector<std::string> errors;
+    std::vector<std::string> warnings;
 
     bool ok() const {
         return errors.empty();

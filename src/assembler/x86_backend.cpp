@@ -313,7 +313,7 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
         }
 
         const auto instruction_offset = text_offset_map[static_cast<uint64_t>(instruction_index)];
-        auto encoded = encode_instruction(instruction, instruction_offset, text_symbol_offsets, artifact.errors);
+        auto encoded = encode_instruction(instruction, instruction_offset, text_symbol_offsets, artifact.errors, artifact.warnings);
         if (!artifact.ok()) {
             return artifact;
         }
@@ -653,9 +653,17 @@ EncodedInstructionResult X86Backend::encode_instruction(
     const IRInstruction& instruction,
     uint64_t instruction_offset,
     const std::unordered_map<std::string, uint64_t>& text_symbol_offsets,
-    std::vector<std::string>& errors) const {
+    std::vector<std::string>& errors,
+    std::vector<std::string>& warnings) const {
     EncodedInstructionResult result;
     const std::string mnemonic = upper_copy(instruction.mnemonic);
+
+    auto warn_unsized_memory = [&](const IRMemoryOperand& mem, const std::string& context) {
+        if (!mem.width_bits && !mem.symbol) {
+            warnings.push_back("warning: memory operand has no size qualifier in " + context +
+                           " — use dword/word/byte before [mem]");
+        }
+    };
 
     if (mnemonic == "NOP") {
         result.bytes = {0x90};
@@ -844,6 +852,8 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 return result;
             }
 
+            warn_unsized_memory(std::get<IRMemoryOperand>(dst.value), "MOV [mem], reg");
+
             const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x89, is_64bit_mode(), errors);
             if (!errors.empty()) {
                 return result;
@@ -864,6 +874,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             const auto& mem = std::get<IRMemoryOperand>(dst.value);
+            warn_unsized_memory(mem, "MOV [mem], imm");
             const auto encoded_mem = encode_memory_operand32(mem, 0, static_cast<uint8_t>(fits_i8(imm) ? 0xC6 : 0xC7), is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
@@ -924,6 +935,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         }
         if (instruction.operands[0].kind == IROperandKind::Memory) {
             const auto& mem = std::get<IRMemoryOperand>(instruction.operands[0].value);
+            warn_unsized_memory(mem, "INC [mem]");
             const auto encoded_mem = encode_memory_operand32(mem, 0, 0xFF, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
@@ -951,6 +963,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         }
         if (instruction.operands[0].kind == IROperandKind::Memory) {
             const auto& mem = std::get<IRMemoryOperand>(instruction.operands[0].value);
+            warn_unsized_memory(mem, "DEC [mem]");
             const auto encoded_mem = encode_memory_operand32(mem, 1, 0xFF, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
@@ -1005,6 +1018,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 errors.push_back("x86 backend does not support that register in ADD [mem], reg");
                 return result;
             }
+            warn_unsized_memory(std::get<IRMemoryOperand>(dst.value), "ADD [mem], reg");
             const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x01, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
@@ -1072,6 +1086,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
             const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
             if (!src_reg) { errors.push_back("bad src register in SUB [mem], reg"); return result; }
+            warn_unsized_memory(std::get<IRMemoryOperand>(dst.value), "SUB [mem], reg");
             const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x29, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;

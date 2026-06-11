@@ -33,7 +33,8 @@ private:
         const IRInstruction& instruction,
         uint64_t instruction_offset,
         const std::unordered_map<std::string, uint64_t>& text_symbol_offsets,
-        std::vector<std::string>& errors) const;
+        std::vector<std::string>& errors,
+        std::vector<std::string>& warnings) const;
     IRProgram adjust_program_for_encoded_text(
         const IRProgram& program,
         const std::unordered_map<uint64_t, uint64_t>& text_offset_map) const;
