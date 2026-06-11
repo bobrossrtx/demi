@@ -80,7 +80,9 @@ public:
 
     // Memory operations
     void emit_mov_reg_mem(X86Register dst, X86Register base, int32_t offset = 0);
+    void emit_movzx_reg_mem8(X86Register dst, X86Register base, int32_t offset = 0);
     void emit_mov_mem_reg(X86Register base, int32_t offset, X86Register src);
+    void emit_mov_mem8_reg8(X86Register base, int32_t offset, X86Register src);
 
     // Stack operations
     void emit_push_reg(X86Register reg);

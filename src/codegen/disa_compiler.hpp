@@ -10,6 +10,11 @@ namespace CodeGen {
 // Translates D-ISA bytecode to native x86-64 machine code
 class DISAToX86Compiler {
 private:
+    static constexpr int32_t MAX_SAVED_REGISTER_BYTES = 96;
+    static constexpr int32_t SPILL_SLOT_SIZE = 8;
+    static constexpr int32_t SPILL_FRAME_SIZE = MAX_SAVED_REGISTER_BYTES +
+                                                static_cast<int32_t>(TOTAL_REGISTERS * SPILL_SLOT_SIZE);
+
     X86Encoder encoder;
     RegisterAllocator reg_alloc;
 
@@ -94,7 +99,7 @@ public:
     void translate_store(uint8_t addr_reg, int32_t offset, uint8_t src_reg);
     void translate_loadr(uint8_t dst_reg, uint8_t addr_reg);
     void translate_storer(uint8_t addr_reg, uint8_t src_reg);
-    void translate_lea(uint8_t dst_reg, uint8_t addr_reg);
+    void translate_lea(uint8_t dst_reg, uint32_t addr);
     void translate_swap(uint8_t reg, uint8_t addr_reg);
 
     // I/O operations
@@ -108,6 +113,24 @@ public:
     void translate_outl(uint8_t reg, uint8_t port);
     void translate_instr(uint8_t reg, uint8_t port);
     void translate_outstr(uint8_t reg, uint8_t port);
+
+    // FPU operations
+    void translate_fld(const uint8_t* operands);
+    void translate_fst(const uint8_t* operands, bool pop_after_store);
+    void translate_fild(const uint8_t* operands);
+    void translate_fist(const uint8_t* operands, bool pop_after_store);
+    void translate_fadd(const uint8_t* operands);
+    void translate_fsub(const uint8_t* operands);
+    void translate_fmul(const uint8_t* operands);
+    void translate_fdiv(const uint8_t* operands);
+    void translate_finit();
+    void translate_fclex();
+    void translate_fstcw(const uint8_t* operands);
+    void translate_fldcw(const uint8_t* operands);
+    void translate_fstsw(const uint8_t* operands);
+    void translate_fpu_unary(uint8_t opcode1, uint8_t opcode2);
+    void translate_ftan();
+    void translate_fcompp(bool unordered_compare);
 
     // Stack operations
     void translate_push(uint8_t reg);
@@ -148,6 +171,10 @@ private:
     void emit_runtime_fallback(const char* reason);
 
     X86Register acquire_physical(uint8_t virt_reg);
+    int32_t ensure_spill_slot(uint8_t virt_reg);
+    void restore_virtual_value(uint8_t virt_reg, X86Register phys);
+    void spill_virtual_value(uint8_t virt_reg, X86Register phys);
+    void clear_cached_registers();
     void load_register(uint8_t virt_reg, X86Register phys);
     void store_register(uint8_t virt_reg, X86Register phys);
     void mark_dirty(uint8_t virt_reg);
@@ -167,6 +194,15 @@ private:
     // Immediate extraction helpers
     uint32_t read_imm32(const uint8_t* ptr) const;
     uint64_t read_imm64_ptr(const uint8_t* ptr) const;
+
+    void begin_fpu_sequence();
+    void finish_fpu_sequence();
+    void emit_x87_mem_op(uint8_t opcode, uint8_t reg_opcode);
+    void emit_vmaddr_in_rax(uint32_t vm_addr);
+    void emit_fpu_immediate_double(uint64_t raw_double, uint8_t opcode, uint8_t reg_opcode);
+    void emit_fpu_immediate_int32(int32_t value, uint8_t opcode, uint8_t reg_opcode);
+    void emit_x87_raw_op(uint8_t opcode1, uint8_t opcode2);
+    void emit_fpu_compare_flags();
 };
 
 } // namespace CodeGen

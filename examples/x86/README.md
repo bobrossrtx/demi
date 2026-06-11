@@ -54,6 +54,7 @@ Input/output operations:
 Feature demonstrations:
 
 - **core_instructions.asm** - All basic instruction demonstrations
+- **fpu_showcase.asm** - Narrated x87 FPU showcase with self-checking verification
 
 ### interrupts/
 

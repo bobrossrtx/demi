@@ -38,6 +38,9 @@ void AssemblerEngine::init_opcode_table() {
     mnemonic_to_opcode["JMP"] = static_cast<uint8_t>(Opcode::JMP);
     mnemonic_to_opcode["LOAD"] = static_cast<uint8_t>(Opcode::LOAD);
     mnemonic_to_opcode["LOADR"] = static_cast<uint8_t>(Opcode::LOADR);
+    mnemonic_to_opcode["NOP"] = static_cast<uint8_t>(Opcode::NOP);
+    mnemonic_to_opcode["SUB"] = static_cast<uint8_t>(Opcode::SUB);
+    mnemonic_to_opcode["LOAD"] = static_cast<uint8_t>(Opcode::LOAD);
     mnemonic_to_opcode["STORER"] = static_cast<uint8_t>(Opcode::STORER);
     mnemonic_to_opcode["STORE"] = static_cast<uint8_t>(Opcode::STORE);
     mnemonic_to_opcode["PUSH"] = static_cast<uint8_t>(Opcode::PUSH);
@@ -403,12 +406,15 @@ void AssemblerEngine::init_encoder_map() {
     encoder_map_["PUSH_FLAG"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["POP_FLAG"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FINIT"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["FCLEX"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FABS"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FCHS"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FSQRT"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FSIN"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FCOS"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FTAN"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["FCOMPP"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["FUCOMPP"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FEXP"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FLN"] = &AssemblerEngine::enc_no_operands;
     encoder_map_["FLG2"] = &AssemblerEngine::enc_no_operands;
@@ -1562,6 +1568,12 @@ size_t Assembler::AssemblerEngine::get_instruction_size(const std::string& mnemo
         effective_mnemonic == "PUSH_FLAG" || effective_mnemonic == "POP_FLAG" ||
         // Interrupt operations (no operands)
         effective_mnemonic == "CLI" || effective_mnemonic == "STI" || effective_mnemonic == "IRET" ||
+        // Scalar x87 no-operand instructions
+        effective_mnemonic == "FINIT" || effective_mnemonic == "FCLEX" ||
+        effective_mnemonic == "FSIN" || effective_mnemonic == "FCOS" ||
+        effective_mnemonic == "FTAN" || effective_mnemonic == "FSQRT" ||
+        effective_mnemonic == "FABS" || effective_mnemonic == "FCHS" ||
+        effective_mnemonic == "FCOMPP" || effective_mnemonic == "FUCOMPP" ||
         // SIMD instructions with no operands
         effective_mnemonic == "VADD" || effective_mnemonic == "VMUL" || effective_mnemonic == "VDOT" ||
         effective_mnemonic == "VMAX" || effective_mnemonic == "VBROADCAST" || effective_mnemonic == "VCMPGT" ||
@@ -1627,6 +1639,24 @@ size_t Assembler::AssemblerEngine::get_instruction_size(const std::string& mnemo
     } else if (effective_mnemonic == "LOADR" || effective_mnemonic == "STORER") {
         DEBUG_DETAIL(Logging::DebugCategory::ASM_ENCODING, "[PASS1_SIZE] {} -> 3 bytes (explicit LOADR/STORER)", effective_mnemonic);
         return 3; // opcode + register + register
+    } else if (effective_mnemonic == "FLD" || effective_mnemonic == "FADD" ||
+               effective_mnemonic == "FSUB" || effective_mnemonic == "FMUL" ||
+               effective_mnemonic == "FDIV") {
+        if (!operands.empty() && dynamic_cast<const ImmediateExpression*>(operands[0].get()) != nullptr) {
+            return 10; // opcode + operand kind + 8-byte immediate double
+        }
+        return 6; // opcode + operand kind + 4-byte VM address
+    } else if (effective_mnemonic == "FST" || effective_mnemonic == "FSTP" ||
+               effective_mnemonic == "FILD" || effective_mnemonic == "FIST" ||
+               effective_mnemonic == "FISTP") {
+        return 6;
+    } else if (effective_mnemonic == "FSTCW" || effective_mnemonic == "FLDCW") {
+        return 5;
+    } else if (effective_mnemonic == "FSTSW") {
+        if (!operands.empty() && dynamic_cast<const RegisterExpression*>(operands[0].get()) != nullptr) {
+            return 2;
+        }
+        return 6;
     } else if (effective_mnemonic == "LOAD" || effective_mnemonic == "STORE" || effective_mnemonic == "LEA") {
         // Check if EITHER operand is [register] syntax -> will become LOADR/STORER (3 bytes)
         if (operands.size() >= 2) {

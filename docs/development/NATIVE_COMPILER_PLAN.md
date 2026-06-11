@@ -1,5 +1,15 @@
 # D-ISA to x86-64 Native Compiler Implementation Plan
 
+> Status note: this document started as the implementation plan for the native compiler.
+> The encoder, register allocator, ELF emitter, and `DISAToX86Compiler` are now implemented.
+> Native compilation currently covers core arithmetic, control flow, memory operations,
+> INT 0x80 bridging, and the x87 FPU showcase in
+> `examples/x86/features/fpu_showcase.asm`, including FINIT, FCLEX, FLD, FST,
+> FSTP, FILD, FIST, FISTP, FADD, FSUB, FMUL, FDIV, FSIN, FCOS, FTAN, FSQRT,
+> FABS, FCHS, FSTCW, FLDCW, FSTSW, FCOMPP, and FUCOMPP.
+> The remaining sections below are best read as historical planning notes and future
+> optimization ideas, not as a current checklist.
+
 ## 🎯 Overview
 
 Transform DemiEngine from a VM-based system to a true native code compiler that translates D-ISA bytecode directly to x86-64 machine code.

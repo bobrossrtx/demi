@@ -330,6 +330,32 @@ void X86Encoder::emit_mov_reg_mem(X86Register dst, X86Register base, int32_t off
     }
 }
 
+void X86Encoder::emit_movzx_reg_mem8(X86Register dst, X86Register base, int32_t offset) {
+    emit_rex(true, static_cast<uint8_t>(dst) >= 8, false, static_cast<uint8_t>(base) >= 8);
+    code_buffer.push_back(0x0F);
+    code_buffer.push_back(0xB6);   // MOVZX r64, r/m8
+
+    uint8_t base_modrm = reg_to_modrm(base);
+    bool needs_sib = (base_modrm == 4);
+
+    if (offset == 0 && base != X86Register::RBP && !needs_sib) {
+        emit_modrm(0b00, reg_to_modrm(dst), base_modrm);
+    } else if (offset == 0 && needs_sib) {
+        emit_modrm(0b00, reg_to_modrm(dst), 4);
+        code_buffer.push_back(0x24);
+    } else if (offset >= -128 && offset <= 127) {
+        emit_modrm(0b01, reg_to_modrm(dst), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
+        code_buffer.push_back(static_cast<uint8_t>(offset));
+    } else {
+        emit_modrm(0b10, reg_to_modrm(dst), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
+        for (int i = 0; i < 4; i++) {
+            code_buffer.push_back((offset >> (i * 8)) & 0xFF);
+        }
+    }
+}
+
 void X86Encoder::emit_mov_mem_reg(X86Register base, int32_t offset, X86Register src) {
     emit_rex_if_needed(src, base);
     code_buffer.push_back(0x89);   // MOV r/m64, r64
@@ -337,6 +363,34 @@ void X86Encoder::emit_mov_mem_reg(X86Register base, int32_t offset, X86Register 
     uint8_t base_modrm = reg_to_modrm(base);
     bool needs_sib = (base_modrm == 4);
     
+    if (offset == 0 && base != X86Register::RBP && !needs_sib) {
+        emit_modrm(0b00, reg_to_modrm(src), base_modrm);
+    } else if (offset == 0 && needs_sib) {
+        emit_modrm(0b00, reg_to_modrm(src), 4);
+        code_buffer.push_back(0x24);
+    } else if (offset >= -128 && offset <= 127) {
+        emit_modrm(0b01, reg_to_modrm(src), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
+        code_buffer.push_back(static_cast<uint8_t>(offset));
+    } else {
+        emit_modrm(0b10, reg_to_modrm(src), needs_sib ? 4 : base_modrm);
+        if (needs_sib) code_buffer.push_back(0x24);
+        for (int i = 0; i < 4; i++) {
+            code_buffer.push_back((offset >> (i * 8)) & 0xFF);
+        }
+    }
+}
+
+void X86Encoder::emit_mov_mem8_reg8(X86Register base, int32_t offset, X86Register src) {
+    emit_rex(false,
+             static_cast<uint8_t>(src) >= 8,
+             false,
+             static_cast<uint8_t>(base) >= 8);
+    code_buffer.push_back(0x88);   // MOV r/m8, r8
+
+    uint8_t base_modrm = reg_to_modrm(base);
+    bool needs_sib = (base_modrm == 4);
+
     if (offset == 0 && base != X86Register::RBP && !needs_sib) {
         emit_modrm(0b00, reg_to_modrm(src), base_modrm);
     } else if (offset == 0 && needs_sib) {

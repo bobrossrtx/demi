@@ -80,7 +80,7 @@ docs/
 **Test results**: 269 unit tests pass / 542 assembly tests (539 pass, 0 fail, 3 skip)
 
 - Backend: 134 registers, all core opcodes, SIMD, FPU, MMX, AVX
-- Native codegen: x86-64 ELF output functional, I/O translation in progress
+- Native codegen: x86-64 ELF output functional for arithmetic, control flow, memory, INT 0x80 I/O bridging, and x87 FPU operations
 - Demi language: Planned
 
 ## External Resources

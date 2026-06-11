@@ -9,10 +9,9 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
     switch (opcode) {
         case Opcode::LOAD_IMM:
             return 6;
+        case Opcode::ADD:
         case Opcode::SUB:
         case Opcode::MOV:
-        case Opcode::LOAD:
-        case Opcode::STORE:
         case Opcode::CMP:
         case Opcode::MUL:
         case Opcode::DIV:
@@ -52,7 +51,6 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
         case Opcode::CMPEX:
         case Opcode::PUSHEX:
         case Opcode::POPEX:
-        case Opcode::LEA:
         case Opcode::SWAP:
         case Opcode::LOADR:
         case Opcode::STORER:
@@ -60,6 +58,11 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
         case Opcode::DEC64:
         case Opcode::NOT64:
             return 3;
+        case Opcode::LEA:
+            return 6;
+        case Opcode::LOAD:
+        case Opcode::STORE:
+            return 6;
         case Opcode::LOADEX:
         case Opcode::STOREX:
             return 10;
@@ -100,6 +103,38 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
             return 10;
         case Opcode::MODECMP:
             return 2;
+        case Opcode::FLD:
+        case Opcode::FST:
+        case Opcode::FSTP:
+        case Opcode::FADD:
+        case Opcode::FSUB:
+        case Opcode::FMUL:
+        case Opcode::FDIV:
+            if (pos + 1 >= size) return 2;
+            if (program[pos + 1] == 0x02) return 10;
+            if (program[pos + 1] == 0x03) return 3;
+            return 6;
+        case Opcode::FILD:
+        case Opcode::FIST:
+        case Opcode::FISTP:
+            return 6;
+        case Opcode::FSTCW:
+        case Opcode::FLDCW:
+            return 5;
+        case Opcode::FSTSW:
+            if (pos + 1 >= size) return 2;
+            return program[pos + 1] == 0x01 ? 2 : 6;
+        case Opcode::FINIT:
+        case Opcode::FCLEX:
+        case Opcode::FSIN:
+        case Opcode::FCOS:
+        case Opcode::FTAN:
+        case Opcode::FSQRT:
+        case Opcode::FABS:
+        case Opcode::FCHS:
+        case Opcode::FCOMPP:
+        case Opcode::FUCOMPP:
+            return 1;
         case Opcode::DB:
             if (pos + 2 < size) {
                 uint8_t length = program[pos + 2];
@@ -130,6 +165,9 @@ std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_
     function_labels.clear();
     function_addresses.clear();
     reg_state_map.clear();
+    spill_slots.clear();
+    slot_contains_valid.clear();
+    function_has_calls = false;
 
     if (disa_bytecode.empty()) return {};
 
@@ -161,6 +199,22 @@ std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_
                                   : nullptr;
 
         translate_instruction(opcode, operands);
+
+        if (opcode == Opcode::HALT) {
+            size_t next_target = disa_bytecode.size();
+            for (const auto& target : jump_targets) {
+                if (target.first > current_bytecode_pos && target.first < next_target) {
+                    next_target = target.first;
+                }
+            }
+
+            if (next_target < disa_bytecode.size()) {
+                current_bytecode_pos = next_target;
+                continue;
+            }
+
+            break;
+        }
 
         size_t instr_len = get_instruction_length(
             opcode_byte,
@@ -263,11 +317,11 @@ void DISAToX86Compiler::translate_instruction(Opcode opcode, const uint8_t* oper
         case Opcode::POP_FLAG:  translate_pop_flag(); break;
 
         // Memory operations
-        case Opcode::LOAD:   translate_load(operands[0], operands[1], 0); break;
+        case Opcode::LOAD:   translate_load(operands[0], 0, operands ? static_cast<int32_t>(read_imm32(operands + 1)) : 0); break;
         case Opcode::STORE:  translate_store_imm(operands[0], operands + 1); break;
         case Opcode::LOADR:  translate_loadr(operands[0], operands[1]); break;
         case Opcode::STORER: translate_storer(operands[0], operands[1]); break;
-        case Opcode::LEA:    translate_lea(operands[0], operands[1]); break;
+        case Opcode::LEA:    translate_lea(operands[0], operands ? read_imm32(operands + 1) : 0); break;
         case Opcode::SWAP:   translate_swap(operands[0], operands[1]); break;
 
         // Load/Store extended
@@ -387,29 +441,73 @@ void DISAToX86Compiler::translate_instruction(Opcode opcode, const uint8_t* oper
 
         // FPU - delegate to runtime
         case Opcode::FLD:
+            translate_fld(operands);
+            break;
         case Opcode::FST:
+            translate_fst(operands, false);
+            break;
         case Opcode::FSTP:
+            translate_fst(operands, true);
+            break;
         case Opcode::FILD:
+            translate_fild(operands);
+            break;
         case Opcode::FIST:
+            translate_fist(operands, false);
+            break;
         case Opcode::FISTP:
+            translate_fist(operands, true);
+            break;
         case Opcode::FADD:
+            translate_fadd(operands);
+            break;
         case Opcode::FSUB:
+            translate_fsub(operands);
+            break;
         case Opcode::FMUL:
+            translate_fmul(operands);
+            break;
         case Opcode::FDIV:
-        case Opcode::FSIN:
-        case Opcode::FCOS:
-        case Opcode::FTAN:
-        case Opcode::FSQRT:
-        case Opcode::FABS:
-        case Opcode::FCHS:
+            translate_fdiv(operands);
+            break;
         case Opcode::FINIT:
+            translate_finit();
+            break;
         case Opcode::FCLEX:
+            translate_fclex();
+            break;
         case Opcode::FSTCW:
+            translate_fstcw(operands);
+            break;
         case Opcode::FLDCW:
+            translate_fldcw(operands);
+            break;
         case Opcode::FSTSW:
+            translate_fstsw(operands);
+            break;
+        case Opcode::FSIN:
+            translate_fpu_unary(0xD9, 0xFE);
+            break;
+        case Opcode::FCOS:
+            translate_fpu_unary(0xD9, 0xFF);
+            break;
+        case Opcode::FTAN:
+            translate_ftan();
+            break;
+        case Opcode::FSQRT:
+            translate_fpu_unary(0xD9, 0xFA);
+            break;
+        case Opcode::FABS:
+            translate_fpu_unary(0xD9, 0xE1);
+            break;
+        case Opcode::FCHS:
+            translate_fpu_unary(0xD9, 0xE0);
+            break;
         case Opcode::FCOMPP:
+            translate_fcompp(false);
+            break;
         case Opcode::FUCOMPP:
-            emit_runtime_fallback("unimplemented_fpu");
+            translate_fcompp(true);
             break;
 
         // MMX - delegate to runtime
@@ -462,13 +560,13 @@ void DISAToX86Compiler::emit_function_prologue() {
         encoder.emit_push_reg(X86Register::R15);
     }
 
-    encoder.emit_sub_reg_imm32(X86Register::RSP, 128);
+    encoder.emit_sub_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
 }
 
 void DISAToX86Compiler::emit_function_epilogue() {
     flush_all_registers();
 
-    encoder.emit_add_reg_imm32(X86Register::RSP, 128);
+    encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
     
     if (function_has_calls) {
         encoder.emit_pop_reg(X86Register::R15);
@@ -504,21 +602,67 @@ X86Register DISAToX86Compiler::acquire_physical(uint8_t virt_reg) {
     }
 
     X86Register phys = reg_alloc.allocate_register(virt_reg);
+
+    for (auto state_it = reg_state_map.begin(); state_it != reg_state_map.end(); ++state_it) {
+        if (state_it->first == virt_reg || state_it->second.phys != phys) {
+            continue;
+        }
+
+        if (state_it->second.dirty) {
+            spill_virtual_value(state_it->first, phys);
+        }
+        reg_state_map.erase(state_it);
+        break;
+    }
+
     reg_state_map[virt_reg] = {phys, false, false};
     return phys;
+}
+
+int32_t DISAToX86Compiler::ensure_spill_slot(uint8_t virt_reg) {
+    auto it = spill_slots.find(virt_reg);
+    if (it != spill_slots.end()) {
+        return it->second;
+    }
+
+    int32_t offset = -(MAX_SAVED_REGISTER_BYTES +
+                       static_cast<int32_t>(spill_slots.size() + 1) * SPILL_SLOT_SIZE);
+    spill_slots[virt_reg] = offset;
+    slot_contains_valid[virt_reg] = false;
+    return offset;
+}
+
+void DISAToX86Compiler::restore_virtual_value(uint8_t virt_reg, X86Register phys) {
+    auto spill_it = spill_slots.find(virt_reg);
+    auto valid_it = slot_contains_valid.find(virt_reg);
+    if (spill_it != spill_slots.end() &&
+        valid_it != slot_contains_valid.end() &&
+        valid_it->second) {
+        encoder.emit_mov_reg_mem(phys, X86Register::RBP, spill_it->second);
+        return;
+    }
+
+    encoder.emit_xor_reg_reg(phys, phys);
+}
+
+void DISAToX86Compiler::spill_virtual_value(uint8_t virt_reg, X86Register phys) {
+    int32_t offset = ensure_spill_slot(virt_reg);
+    slot_contains_valid[virt_reg] = true;
+    encoder.emit_mov_mem_reg(X86Register::RBP, offset, phys);
+}
+
+void DISAToX86Compiler::clear_cached_registers() {
+    for (const auto& pair : reg_state_map) {
+        reg_alloc.free_register(pair.first);
+    }
+    reg_state_map.clear();
 }
 
 void DISAToX86Compiler::load_register(uint8_t virt_reg, X86Register phys) {
     auto it = reg_state_map.find(virt_reg);
     if (it != reg_state_map.end() && it->second.loaded) return;
 
-    if (spill_slots.find(virt_reg) != spill_slots.end() &&
-        slot_contains_valid[virt_reg]) {
-        encoder.emit_mov_reg_mem(phys, X86Register::RBP, spill_slots[virt_reg]);
-    } else {
-        int32_t offset = static_cast<int32_t>(virt_reg) * 8;
-        encoder.emit_mov_reg_mem(phys, X86Register::RDI, offset);
-    }
+    restore_virtual_value(virt_reg, phys);
     reg_state_map[virt_reg] = {phys, true, false};
 }
 
@@ -526,13 +670,7 @@ void DISAToX86Compiler::store_register(uint8_t virt_reg, X86Register phys) {
     auto it = reg_state_map.find(virt_reg);
     if (it == reg_state_map.end() || !it->second.dirty) return;
 
-    if (spill_slots.find(virt_reg) != spill_slots.end()) {
-        slot_contains_valid[virt_reg] = true;
-        encoder.emit_mov_mem_reg(X86Register::RBP, spill_slots[virt_reg], phys);
-    } else {
-        int32_t offset = static_cast<int32_t>(virt_reg) * 8;
-        encoder.emit_mov_mem_reg(X86Register::RDI, offset, phys);
-    }
+    spill_virtual_value(virt_reg, phys);
     it->second.dirty = false;
 }
 
@@ -552,20 +690,16 @@ void DISAToX86Compiler::flush_register(uint8_t virt_reg) {
         it->second.dirty = false;
     }
     reg_state_map.erase(it);
+    reg_alloc.free_register(virt_reg);
 }
 
 void DISAToX86Compiler::flush_all_registers() {
-    encoder.emit_push_reg(X86Register::RDI);
-    
     for (auto& pair : reg_state_map) {
         if (pair.second.dirty) {
-            int32_t offset = static_cast<int32_t>(pair.first) * 8;
-            encoder.emit_mov_mem_reg(X86Register::RDI, offset, pair.second.phys);
+            spill_virtual_value(pair.first, pair.second.phys);
             pair.second.dirty = false;
         }
     }
-    
-    encoder.emit_pop_reg(X86Register::RDI);
 }
 
 X86Register DISAToX86Compiler::get_loaded_physical(uint8_t virt_reg) {
@@ -612,30 +746,28 @@ void DISAToX86Compiler::emit_data_initialization(const std::vector<uint8_t>& byt
 }// --- I/O instruction translators ---
 // Uses Linux syscall-based I/O for port 0 (console stdin/stdout).
 // After each I/O operation, register cache is invalidated so the
-// next instruction re-loads from the regfile in memory.
+// next instruction re-loads from frame-relative spill slots.
 
 void DISAToX86Compiler::translate_out(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
+    flush_all_registers();
+    clear_cached_registers();
     
     encoder.emit_push_reg(X86Register::RDI);
-    
-    auto it = reg_state_map.find(reg);
-    X86Register phys = X86Register::RAX;
-    if (it != reg_state_map.end() && it->second.loaded)
-        phys = it->second.phys;
-    else
-        encoder.emit_mov_reg_mem(phys, X86Register::RDI, reg * 8);
-    
-    encoder.emit_push_reg(phys);
+    encoder.emit_push_reg(X86Register::RSI);
+
+    restore_virtual_value(reg, X86Register::RAX);
+    encoder.emit_push_reg(X86Register::RAX);
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 1);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
+    encoder.emit_pop_reg(X86Register::RSI);
     encoder.emit_pop_reg(X86Register::RDI);
-    
-    if (it != reg_state_map.end()) it->second.loaded = false;
+
+    clear_cached_registers();
 }
 
 void DISAToX86Compiler::translate_outb(uint8_t reg, uint8_t port) {
@@ -645,41 +777,42 @@ void DISAToX86Compiler::translate_outb(uint8_t reg, uint8_t port) {
 void DISAToX86Compiler::translate_outw(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
     flush_all_registers();
-    reg_state_map.clear();
+    clear_cached_registers();
 
-    // write(1, &regfile[reg], 2)
-    encoder.emit_push_reg(X86Register::RDI);
-    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RDI);
-    if (reg > 0)
-        encoder.emit_add_reg_imm32(X86Register::RSI, reg * 8);
+    encoder.emit_push_reg(X86Register::RSI);
+    restore_virtual_value(reg, X86Register::RAX);
+    encoder.emit_push_reg(X86Register::RAX);
+    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 2);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
-    encoder.emit_pop_reg(X86Register::RDI);
+    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
+    encoder.emit_pop_reg(X86Register::RSI);
 }
 
 void DISAToX86Compiler::translate_outl(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
     flush_all_registers();
-    reg_state_map.clear();
+    clear_cached_registers();
 
-    // write(1, &regfile[reg], 4)
-    encoder.emit_push_reg(X86Register::RDI);
-    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RDI);
-    if (reg > 0)
-        encoder.emit_add_reg_imm32(X86Register::RSI, reg * 8);
+    encoder.emit_push_reg(X86Register::RSI);
+    restore_virtual_value(reg, X86Register::RAX);
+    encoder.emit_push_reg(X86Register::RAX);
+    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 4);
     encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
     encoder.emit_syscall();
-    encoder.emit_pop_reg(X86Register::RDI);
+    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
+    encoder.emit_pop_reg(X86Register::RSI);
 }
 
 void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
+    flush_all_registers();
     
-    // Save RDI (regfile base) and RSI (memory base)
+    // Save scratch registers around the strlen/write sequence.
     encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
     
@@ -688,7 +821,7 @@ void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     if (it_s != reg_state_map.end() && it_s->second.loaded) {
         encoder.emit_mov_reg_reg(X86Register::R8, it_s->second.phys);
     } else {
-        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, reg * 8);
+        restore_virtual_value(reg, X86Register::R8);
     }
     encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
     
@@ -714,15 +847,267 @@ void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     encoder.emit_pop_reg(X86Register::RSI);
     encoder.emit_pop_reg(X86Register::RDI);
     
-    reg_state_map.clear();
+    clear_cached_registers();
+}
+
+void DISAToX86Compiler::begin_fpu_sequence() {
+    flush_all_registers();
+    clear_cached_registers();
+}
+
+void DISAToX86Compiler::finish_fpu_sequence() {
+    clear_cached_registers();
+}
+
+void DISAToX86Compiler::emit_x87_mem_op(uint8_t opcode, uint8_t reg_opcode) {
+    encoder.emit_raw_byte(opcode);
+    encoder.emit_raw_byte(static_cast<uint8_t>((reg_opcode & 0x7) << 3));
+}
+
+void DISAToX86Compiler::emit_vmaddr_in_rax(uint32_t vm_addr) {
+    encoder.emit_mov_reg_imm32(X86Register::RAX, static_cast<int32_t>(vm_addr));
+    encoder.emit_add_reg_reg(X86Register::RAX, X86Register::RSI);
+}
+
+void DISAToX86Compiler::emit_fpu_immediate_double(uint64_t raw_double, uint8_t opcode, uint8_t reg_opcode) {
+    encoder.emit_mov_reg_imm64(X86Register::RAX, raw_double);
+    encoder.emit_push_reg(X86Register::RAX);
+    encoder.emit_mov_reg_reg(X86Register::RAX, X86Register::RSP);
+    emit_x87_mem_op(opcode, reg_opcode);
+    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
+}
+
+void DISAToX86Compiler::emit_fpu_immediate_int32(int32_t value, uint8_t opcode, uint8_t reg_opcode) {
+    encoder.emit_mov_reg_imm32(X86Register::RAX, value);
+    encoder.emit_push_reg(X86Register::RAX);
+    encoder.emit_mov_reg_reg(X86Register::RAX, X86Register::RSP);
+    emit_x87_mem_op(opcode, reg_opcode);
+    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
+}
+
+void DISAToX86Compiler::emit_x87_raw_op(uint8_t opcode1, uint8_t opcode2) {
+    encoder.emit_raw_byte(opcode1);
+    encoder.emit_raw_byte(opcode2);
+}
+
+void DISAToX86Compiler::emit_fpu_compare_flags() {
+    auto skip_less = encoder.create_label();
+
+    encoder.emit_raw_byte(0xDF);
+    encoder.emit_raw_byte(0xE0);  // FNSTSW AX
+
+    encoder.emit_mov_reg_reg(X86Register::RDX, X86Register::RAX);
+    encoder.emit_and_reg_imm32(X86Register::RAX, 0x4100);  // Preserve C0->CF and C3->ZF in AH
+    encoder.emit_and_reg_imm32(X86Register::RDX, 0x4500);  // Extract C0/C2/C3 from status word
+    encoder.emit_cmp_reg_imm32(X86Register::RDX, 0x0100);  // Less-than is the ordered C0-only case
+    encoder.emit_jnz_label(skip_less);
+    encoder.emit_or_reg_imm32(X86Register::RAX, 0x8000);   // Map less-than onto SF for VM JL/JLE rules
+    encoder.bind_label(skip_less);
+
+    encoder.emit_xor_reg_reg(X86Register::R11, X86Register::R11); // Clear OF before SAHF
+    encoder.emit_raw_byte(0x9E);  // SAHF
+}
+
+void DISAToX86Compiler::translate_fld(const uint8_t* operands) {
+    begin_fpu_sequence();
+
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDD, 0);  // FLD m64fp
+    } else if (operand_type == 0x02) {
+        emit_fpu_immediate_double(read_imm64_ptr(operands + 1), 0xDD, 0);
+    } else {
+        emit_runtime_fallback("unsupported_fld_operand");
+        return;
+    }
+
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fst(const uint8_t* operands, bool pop_after_store) {
+    begin_fpu_sequence();
+
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDD, pop_after_store ? 3 : 2);  // FST/FSTP m64fp
+    } else {
+        emit_runtime_fallback("unsupported_fst_operand");
+        return;
+    }
+
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fild(const uint8_t* operands) {
+    begin_fpu_sequence();
+
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x00) {
+        emit_fpu_immediate_int32(static_cast<int32_t>(read_imm32(operands + 1)), 0xDB, 0); // FILD m32int
+    } else if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDB, 0);  // FILD m32int
+    } else {
+        emit_runtime_fallback("unsupported_fild_operand");
+        return;
+    }
+
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fist(const uint8_t* operands, bool pop_after_store) {
+    begin_fpu_sequence();
+
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDB, pop_after_store ? 3 : 2);  // FIST/FISTP m32int
+    } else {
+        emit_runtime_fallback("unsupported_fist_operand");
+        return;
+    }
+
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fadd(const uint8_t* operands) {
+    begin_fpu_sequence();
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDC, 0);  // FADD m64fp
+    } else if (operand_type == 0x02) {
+        emit_fpu_immediate_double(read_imm64_ptr(operands + 1), 0xDC, 0);
+    } else {
+        emit_runtime_fallback("unsupported_fadd_operand");
+        return;
+    }
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fsub(const uint8_t* operands) {
+    begin_fpu_sequence();
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDC, 4);  // FSUB m64fp
+    } else if (operand_type == 0x02) {
+        emit_fpu_immediate_double(read_imm64_ptr(operands + 1), 0xDC, 4);
+    } else {
+        emit_runtime_fallback("unsupported_fsub_operand");
+        return;
+    }
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fmul(const uint8_t* operands) {
+    begin_fpu_sequence();
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDC, 1);  // FMUL m64fp
+    } else if (operand_type == 0x02) {
+        emit_fpu_immediate_double(read_imm64_ptr(operands + 1), 0xDC, 1);
+    } else {
+        emit_runtime_fallback("unsupported_fmul_operand");
+        return;
+    }
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fdiv(const uint8_t* operands) {
+    begin_fpu_sequence();
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x01) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDC, 6);  // FDIV m64fp
+    } else if (operand_type == 0x02) {
+        emit_fpu_immediate_double(read_imm64_ptr(operands + 1), 0xDC, 6);
+    } else {
+        emit_runtime_fallback("unsupported_fdiv_operand");
+        return;
+    }
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_finit() {
+    begin_fpu_sequence();
+    encoder.emit_raw_byte(0xDB);
+    encoder.emit_raw_byte(0xE3);  // FNINIT
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fclex() {
+    begin_fpu_sequence();
+    encoder.emit_raw_byte(0xDB);
+    encoder.emit_raw_byte(0xE2);  // FNCLEX
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fstcw(const uint8_t* operands) {
+    begin_fpu_sequence();
+    emit_vmaddr_in_rax(read_imm32(operands));
+    emit_x87_mem_op(0xD9, 7);  // FNSTCW m2byte
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fldcw(const uint8_t* operands) {
+    begin_fpu_sequence();
+    emit_vmaddr_in_rax(read_imm32(operands));
+    emit_x87_mem_op(0xD9, 5);  // FLDCW m2byte
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fstsw(const uint8_t* operands) {
+    begin_fpu_sequence();
+    uint8_t operand_type = operands ? operands[0] : 0xFF;
+    if (operand_type == 0x00) {
+        emit_vmaddr_in_rax(read_imm32(operands + 1));
+        emit_x87_mem_op(0xDD, 7);  // FNSTSW m2byte
+    } else if (operand_type == 0x01) {
+        encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX);
+        encoder.emit_raw_byte(0xDF);
+        encoder.emit_raw_byte(0xE0);  // FNSTSW AX
+        spill_virtual_value(0, X86Register::RAX);
+    } else {
+        emit_runtime_fallback("unsupported_fstsw_operand");
+        return;
+    }
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fpu_unary(uint8_t opcode1, uint8_t opcode2) {
+    begin_fpu_sequence();
+    emit_x87_raw_op(opcode1, opcode2);
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_ftan() {
+    begin_fpu_sequence();
+    emit_x87_raw_op(0xD9, 0xF2);  // FPTAN
+    emit_x87_raw_op(0xDD, 0xD8);  // FSTP ST(0): discard the helper 1.0 push
+    finish_fpu_sequence();
+}
+
+void DISAToX86Compiler::translate_fcompp(bool unordered_compare) {
+    begin_fpu_sequence();
+    if (unordered_compare) {
+        emit_x87_raw_op(0xDA, 0xE9);  // FUCOMPP
+    } else {
+        emit_x87_raw_op(0xDE, 0xD9);  // FCOMPP
+    }
+    emit_fpu_compare_flags();
+    finish_fpu_sequence();
 }
 
 void DISAToX86Compiler::translate_in(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
     flush_all_registers();
-    reg_state_map.clear();
+    clear_cached_registers();
 
-    // read(0, &temp, 1); regfile[reg] = zero_extend(temp)
+    // read(0, &temp, 1); spill zero-extended byte into the canonical stack slot
     encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
     encoder.emit_sub_reg_imm32(X86Register::RSP, 8);  // allocate temp
@@ -740,9 +1125,7 @@ void DISAToX86Compiler::translate_in(uint8_t reg, uint8_t port) {
     encoder.emit_raw_byte(0x04);
     encoder.emit_raw_byte(0x24);
 
-    // Restore regfile ptr: [RSP+0]=temp, [RSP+8]=RSI, [RSP+16]=RDI
-    encoder.emit_mov_reg_mem(X86Register::RDI, X86Register::RSP, 16);  // RDI = saved RDI
-    encoder.emit_mov_mem_reg(X86Register::RDI, reg * 8, X86Register::RAX);
+    spill_virtual_value(reg, X86Register::RAX);
 
     // Clean up: add rsp, 8 (remove temp), pop rsi, pop rdi
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
@@ -757,9 +1140,9 @@ void DISAToX86Compiler::translate_inb(uint8_t reg, uint8_t port) {
 void DISAToX86Compiler::translate_inw(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
     flush_all_registers();
-    reg_state_map.clear();
+    clear_cached_registers();
 
-    // read(0, &temp, 2); regfile[reg] = temp[0], regfile[reg+1] = temp[1]
+    // read(0, &temp, 2); spill temp[0] and temp[1] into consecutive virtual registers
     encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
     encoder.emit_sub_reg_imm32(X86Register::RSP, 8);
@@ -775,8 +1158,7 @@ void DISAToX86Compiler::translate_inw(uint8_t reg, uint8_t port) {
     encoder.emit_raw_byte(0x8A);
     encoder.emit_raw_byte(0x04);
     encoder.emit_raw_byte(0x24);
-    encoder.emit_mov_reg_mem(X86Register::RDI, X86Register::RSP, 16);
-    encoder.emit_mov_mem_reg(X86Register::RDI, reg * 8, X86Register::RAX);
+    spill_virtual_value(reg, X86Register::RAX);
 
     // Load byte 1
     if (static_cast<size_t>(reg + 1) < 134) {
@@ -785,8 +1167,7 @@ void DISAToX86Compiler::translate_inw(uint8_t reg, uint8_t port) {
         encoder.emit_raw_byte(0x44);
         encoder.emit_raw_byte(0x24);
         encoder.emit_raw_byte(0x01);
-        encoder.emit_mov_reg_mem(X86Register::RDI, X86Register::RSP, 16);
-        encoder.emit_mov_mem_reg(X86Register::RDI, (reg + 1) * 8, X86Register::RAX);
+        spill_virtual_value(reg + 1, X86Register::RAX);
     }
 
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
@@ -797,9 +1178,9 @@ void DISAToX86Compiler::translate_inw(uint8_t reg, uint8_t port) {
 void DISAToX86Compiler::translate_inl(uint8_t reg, uint8_t port) {
     if (port != 0x01 && port != 0x00) { emit_runtime_fallback("unimplemented_io_port"); return; }
     flush_all_registers();
-    reg_state_map.clear();
+    clear_cached_registers();
 
-    // read(0, &temp, 4); regfile[reg]..regfile[reg+3] = temp[0..3]
+    // read(0, &temp, 4); spill temp[0..3] into consecutive virtual registers
     encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
     encoder.emit_sub_reg_imm32(X86Register::RSP, 8);
@@ -822,8 +1203,7 @@ void DISAToX86Compiler::translate_inl(uint8_t reg, uint8_t port) {
             encoder.emit_raw_byte(0x24);
             encoder.emit_raw_byte(static_cast<uint8_t>(i));
         }
-        encoder.emit_mov_reg_mem(X86Register::RDI, X86Register::RSP, 16);
-        encoder.emit_mov_mem_reg(X86Register::RDI, (reg + i) * 8, X86Register::RAX);
+        spill_virtual_value(static_cast<uint8_t>(reg + i), X86Register::RAX);
     }
 
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
@@ -853,8 +1233,9 @@ void DISAToX86Compiler::translate_halt() {
 void DISAToX86Compiler::translate_load_imm(uint8_t reg, uint64_t immediate) {
     acquire_physical(reg);
     X86Register phys = reg_state_map[reg].phys;
-    reg_state_map[reg] = {phys, true, true};  // loaded + dirty, skip dead load
+    reg_state_map[reg] = {phys, true, false};
     encoder.emit_mov_reg_imm64(phys, immediate);
+    spill_virtual_value(reg, phys);
 }
 
 void DISAToX86Compiler::translate_add(uint8_t dst_reg, uint8_t src_reg) {
@@ -883,8 +1264,7 @@ void DISAToX86Compiler::translate_mov(uint8_t dst_reg, uint8_t src_reg) {
     dst = get_writable_physical(dst_reg);
     // If src got evicted, re-load
     if (reg_state_map.find(src_reg) == reg_state_map.end() || !reg_state_map[src_reg].loaded) {
-        int32_t offset = static_cast<int32_t>(src_reg) * 8;
-        encoder.emit_mov_reg_mem(dst, X86Register::RDI, offset);
+        restore_virtual_value(src_reg, dst);
     } else {
         src = reg_state_map[src_reg].phys;
         encoder.emit_mov_reg_reg(dst, src);
@@ -1005,16 +1385,14 @@ void DISAToX86Compiler::translate_shr(uint8_t dst_reg, uint8_t src_reg) {
 // --- Memory operations ---
 
 void DISAToX86Compiler::translate_load(uint8_t dst_reg, uint8_t addr_reg, int32_t offset) {
-    int32_t mem_offset = offset;
-    if (addr_reg != 0 || offset != 0) {
-        X86Register addr = get_loaded_physical(addr_reg);
-        X86Register dst = get_writable_physical(dst_reg);
-        encoder.emit_mov_reg_mem(dst, addr, offset);
-    } else {
-        X86Register addr = get_loaded_physical(addr_reg);
-        X86Register dst = get_writable_physical(dst_reg);
-        encoder.emit_mov_reg_mem(dst, addr, offset);
+    X86Register dst = get_writable_physical(dst_reg);
+    if (addr_reg == 0) {
+        encoder.emit_movzx_reg_mem8(dst, X86Register::RSI, offset);
+        return;
     }
+
+    X86Register addr = get_loaded_physical(addr_reg);
+    encoder.emit_movzx_reg_mem8(dst, addr, offset);
 }
 
 void DISAToX86Compiler::translate_store_imm(uint8_t src_reg, const uint8_t* operands) {
@@ -1022,13 +1400,13 @@ void DISAToX86Compiler::translate_store_imm(uint8_t src_reg, const uint8_t* oper
     X86Register src = get_loaded_physical(src_reg);
     uint32_t vm_addr = read_imm32(operands);
     // RSI + vm_addr = real address
-    encoder.emit_mov_mem_reg(X86Register::RSI, static_cast<int32_t>(vm_addr), src);
+    encoder.emit_mov_mem8_reg8(X86Register::RSI, static_cast<int32_t>(vm_addr), src);
 }
 
 void DISAToX86Compiler::translate_store(uint8_t addr_reg, int32_t offset, uint8_t src_reg) {
     X86Register addr = get_loaded_physical(addr_reg);
     X86Register src = get_loaded_physical(src_reg);
-    encoder.emit_mov_mem_reg(addr, offset, src);
+    encoder.emit_mov_mem8_reg8(addr, offset, src);
 }
 
 void DISAToX86Compiler::translate_loadr(uint8_t dst_reg, uint8_t addr_reg) {
@@ -1036,7 +1414,7 @@ void DISAToX86Compiler::translate_loadr(uint8_t dst_reg, uint8_t addr_reg) {
     X86Register dst = get_writable_physical(dst_reg);
     // VM address in addr_reg → real address = RSI + VM_address
     encoder.emit_add_reg_reg(addr, X86Register::RSI); // addr += memory base
-    encoder.emit_mov_reg_mem(dst, addr, 0);           // load from real addr
+    encoder.emit_movzx_reg_mem8(dst, addr, 0);        // LOADR loads one byte
     encoder.emit_sub_reg_reg(addr, X86Register::RSI); // restore VM addr
 }
 
@@ -1045,22 +1423,20 @@ void DISAToX86Compiler::translate_storer(uint8_t addr_reg, uint8_t src_reg) {
     X86Register src = get_loaded_physical(src_reg);
     // VM address in addr_reg → real address = RSI + VM_address
     encoder.emit_add_reg_reg(addr, X86Register::RSI); // addr += memory base
-    encoder.emit_mov_mem_reg(addr, 0, src);           // store to real addr
+    encoder.emit_mov_mem8_reg8(addr, 0, src);         // STORER writes one byte
     encoder.emit_sub_reg_reg(addr, X86Register::RSI); // restore addr
 }
 
-void DISAToX86Compiler::translate_lea(uint8_t dst_reg, uint8_t addr_reg) {
-    X86Register dst = get_writable_physical(dst_reg);
-    X86Register addr = get_loaded_physical(addr_reg);
-    encoder.emit_mov_reg_reg(dst, addr);
+void DISAToX86Compiler::translate_lea(uint8_t dst_reg, uint32_t addr) {
+    translate_load_imm(dst_reg, addr);
 }
 
 void DISAToX86Compiler::translate_swap(uint8_t reg, uint8_t addr_reg) {
     X86Register addr = get_loaded_physical(addr_reg);
     X86Register val = get_loaded_physical(reg);
     // Swap: load memory value, store register value, set register to old memory value
-    encoder.emit_mov_reg_mem(X86Register::RDX, addr, 0);
-    encoder.emit_mov_mem_reg(addr, 0, val);
+    encoder.emit_movzx_reg_mem8(X86Register::RDX, addr, 0);
+    encoder.emit_mov_mem8_reg8(addr, 0, val);
     X86Register dst = get_writable_physical(reg);
     if (dst != X86Register::RDX) {
         encoder.emit_mov_reg_reg(dst, X86Register::RDX);
@@ -1177,7 +1553,7 @@ void DISAToX86Compiler::translate_jle(uint32_t target_address) {
 
 void DISAToX86Compiler::translate_call(uint32_t target_address) {
     flush_all_registers();
-    reg_state_map.clear();  // callee starts fresh
+    clear_cached_registers();  // callee starts fresh
     auto& label = get_or_create_label(target_address);
     
     if (label.bound) {
@@ -1193,30 +1569,8 @@ void DISAToX86Compiler::translate_call(uint32_t target_address) {
 
 void DISAToX86Compiler::translate_ret() {
     flush_all_registers();
-    reg_state_map.clear();
-    
-    if (function_has_calls) {
-        // Restore full set: R15..RAX from [RBP-offset]
-        encoder.emit_mov_reg_mem(X86Register::R15, X86Register::RBP, -96);
-        encoder.emit_mov_reg_mem(X86Register::R14, X86Register::RBP, -88);
-        encoder.emit_mov_reg_mem(X86Register::R13, X86Register::RBP, -80);
-        encoder.emit_mov_reg_mem(X86Register::R12, X86Register::RBP, -72);
-        encoder.emit_mov_reg_mem(X86Register::R11, X86Register::RBP, -64);
-        encoder.emit_mov_reg_mem(X86Register::R10, X86Register::RBP, -56);
-        encoder.emit_mov_reg_mem(X86Register::R9,  X86Register::RBP, -48);
-        encoder.emit_mov_reg_mem(X86Register::R8,  X86Register::RBP, -40);
-        encoder.emit_mov_reg_mem(X86Register::RBX, X86Register::RBP, -32);
-        encoder.emit_mov_reg_mem(X86Register::RDX, X86Register::RBP, -24);
-        encoder.emit_mov_reg_mem(X86Register::RCX, X86Register::RBP, -16);
-        encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::RBP, -8);
-    }
-    // Note: minimal-save programs don't use RET (they use HALT/epilogue)
-    // If they do use RET, the callee-saved regs are already on stack from prologue
-    
-    // Restore stack pointer and caller's RBP
-    encoder.emit_mov_reg_reg(X86Register::RSP, X86Register::RBP);
-    encoder.emit_pop_reg(X86Register::RBP);
-    
+    clear_cached_registers();
+
     encoder.emit_ret();
 }
 
@@ -1225,10 +1579,6 @@ void DISAToX86Compiler::translate_ret() {
 void DISAToX86Compiler::scan_for_jump_targets(const std::vector<uint8_t>& bytecode) {
     size_t pos = 0;
     while (pos < bytecode.size()) {
-        if (pos > 0) {
-            auto it = jump_targets.find(pos);
-        }
-
         uint8_t opcode_byte = bytecode[pos];
         Opcode opcode = static_cast<Opcode>(opcode_byte);
 
@@ -1248,7 +1598,6 @@ void DISAToX86Compiler::scan_for_jump_targets(const std::vector<uint8_t>& byteco
             case Opcode::JGE:
             case Opcode::JLE:
             case Opcode::CALL:
-                function_has_calls = true;
                 if (pos + 5 <= bytecode.size()) {
                     uint32_t target = 0;
                     for (int i = 0; i < 4; i++) {
@@ -1350,58 +1699,91 @@ uint64_t DISAToX86Compiler::read_imm64_ptr(const uint8_t* ptr) const {
 }
 
 // --- INT 0x80 syscall translation ---
-// WORK IN PROGRESS: first-call dispatch works, multi-call RAX tracking broken.
-// The push/pop RDI mechanism is correct; the issue is that between INT80 calls,
-// the LOAD_IMM→RAX value isn't visible to the second call's comparison.
-// Likely cause: emit_mov_reg_imm64 adds NOP padding that shifts instruction
-// positions, causing the forward jump labels to misalign.
+// Maps the x86 32-bit INT 0x80 ABI used by the examples onto Linux x86-64
+// syscalls while preserving Demi's VM register/memory model.
 void DISAToX86Compiler::translate_int80() {
-    // Stack-based call counter: first call=write, second+=exit
-    encoder.emit_sub_reg_imm32(X86Register::RSP, 8);
-    encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RSP, 0);
-    encoder.emit_cmp_reg_imm32(X86Register::R8, 0);
-    
-    auto label_first = encoder.create_label();
+    flush_all_registers();
+    clear_cached_registers();
+
+    restore_virtual_value(0, X86Register::R11);  // x86 int80 syscall number
+
+    auto label_exit = encoder.create_label();
+    auto label_read = encoder.create_label();
+    auto label_write = encoder.create_label();
+    auto label_open = encoder.create_label();
+    auto label_close = encoder.create_label();
+    auto label_unknown = encoder.create_label();
     auto label_done = encoder.create_label();
-    encoder.emit_jz_label(label_first);
-    
-    // Second+ call: exit(0)
-    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
-    encoder.emit_mov_reg_imm32(X86Register::RDI, 0);
+
+    encoder.emit_cmp_reg_imm32(X86Register::R11, 1);
+    encoder.emit_jz_label(label_exit);
+    encoder.emit_cmp_reg_imm32(X86Register::R11, 3);
+    encoder.emit_jz_label(label_read);
+    encoder.emit_cmp_reg_imm32(X86Register::R11, 4);
+    encoder.emit_jz_label(label_write);
+    encoder.emit_cmp_reg_imm32(X86Register::R11, 5);
+    encoder.emit_jz_label(label_open);
+    encoder.emit_cmp_reg_imm32(X86Register::R11, 6);
+    encoder.emit_jz_label(label_close);
+    encoder.emit_jmp_label(label_unknown);
+
+    encoder.bind_label(label_exit);
+    restore_virtual_value(3, X86Register::RDI);  // EBX -> exit code
     encoder.emit_mov_reg_imm32(X86Register::RAX, 60);
     encoder.emit_syscall();
-    
-    // First call: write using regfile args
-    encoder.bind_label(label_first);
-    encoder.emit_mov_reg_imm32(X86Register::R8, 1);
-    encoder.emit_mov_mem_reg(X86Register::RSP, 0, X86Register::R8);
-    
-    encoder.emit_push_reg(X86Register::RDI);
+
+    encoder.bind_label(label_read);
     encoder.emit_push_reg(X86Register::RSI);
-    
-    auto it_fd = reg_state_map.find(3);
-    if (it_fd != reg_state_map.end() && it_fd->second.loaded)
-        encoder.emit_mov_reg_reg(X86Register::RDI, it_fd->second.phys);
-    auto it_buf = reg_state_map.find(1);
-    if (it_buf != reg_state_map.end() && it_buf->second.loaded) {
-        encoder.emit_mov_reg_reg(X86Register::R8, it_buf->second.phys);
-        encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
-        encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
-    }
-    auto it_cnt = reg_state_map.find(2);
-    if (it_cnt != reg_state_map.end() && it_cnt->second.loaded)
-        encoder.emit_mov_reg_reg(X86Register::RDX, it_cnt->second.phys);
-    
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
+    restore_virtual_value(3, X86Register::RDI);  // EBX -> fd
+    restore_virtual_value(1, X86Register::R8);   // ECX -> VM buffer offset
+    encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
+    encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
+    restore_virtual_value(2, X86Register::RDX);  // EDX -> count
+    encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX); // read
     encoder.emit_syscall();
-    
+    spill_virtual_value(0, X86Register::RAX);    // EAX return value
     encoder.emit_pop_reg(X86Register::RSI);
-    encoder.emit_pop_reg(X86Register::RDI);
-    
-    encoder.emit_add_reg_imm32(X86Register::RSP, 8);
-    
+    encoder.emit_jmp_label(label_done);
+
+    encoder.bind_label(label_write);
+    encoder.emit_push_reg(X86Register::RSI);
+    restore_virtual_value(3, X86Register::RDI);  // EBX -> fd
+    restore_virtual_value(1, X86Register::R8);   // ECX -> VM buffer offset
+    encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
+    encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
+    restore_virtual_value(2, X86Register::RDX);  // EDX -> count
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 1); // write
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_pop_reg(X86Register::RSI);
+    encoder.emit_jmp_label(label_done);
+
+    encoder.bind_label(label_open);
+    encoder.emit_push_reg(X86Register::RSI);
+    restore_virtual_value(3, X86Register::R8);   // EBX -> VM path offset
+    encoder.emit_mov_reg_mem(X86Register::RDI, X86Register::RSP, 0);
+    encoder.emit_add_reg_reg(X86Register::RDI, X86Register::R8);
+    restore_virtual_value(1, X86Register::RSI);  // ECX -> flags
+    restore_virtual_value(2, X86Register::RDX);  // EDX -> mode
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 2); // open
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_pop_reg(X86Register::RSI);
+    encoder.emit_jmp_label(label_done);
+
+    encoder.bind_label(label_close);
+    restore_virtual_value(3, X86Register::RDI);  // EBX -> fd
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 3); // close
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(label_done);
+
+    encoder.bind_label(label_unknown);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, -38); // -ENOSYS
+    spill_virtual_value(0, X86Register::RAX);
+
     encoder.bind_label(label_done);
-    reg_state_map.clear();
+    clear_cached_registers();
 }
 
 } // namespace CodeGen

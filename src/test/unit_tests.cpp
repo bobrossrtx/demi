@@ -3166,10 +3166,12 @@ TEST_CASE(disa_compiler_push_pop, "disa_compiler") {
 
 TEST_CASE(disa_compiler_load_store, "disa_compiler") {
     CodeGen::DISAToX86Compiler compiler;
-    // LOAD R0, R1; STORE R2, R3
+    // LOAD R0, [0x20]; STORE R2, [0x30]; LOADR R4, R1; STORER R3, R5
     std::vector<uint8_t> program = {
-        0x06, 0x00, 0x01,  // LOAD R0, R1
-        0x07, 0x02, 0x03,  // STORE R2, R3
+        0x06, 0x00, 0x20, 0x00, 0x00, 0x00,  // LOAD R0, 0x20
+        0x07, 0x02, 0x30, 0x00, 0x00, 0x00,  // STORE R2, 0x30
+        0x37, 0x04, 0x01,                    // LOADR R4, R1
+        0x38, 0x03, 0x05,                    // STORER R3, R5
         0xFF               // HALT
     };
     auto code = compiler.compile_program(program);
@@ -3265,6 +3267,75 @@ TEST_CASE(disa_compiler_all_io_opcodes, "disa_compiler") {
         }
     }
     ctx.assert_eq(true, has_syscall);
+}
+
+TEST_CASE(disa_compiler_fpu_codegen, "disa_compiler") {
+    CodeGen::DISAToX86Compiler compiler;
+    std::vector<uint8_t> program = {
+        0xB0,                         // FINIT
+        0xA3, 0x00, 0x03, 0x00, 0x00, 0x00, // FILD imm32 3
+        0xA6, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40, // FADD imm64 3.0
+        0xAA,                         // FSIN
+        0xAB,                         // FCOS
+        0xAC,                         // FTAN
+        0xAD,                         // FSQRT
+        0xAE,                         // FABS
+        0xAF,                         // FCHS
+        0xB5,                         // FCOMPP
+        0xB6,                         // FUCOMPP
+        0xA5, 0x01, 0x20, 0x00, 0x00, 0x00, // FISTP [0x20]
+        0xFF
+    };
+    auto code = compiler.compile_program(program);
+    ctx.assert_eq(true, code.size() > 0);
+
+    bool has_fninit = false;
+    bool has_fild = false;
+    bool has_fadd = false;
+    bool has_fistp = false;
+    bool has_fsin = false;
+    bool has_fcos = false;
+    bool has_ftan = false;
+    bool has_fsqrt = false;
+    bool has_fabs = false;
+    bool has_fchs = false;
+    bool has_fcompp = false;
+    bool has_fucompp = false;
+    bool has_fnstsw_ax = false;
+    bool has_sahf = false;
+    for (size_t i = 0; i + 1 < code.size(); ++i) {
+        if (code[i] == 0xDB && code[i + 1] == 0xE3) has_fninit = true;
+        if (code[i] == 0xDB && code[i + 1] == 0x00) has_fild = true;
+        if (code[i] == 0xDC && code[i + 1] == 0x00) has_fadd = true;
+        if (code[i] == 0xDB && code[i + 1] == 0x18) has_fistp = true;
+        if (code[i] == 0xD9 && code[i + 1] == 0xFE) has_fsin = true;
+        if (code[i] == 0xD9 && code[i + 1] == 0xFF) has_fcos = true;
+        if (code[i] == 0xD9 && code[i + 1] == 0xF2) has_ftan = true;
+        if (code[i] == 0xD9 && code[i + 1] == 0xFA) has_fsqrt = true;
+        if (code[i] == 0xD9 && code[i + 1] == 0xE1) has_fabs = true;
+        if (code[i] == 0xD9 && code[i + 1] == 0xE0) has_fchs = true;
+        if (code[i] == 0xDE && code[i + 1] == 0xD9) has_fcompp = true;
+        if (code[i] == 0xDA && code[i + 1] == 0xE9) has_fucompp = true;
+        if (code[i] == 0xDF && code[i + 1] == 0xE0) has_fnstsw_ax = true;
+    }
+    for (size_t i = 0; i < code.size(); ++i) {
+        if (code[i] == 0x9E) has_sahf = true;
+    }
+
+    ctx.assert_eq(true, has_fninit);
+    ctx.assert_eq(true, has_fild);
+    ctx.assert_eq(true, has_fadd);
+    ctx.assert_eq(true, has_fsin);
+    ctx.assert_eq(true, has_fcos);
+    ctx.assert_eq(true, has_ftan);
+    ctx.assert_eq(true, has_fsqrt);
+    ctx.assert_eq(true, has_fabs);
+    ctx.assert_eq(true, has_fchs);
+    ctx.assert_eq(true, has_fcompp);
+    ctx.assert_eq(true, has_fucompp);
+    ctx.assert_eq(true, has_fnstsw_ax);
+    ctx.assert_eq(true, has_sahf);
+    ctx.assert_eq(true, has_fistp);
 }
 
 // ============================================================================

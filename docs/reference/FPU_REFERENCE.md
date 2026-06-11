@@ -4,6 +4,9 @@
 
 DemiEngine includes a full-featured Floating Point Unit (FPU) based on the x87 architecture, supporting both 32-bit (float) and 64-bit (double) precision floating-point operations.
 
+For an end-to-end, self-checking example that exercises every currently native-compiled
+x87 opcode, see `examples/x86/features/fpu_showcase.asm`.
+
 ## FPU Register Stack
 
 The FPU uses a stack-based register architecture:
@@ -116,6 +119,12 @@ FCOS                ; Result = -1.0
 ```assembly
 FTAN                ; ST(0) = tan(ST(0))
 ```
+
+**Note**:
+
+- On x87 hardware, tangent is implemented via `FPTAN`, which also pushes an extra `1.0`
+	onto the FPU stack. Demi's native codegen compensates for that so the observable VM
+	behavior matches the showcase expectations.
 
 #### FSQRT - Square Root
 
