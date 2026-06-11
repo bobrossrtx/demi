@@ -25,12 +25,15 @@ constexpr uint32_t SHT_SYMTAB = 2;
 constexpr uint32_t SHT_STRTAB = 3;
 constexpr uint32_t SHT_NOBITS = 8;
 constexpr uint32_t SHT_REL = 9;
+constexpr uint32_t SHT_NOTE = 7;
 constexpr uint32_t SHF_WRITE = 0x1;
 constexpr uint32_t SHF_ALLOC = 0x2;
 constexpr uint32_t SHF_EXECINSTR = 0x4;
 constexpr uint8_t STB_LOCAL = 0;
 constexpr uint8_t STB_GLOBAL = 1;
 constexpr uint8_t STT_NOTYPE = 0;
+constexpr uint8_t STT_OBJECT = 1;
+constexpr uint8_t STT_FUNC = 2;
 constexpr uint8_t STT_SECTION = 3;
 constexpr uint32_t R_386_32 = 1;
 constexpr uint32_t R_386_PC32 = 2;
@@ -247,7 +250,8 @@ std::vector<uint8_t> ELF32ObjectWriter::write_object(
                 case IRSectionKind::Custom: shndx = SHN_ABS; break;
             }
         }
-        write_symbol(name_offset, static_cast<uint32_t>(symbol.offset), 0, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | STT_NOTYPE), 0, shndx);
+        uint8_t sym_type = symbol.is_function ? STT_FUNC : STT_NOTYPE;
+        write_symbol(name_offset, static_cast<uint32_t>(symbol.offset), 0, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | sym_type), 0, shndx);
         symbol_indices[symbol.name] = next_symbol_index++;
     }
 
@@ -267,7 +271,8 @@ std::vector<uint8_t> ELF32ObjectWriter::write_object(
                 case IRSectionKind::Custom: shndx = SHN_ABS; break;
             }
         }
-        write_symbol(name_offset, static_cast<uint32_t>(symbol.offset), 0, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | STT_NOTYPE), 0, shndx);
+        uint8_t sym_type = symbol.is_function ? STT_FUNC : STT_NOTYPE;
+        write_symbol(name_offset, static_cast<uint32_t>(symbol.offset), 0, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | sym_type), 0, shndx);
         symbol_indices[symbol.name] = next_symbol_index++;
     }
 
@@ -332,6 +337,7 @@ std::vector<uint8_t> ELF32ObjectWriter::write_object(
     sections.push_back({".strtab", 0, SHT_STRTAB, 0, 0, static_cast<uint32_t>(strtab.size()), 0, 0, 1, 0, strtab});
     const uint32_t shstrtab_index = static_cast<uint32_t>(sections.size());
     sections.push_back({".shstrtab", 0, SHT_STRTAB, 0, 0, 0, 0, 0, 1, 0, shstrtab});
+    sections.push_back({".note.GNU-stack", 0, SHT_NOTE, 0, 0, 0, 0, 0, 1, 0, {}});
 
     for (auto& section : sections) {
         section.name_offset = static_cast<uint32_t>(append_string(shstrtab, section.name));

@@ -381,7 +381,14 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         // Register-indirect: CALL reg / JMP reg (2 bytes)
         if (instruction.operands.size() == 1 &&
             instruction.operands[0].kind == IROperandKind::Register) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+            if (!reg) { errors.push_back("bad register"); return 0; }
             return 2;
+        }
+        // Memory-indirect: CALL [mem] / JMP [mem]
+        if (instruction.operands.size() == 1 &&
+            instruction.operands[0].kind == IROperandKind::Memory) {
+            return compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
         }
         return 5;
     }
@@ -587,6 +594,15 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         }
     }
 
+    if (mnemonic == "MUL" || mnemonic == "DIV") {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg");
+            return 0;
+        }
+        return 2;
+    }
+
     if (mnemonic == "LEA") {
         if (instruction.operands.size() != 2 ||
             instruction.operands[0].kind != IROperandKind::Register ||
@@ -648,6 +664,18 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 return result;
             }
             result.bytes = {0xFF, static_cast<uint8_t>((mnemonic == "CALL" ? 0xD0 : 0xE0) | (*reg & 0x7))};
+            return result;
+        }
+
+        // Memory-indirect: CALL [mem] / JMP [mem]
+        if ((mnemonic == "CALL" || mnemonic == "JMP") &&
+            instruction.operands.size() == 1 &&
+            instruction.operands[0].kind == IROperandKind::Memory) {
+            const uint8_t subcode = mnemonic == "CALL" ? 2 : 4;
+            const auto encoded_mem = encode_memory_operand32(
+                std::get<IRMemoryOperand>(instruction.operands[0].value), subcode, 0xFF, false, errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
             return result;
         }
 
@@ -1280,6 +1308,21 @@ EncodedInstructionResult X86Backend::encode_instruction(
             result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
             return result;
         }
+    }
+
+    if (mnemonic == "MUL" || mnemonic == "DIV") {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) { errors.push_back("bad register in " + instruction.mnemonic); return result; }
+        const uint8_t subcode = mnemonic == "MUL" ? 0xE0 : 0xF0;
+        if (is_64bit_mode()) result.bytes.push_back(0x48);
+        result.bytes.push_back(0xF7);
+        result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
+        return result;
     }
 
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);
