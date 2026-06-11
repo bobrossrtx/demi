@@ -131,6 +131,6 @@ int main() {
         try{g_tests[i].fn(); std::cout<<"[PASS] "<<g_tests[i].name<<"\n"; p++;}
         catch(std::exception& e){std::cout<<"[FAIL] "<<g_tests[i].name<<"\n  "<<e.what()<<"\n";}
     }
-    std::cout<<"\nLevel 2 unit tests: "<<p<<"/"<<g_count<<" passed\n";
+    std::cout<<"\nUnit tests: "<<p<<"/"<<g_count<<" passed\n";
     return p==g_count?0:1;
 }
