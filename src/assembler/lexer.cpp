@@ -152,6 +152,74 @@ void Lexer::init_tables() {
     mnemonics["LOOP"] = TokenType::MNEMONIC;
     mnemonics["LOOPE"] = TokenType::MNEMONIC;
     mnemonics["LOOPNE"] = TokenType::MNEMONIC;
+    // Level 2: rotates
+    mnemonics["ROL"] = TokenType::MNEMONIC;
+    mnemonics["ROR"] = TokenType::MNEMONIC;
+    mnemonics["RCL"] = TokenType::MNEMONIC;
+    mnemonics["RCR"] = TokenType::MNEMONIC;
+    // Level 2: sign extension
+    mnemonics["CBW"] = TokenType::MNEMONIC;
+    mnemonics["CWD"] = TokenType::MNEMONIC;
+    mnemonics["CWDE"] = TokenType::MNEMONIC;
+    mnemonics["CDQ"] = TokenType::MNEMONIC;
+    // Level 2: exchange
+    mnemonics["XCHG"] = TokenType::MNEMONIC;
+    // Level 2: flag ops
+    mnemonics["CLC"] = TokenType::MNEMONIC;
+    mnemonics["STC"] = TokenType::MNEMONIC;
+    mnemonics["CMC"] = TokenType::MNEMONIC;
+    mnemonics["CLD"] = TokenType::MNEMONIC;
+    mnemonics["STD"] = TokenType::MNEMONIC;
+    // Level 2: signed divide
+    mnemonics["IDIV"] = TokenType::MNEMONIC;
+    // Level 2: byte swap
+    mnemonics["BSWAP"] = TokenType::MNEMONIC;
+    // Level 2: flag load/store
+    mnemonics["LAHF"] = TokenType::MNEMONIC;
+    mnemonics["SAHF"] = TokenType::MNEMONIC;
+    // Level 2: enter/leave
+    mnemonics["ENTER"] = TokenType::MNEMONIC;
+    // Level 2: conditional moves
+    mnemonics["CMOVZ"] = TokenType::MNEMONIC;
+    mnemonics["CMOVNZ"] = TokenType::MNEMONIC;
+    mnemonics["CMOVC"] = TokenType::MNEMONIC;
+    mnemonics["CMOVNC"] = TokenType::MNEMONIC;
+    mnemonics["CMOVO"] = TokenType::MNEMONIC;
+    mnemonics["CMOVNO"] = TokenType::MNEMONIC;
+    mnemonics["CMOVS"] = TokenType::MNEMONIC;
+    mnemonics["CMOVNS"] = TokenType::MNEMONIC;
+    mnemonics["CMOVG"] = TokenType::MNEMONIC;
+    mnemonics["CMOVGE"] = TokenType::MNEMONIC;
+    mnemonics["CMOVL"] = TokenType::MNEMONIC;
+    mnemonics["CMOVLE"] = TokenType::MNEMONIC;
+    mnemonics["CMOVA"] = TokenType::MNEMONIC;
+    mnemonics["CMOVAE"] = TokenType::MNEMONIC;
+    mnemonics["CMOVB"] = TokenType::MNEMONIC;
+    mnemonics["CMOVBE"] = TokenType::MNEMONIC;
+    // Level 2: atomic / bit
+    mnemonics["CMPXCHG"] = TokenType::MNEMONIC;
+    mnemonics["XADD"] = TokenType::MNEMONIC;
+    mnemonics["BT"] = TokenType::MNEMONIC;
+    mnemonics["BTS"] = TokenType::MNEMONIC;
+    mnemonics["BTR"] = TokenType::MNEMONIC;
+    mnemonics["BTC"] = TokenType::MNEMONIC;
+    // Level 2: string ops + REP
+    mnemonics["MOVSB"] = TokenType::MNEMONIC;
+    mnemonics["MOVSW"] = TokenType::MNEMONIC;
+    mnemonics["MOVSD"] = TokenType::MNEMONIC;
+    mnemonics["STOSB"] = TokenType::MNEMONIC;
+    mnemonics["STOSW"] = TokenType::MNEMONIC;
+    mnemonics["STOSD"] = TokenType::MNEMONIC;
+    mnemonics["LODSB"] = TokenType::MNEMONIC;
+    mnemonics["LODSW"] = TokenType::MNEMONIC;
+    mnemonics["LODSD"] = TokenType::MNEMONIC;
+    mnemonics["REP"] = TokenType::MNEMONIC;
+    // Level 2: processor info
+    mnemonics["CPUID"] = TokenType::MNEMONIC;
+    mnemonics["RDTSC"] = TokenType::MNEMONIC;
+    // Level 2: fast syscall
+    mnemonics["SYSCALL"] = TokenType::MNEMONIC;
+    mnemonics["SYSENTER"] = TokenType::MNEMONIC;
     mnemonics["INC"] = TokenType::MNEMONIC;
     mnemonics["DEC"] = TokenType::MNEMONIC;
     mnemonics["AND"] = TokenType::MNEMONIC;

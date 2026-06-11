@@ -149,6 +149,11 @@ LIB_SHARED := $(BIN_DIR)/libdemi$(BUILD_SUFFIX)$(SHARED_EXT)
 .PHONY: debug-symbols debug-dependencies debug-linking debug-undefined
 .PHONY: debug-undefined-detailed debug-problematic-objects debug-minimal-link
 .PHONY: debug-analysis debug-clean debug-recommendations
+.PHONY: codacy-install codacy-login codacy-add codacy-issues codacy-critical
+.PHONY: codacy-findings codacy-tools codacy-reanalyze codacy-local codacy-info
+.PHONY: sonar sonar-docker sonar-check-deps sonar-info
+.PHONY: coderabbit-info
+.PHONY: promote promote-check
 
 # =============================================================================
 # Main Build Targets
@@ -502,6 +507,11 @@ help:
 		echo "  make force-rebuild - Force rebuild opcodes"; \
 		echo "  make format       - Format source code"; \
 		echo "  make lint         - Static analysis"; \
+		echo "  make codacy-install  - Install Codacy Cloud CLI"; \
+		echo "  make codacy-info     - Codacy setup instructions"; \
+		echo "  make sonar-info      - SonarCloud setup guide"; \
+		echo "  make promote        - Growth checklist & action plan"; \
+		echo "  make promote-check  - Community health audit"; \
 		echo ""; \
 		echo "🔍 Debugging:"; \
 		echo "  make debug-symbols         - Analyze symbol tables"; \
@@ -745,6 +755,345 @@ ifneq ($(MAKECMDGOALS),prereqs)
 endif
 endif
 endif
+
+# =============================================================================
+# Codacy Code Quality Integration
+# =============================================================================
+# Codacy Cloud CLI: npm install -g @codacy/codacy-cloud-cli
+# API token from: https://app.codacy.com → Account → API Tokens
+# Set via: export CODACY_API_TOKEN=cc_...
+# Or pass per-command: CODACY_API_TOKEN=cc_... make codacy-issues
+
+CODACY_API_TOKEN ?=
+CODACY_ORG := bobrossrtx
+CODACY_REPO := demi
+
+# Install the Codacy Cloud CLI (npm)
+codacy-install:
+	@echo "📦 Installing Codacy Cloud CLI..."
+	@if command -v codacy >/dev/null 2>&1; then \
+		echo "✅ Codacy CLI already installed: $$(codacy --version 2>&1 || true)"; \
+	elif command -v npm >/dev/null 2>&1; then \
+		npm install -g @codacy/codacy-cloud-cli; \
+		echo "✅ Installed. Run 'codacy login' to authenticate."; \
+	else \
+		echo "❌ npm not found. Install Node.js first: https://nodejs.org"; \
+		exit 1; \
+	fi
+
+# Authenticate with Codacy (interactive or via env var)
+codacy-login:
+	@if [ -n "$(CODACY_API_TOKEN)" ]; then \
+		echo "✅ Using CODACY_API_TOKEN from environment"; \
+	elif [ -f ~/.codacy/credentials ]; then \
+		echo "✅ Found stored credentials"; \
+	else \
+		echo "🔐 Run: codacy login"; \
+		echo "   Or set: export CODACY_API_TOKEN=cc_..."; \
+	fi
+
+# Add this repo to Codacy (one-time setup)
+codacy-add:
+	@echo "🔗 Adding repository to Codacy..."
+	@if [ -z "$(CODACY_API_TOKEN)" ]; then \
+		echo "❌ Set CODACY_API_TOKEN first: export CODACY_API_TOKEN=cc_..."; \
+		exit 1; \
+	fi
+	codacy repositories gh $(CODACY_ORG) $(CODACY_REPO) --add
+
+# View all issues grouped by severity
+codacy-issues:
+	@if [ -z "$(CODACY_API_TOKEN)" ]; then \
+		echo "❌ Set CODACY_API_TOKEN: export CODACY_API_TOKEN=cc_..."; \
+		exit 1; \
+	fi
+	codacy issues gh $(CODACY_ORG) $(CODACY_REPO)
+
+# View critical/high issues only
+codacy-critical:
+	@if [ -z "$(CODACY_API_TOKEN)" ]; then \
+		echo "❌ Set CODACY_API_TOKEN: export CODACY_API_TOKEN=cc_..."; \
+		exit 1; \
+	fi
+	codacy issues gh $(CODACY_ORG) $(CODACY_REPO) --severities Critical,High
+
+# View security findings
+codacy-findings:
+	@if [ -z "$(CODACY_API_TOKEN)" ]; then \
+		echo "❌ Set CODACY_API_TOKEN: export CODACY_API_TOKEN=cc_..."; \
+		exit 1; \
+	fi
+	codacy findings gh $(CODACY_ORG) $(CODACY_REPO)
+
+# List configured tools
+codacy-tools:
+	@if [ -z "$(CODACY_API_TOKEN)" ]; then \
+		echo "❌ Set CODACY_API_TOKEN: export CODACY_API_TOKEN=cc_..."; \
+		exit 1; \
+	fi
+	codacy tools gh $(CODACY_ORG) $(CODACY_REPO)
+
+# Trigger a reanalysis of the latest commit
+codacy-reanalyze:
+	@if [ -z "$(CODACY_API_TOKEN)" ]; then \
+		echo "❌ Set CODACY_API_TOKEN: export CODACY_API_TOKEN=cc_..."; \
+		exit 1; \
+	fi
+	codacy repositories gh $(CODACY_ORG) $(CODACY_REPO) --reanalyze
+	@echo "✅ Reanalysis triggered"
+
+# Run Cppcheck locally (faster feedback without waiting for Codacy servers)
+codacy-local:
+	@echo "🔍 Running Cppcheck locally..."
+	@if command -v cppcheck >/dev/null 2>&1; then \
+		cppcheck --enable=all --std=c++17 --quiet \
+			-I include -I extern/fmt/include \
+			--suppress=missingIncludeSystem \
+			src/ 2>&1 || true; \
+		echo "✅ Local cppcheck complete"; \
+	else \
+		echo "❌ cppcheck not installed. Run: sudo apt install cppcheck"; \
+		echo "   Or use: make codacy-reanalyze (runs on Codacy servers)"; \
+	fi
+
+# Show Codacy setup guide
+codacy-info:
+	@echo "📋 Codacy Integration for Demi Engine"
+	@echo "════════════════════════════════════════"
+	@echo ""
+	@echo "🔧 One-time setup:"
+	@echo "  1. Sign up at https://www.codacy.com"
+	@echo "  2. Add repo: https://app.codacy.com → Add repository → bobrossrtx/demi"
+	@echo "  3. Get API token: Account → API Tokens"
+	@echo "  4. make codacy-install           # Install CLI"
+	@echo "  5. export CODACY_API_TOKEN=cc_... # Set token"
+	@echo "  6. make codacy-add               # Link repo via CLI"
+	@echo ""
+	@echo "📄 Configuration: .codacy.yml"
+	@echo "   - Cppcheck engine configured for C++"
+	@echo "   - Duplication detection tuned (minTokenMatch: 60)"
+	@echo "   - build/, bin/, extern/ excluded"
+	@echo ""
+	@echo "🎯 Make Targets:"
+	@echo "   make codacy-install     - Install Codacy Cloud CLI"
+	@echo "   make codacy-add         - Link repo to Codacy"
+	@echo "   make codacy-issues      - List all issues"
+	@echo "   make codacy-critical    - Critical/high issues only"
+	@echo "   make codacy-findings    - Security findings"
+	@echo "   make codacy-tools       - List enabled tools"
+	@echo "   make codacy-reanalyze   - Trigger reanalysis"
+	@echo "   make codacy-local       - Run cppcheck locally"
+	@echo "   make codacy-info        - This help"
+	@echo ""
+	@echo "🔗 Repo: https://github.com/bobrossrtx/demi"
+
+# =============================================================================
+# SonarCloud / SonarQube Integration
+# =============================================================================
+# Config: sonar-project.properties
+# Prerequisites: sonar-scanner CLI installed
+#   npm install -g sonarqube-scanner
+# Or use Docker: make sonar-docker
+
+SONAR_TOKEN ?=
+SONAR_HOST ?= https://sonarcloud.io
+SONAR_ORG ?= bobrossrtx
+
+# Run SonarScanner (requires sonar-scanner CLI + SONAR_TOKEN)
+sonar:
+	@echo "🔍 SonarCloud Analysis - Demi Engine"
+	@echo "═══════════════════════════════════════"
+	@if ! command -v sonar-scanner >/dev/null 2>&1; then \
+		echo "❌ sonar-scanner not found. Install it:"; \
+		echo "   npm install -g sonarqube-scanner"; \
+		echo "   Or use Docker: make sonar-docker"; \
+		exit 1; \
+	fi
+	@if [ -z "$(SONAR_TOKEN)" ]; then \
+		echo "❌ SONAR_TOKEN not set."; \
+		echo "   export SONAR_TOKEN=your_sonarcloud_token"; \
+		echo "   Get it from: https://sonarcloud.io/account/security"; \
+		exit 1; \
+	fi
+	@if [ ! -f compile_commands.json ]; then \
+		echo "📦 Generating compile_commands.json..."; \
+		$(MAKE) compile_commands.json; \
+	fi
+	@echo "🔧 Project: $(SONAR_ORG)/demi"
+	@echo "📊 Running analysis..."
+	sonar-scanner \
+		-Dsonar.host.url=$(SONAR_HOST) \
+		-Dsonar.token=$(SONAR_TOKEN) \
+		-Dsonar.projectKey=$(SONAR_ORG)_demi \
+		-Dsonar.organization=$(SONAR_ORG)
+	@echo "✅ SonarCloud analysis complete"
+	@echo "📊 View results: https://sonarcloud.io/dashboard?id=$(SONAR_ORG)_demi"
+
+# Run SonarScanner via Docker
+sonar-docker:
+	@echo "🐳 SonarCloud via Docker"
+	@echo "═══════════════════════════════════════"
+	@if ! command -v docker >/dev/null 2>&1; then \
+		echo "❌ Docker not installed."; \
+		exit 1; \
+	fi
+	@if [ -z "$(SONAR_TOKEN)" ]; then \
+		echo "❌ SONAR_TOKEN not set."; \
+		exit 1; \
+	fi
+	@if [ ! -f compile_commands.json ]; then \
+		$(MAKE) compile_commands.json; \
+	fi
+	docker run --rm \
+		-v "$(CURDIR):/usr/src" \
+		-e SONAR_TOKEN="$(SONAR_TOKEN)" \
+		sonarsource/sonar-scanner-cli:latest \
+		-Dsonar.host.url=$(SONAR_HOST) \
+		-Dsonar.projectKey=$(SONAR_ORG)_demi
+
+# Run OWASP dependency check (optional — finds known CVEs in dependencies)
+sonar-check-deps:
+	@echo "🔒 OWASP Dependency Check..."
+	@if command -v dependency-check.sh >/dev/null 2>&1; then \
+		dependency-check.sh --project "Demi Engine" --scan . --out .; \
+	else \
+		echo "⚠️  dependency-check not installed."; \
+		echo "   Download: https://owasp.org/dependency-check"; \
+	fi
+
+# Sonar setup guide
+sonar-info:
+	@echo "📋 SonarCloud Integration for Demi Engine"
+	@echo "════════════════════════════════════════"
+	@echo ""
+	@echo "🔧 One-time setup:"
+	@echo "  1. Sign up at https://sonarcloud.io"
+	@echo "  2. Create project for bobrossrtx/demi"
+	@echo "  3. Get token: https://sonarcloud.io/account/security"
+	@echo "  4. export SONAR_TOKEN=squ_...\""
+	@echo "  5. npm install -g sonarqube-scanner"
+	@echo "  6. make sonar"
+	@echo ""
+	@echo "📄 Configuration: sonar-project.properties"
+	@echo "   - C++17, compile_commands.json-based analysis"
+	@echo "   - extern/, build/, bin/ excluded"
+	@echo ""
+	@echo "🎯 Make Targets:"
+	@echo "   make sonar             - Run SonarCloud analysis"
+	@echo "   make sonar-docker      - Run via Docker"
+	@echo "   make sonar-info        - This help"
+	@echo ""
+	@echo "🔗 Dashboard: https://sonarcloud.io/dashboard?id=bobrossrtx_demi"
+
+# =============================================================================
+# CodeRabbit AI Code Review Integration
+# =============================================================================
+# Config: .coderabbit.yaml
+# CodeRabbit is an AI-powered PR review bot. Install at:
+#   https://github.com/apps/coderabbitai
+# Once installed, it auto-reviews every PR based on .coderabbit.yaml.
+
+# Show CodeRabbit setup guide
+coderabbit-info:
+	@echo "📋 CodeRabbit Integration for Demi Engine"
+	@echo "═════════════════════════════════════════"
+	@echo ""
+	@echo "🔧 One-time setup:"
+	@echo "  1. Install GitHub App: https://github.com/apps/coderabbitai"
+	@echo "  2. Grant access to bobrossrtx/demi"
+	@echo "  3. Done — CodeRabbit auto-reviews every PR"
+	@echo ""
+	@echo "📄 Configuration: .coderabbit.yaml"
+	@echo "   - Assertive review profile for thorough feedback"
+	@echo "   - Clang static analysis enabled for C/C++"
+	@echo "   - checkmake enabled for Makefile linting"
+	@echo "   - Path-specific instructions for engine/assembler/test code"
+	@echo "   - Automatic docstring and unit test generation"
+	@echo ""
+	@echo "🔗 Dashboard: https://app.coderabbit.ai"
+
+# =============================================================================
+# Community Promotion & Growth
+# =============================================================================
+
+# Promotion checklist — actionable steps to grow the project
+promote:
+	@echo "🚀 Demi Promotion & Growth Checklist"
+	@echo "═══════════════════════════════════════"
+	@echo ""
+	@echo "📋 PHASE 1 — Project Polish (this week)"
+	@echo "  [ ] Enable GitHub Discussions: Settings → Features → Discussions"
+	@echo "  [ ] Add repo topics: compiler, virtual-machine, c-plus-plus-17, assembler, programming-language"
+	@echo "  [ ] Pin 'good first issue' and 'help wanted' issues"
+	@echo "  [ ] Add demo GIF to README"
+	@echo "  [ ] Create social preview image (1200x630px)"
+	@echo ""
+	@echo "📣 PHASE 2 — Social Launch"
+	@echo "  [ ] Hacker News: 'Show HN: Demi — a customizable VM and compiler in C++17'"
+	@echo "  [ ] Reddit: r/programming, r/cpp, r/compilers, r/ProgrammingLanguages"
+	@echo "  [ ] Twitter/X: Thread showing architecture + demo"
+	@echo "  [ ] Lobsters: tags: compilers, performance"
+	@echo "  [ ] Dev.to: 'Building a Virtual Machine from Scratch in C++17'"
+	@echo ""
+	@echo "📝 PHASE 3 — Content (ongoing)"
+	@echo "  [ ] Blog: 'Why I'm Building a Custom VM'"
+	@echo "  [ ] Blog: 'The Demi Instruction Set — Design Decisions'"
+	@echo "  [ ] Video: 5-min demo (assembly → execution → debugging)"
+	@echo "  [ ] Tutorial: 'Writing Your First Demi Assembly Program'"
+	@echo "  [ ] Comparison: 'Demi vs QBE vs Cranelift'"
+	@echo ""
+	@echo "👥 PHASE 4 — Community (ongoing)"
+	@echo "  [ ] Respond to every issue/PR within 48 hours"
+	@echo "  [ ] Thank first-time contributors publicly"
+	@echo "  [ ] Add all-contributors bot"
+	@echo "  [ ] Hacktoberfest participation"
+	@echo "  [ ] Reach out to CS students interested in compilers/VMs"
+	@echo ""
+	@echo "🌱 PHASE 5 — Sustained Growth"
+	@echo "  [ ] Monthly 'What's New in Demi' updates"
+	@echo "  [ ] Conference talks: CppCon, FOSDEM, meetups"
+	@echo "  [ ] GitHub Sponsors setup"
+	@echo "  [ ] WebAssembly playground for instant demos"
+	@echo "  [ ] Dedicated website/landing page"
+	@echo ""
+	@echo "📄 Templates: docs/SOCIAL_TEMPLATES.md"
+	@echo "📄 Full plan: docs/PROMOTION_PLAN.md"
+	@echo ""
+	@echo "🔗 Repo: https://github.com/bobrossrtx/demi"
+
+# Quick health check for community readiness
+promote-check:
+	@echo "🏥 Community Health Check"
+	@echo "═══════════════════════════════════════"
+	@echo ""
+	@echo "📄 Config files:"
+	@for f in README.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md \
+	         .github/pull_request_template.md .codacy.yml .coderabbit.yaml \
+	         sonar-project.properties; do \
+		if [ -f "$$f" ]; then echo "  ✅ $$f"; else echo "  ❌ $$f MISSING"; fi; \
+	done
+	@echo ""
+	@echo "📋 Issue templates:"
+	@for f in .github/ISSUE_TEMPLATE/bug-report.md \
+	         .github/ISSUE_TEMPLATE/feature_request.md \
+	         .github/ISSUE_TEMPLATE/question.md \
+	         .github/ISSUE_TEMPLATE/config.yml; do \
+		if [ -f "$$f" ]; then echo "  ✅ $$f"; else echo "  ❌ $$f MISSING"; fi; \
+	done
+	@echo ""
+	@echo "⚙️  CI workflows:"
+	@for f in .github/workflows/build.yml .github/workflows/flawfinder.yml; do \
+		if [ -f "$$f" ]; then echo "  ✅ $$f"; else echo "  ❌ $$f MISSING"; fi; \
+	done
+	@echo ""
+	@echo "🔗 GitHub Setup Checklist:"
+	@echo "  [ ] Discussions enabled"
+	@echo "  [ ] Topics added"
+	@echo "  [ ] Good first issues tagged"
+	@echo "  [ ] Project board created"
+	@echo "  [ ] Social preview image uploaded"
+	@echo ""
+	@echo "📂 All promotion docs: docs/PROMOTION_PLAN.md"
 
 # =============================================================================
 # Special Targets and Rules
