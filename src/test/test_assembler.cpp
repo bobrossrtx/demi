@@ -633,6 +633,61 @@ void run_builtin_tests() {
                     fail_test("Expected msg symbol at .data offset 0");
                 }
             }
+        },
+        {
+            "x86_32_backend_assembles_stack_frame_function_with_loop",
+            []() {
+                auto program = parse_program_or_fail(
+                    ".text\n"
+                    "global sum_to_n\n"
+                    "sum_to_n:\n"
+                    "PUSH EBP\n"
+                    "MOV EBP, ESP\n"
+                    "MOV ECX, [EBP+8]\n"
+                    "MOV EAX, 0\n"
+                    "loop_start:\n"
+                    "CMP ECX, 0\n"
+                    "JLE loop_done\n"
+                    "ADD EAX, ECX\n"
+                    "DEC ECX\n"
+                    "JMP loop_start\n"
+                    "loop_done:\n"
+                    "MOV ESP, EBP\n"
+                    "POP EBP\n"
+                    "RET\n");
+                auto lowered = Assembler::lower_program(*program);
+                lowered.target = Assembler::IRTarget::X86Elf32;
+
+                Assembler::X86Backend backend(Assembler::X86BackendMode::X86_32);
+                auto artifact = backend.emit(lowered);
+                if (!artifact.ok()) {
+                    std::ostringstream oss;
+                    oss << "x86 backend errors:";
+                    for (const auto& error : artifact.errors) {
+                        oss << "\n  " << error;
+                    }
+                    fail_test(oss.str());
+                }
+
+                const auto text = read_section_bytes(artifact.bytes, ".text");
+                if (text[0] != 0x55) fail_test("Expected PUSH EBP (0x55)");
+                if (text[1] != 0x89 || text[2] != 0xE5) fail_test("Expected MOV EBP,ESP");
+                if (text[3] != 0x8B || text[4] != 0x4D || text[5] != 0x08)
+                    fail_test("Expected MOV ECX,[EBP+8]");
+                size_t cmp_off = 11;
+                if (text[cmp_off] != 0x83 || text[cmp_off+1] != 0xF9 || text[cmp_off+2] != 0x00)
+                    fail_test("Expected CMP ECX,0 (83 F9 00)");
+                if (text[text.size()-2] != 0x5D) fail_test("Expected POP EBP (0x5D)");
+                if (text[text.size()-1] != 0xC3) fail_test("Expected RET (0xC3)");
+                size_t jle_disp_off = cmp_off + 3 + 2;
+                if (text[jle_disp_off-2] != 0x0F || text[jle_disp_off-1] != 0x8E)
+                    fail_test("Expected JLE (0F 8E) opcode");
+                const auto loop_start_sym = find_symbol(artifact.bytes, "loop_start");
+                const auto loop_done_sym = find_symbol(artifact.bytes, "loop_done");
+                const uint16_t text_idx = find_section_index(artifact.bytes, ".text");
+                if (loop_start_sym.shndx != text_idx || loop_done_sym.shndx != text_idx)
+                    fail_test("Expected loop labels in .text section");
+            }
         }
     };
 

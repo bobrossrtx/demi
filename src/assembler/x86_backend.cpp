@@ -322,6 +322,53 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         }
     }
 
+    if (mnemonic == "PUSH" || mnemonic == "POP") {
+        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg");
+            return 0;
+        }
+        return 1;
+    }
+
+    if (mnemonic == "INC" || mnemonic == "DEC") {
+        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg");
+            return 0;
+        }
+        return 1;
+    }
+
+    if (mnemonic == "ADD") {
+        if (instruction.operands.size() != 2) {
+            errors.push_back("x86 backend expects ADD with two operands");
+            return 0;
+        }
+        const auto& dst = instruction.operands[0];
+        const auto& src = instruction.operands[1];
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Register) {
+            return 2;
+        }
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
+            return fits_i8(imm) ? 3 : 6;
+        }
+    }
+
+    if (mnemonic == "SUB" || mnemonic == "CMP") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, reg");
+            return 0;
+        }
+        if (instruction.operands[1].kind == IROperandKind::Register) {
+            return 2;
+        }
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[1].value).value;
+            return fits_i8(imm) ? 3 : 6;
+        }
+    }
+
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);
     return 0;
 }
@@ -509,6 +556,166 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.kind = IRRelocationKind::Absolute32;
                 relocation.addend = encoded_mem.relocation_addend;
                 result.relocations.push_back(std::move(relocation));
+            }
+            return result;
+        }
+    }
+
+    if (mnemonic == "PUSH") {
+        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects PUSH reg");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) {
+            errors.push_back("x86 backend does not support that register in PUSH");
+            return result;
+        }
+        result.bytes = {static_cast<uint8_t>(0x50 + *reg)};
+        return result;
+    }
+
+    if (mnemonic == "POP") {
+        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects POP reg");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) {
+            errors.push_back("x86 backend does not support that register in POP");
+            return result;
+        }
+        result.bytes = {static_cast<uint8_t>(0x58 + *reg)};
+        return result;
+    }
+
+    if (mnemonic == "INC") {
+        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects INC reg");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) {
+            errors.push_back("x86 backend does not support that register in INC");
+            return result;
+        }
+        result.bytes = {static_cast<uint8_t>(0x40 + *reg)};
+        return result;
+    }
+
+    if (mnemonic == "DEC") {
+        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects DEC reg");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) {
+            errors.push_back("x86 backend does not support that register in DEC");
+            return result;
+        }
+        result.bytes = {static_cast<uint8_t>(0x48 + *reg)};
+        return result;
+    }
+
+    if (mnemonic == "ADD") {
+        if (instruction.operands.size() != 2) {
+            errors.push_back("x86 backend expects ADD with two operands");
+            return result;
+        }
+        const auto& dst = instruction.operands[0];
+        const auto& src = instruction.operands[1];
+
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Register) {
+            const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
+            if (!dst_reg || !src_reg) {
+                errors.push_back("x86 backend does not support that register in ADD reg, reg");
+                return result;
+            }
+            result.bytes = {0x01, static_cast<uint8_t>(0xC0 | ((*src_reg & 0x7) << 3) | (*dst_reg & 0x7))};
+            return result;
+        }
+
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Immediate) {
+            const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            if (!dst_reg) {
+                errors.push_back("x86 backend does not support that register in ADD reg, imm");
+                return result;
+            }
+            const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
+            if (fits_i8(imm)) {
+                result.bytes = {0x83, static_cast<uint8_t>(0xC0 | *dst_reg), static_cast<uint8_t>(static_cast<int8_t>(imm))};
+            } else {
+                result.bytes = {0x81, static_cast<uint8_t>(0xC0 | *dst_reg)};
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
+    }
+
+    if (mnemonic == "SUB") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects SUB with register destination");
+            return result;
+        }
+        const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!dst_reg) {
+            errors.push_back("x86 backend does not support that register in SUB");
+            return result;
+        }
+
+        if (instruction.operands[1].kind == IROperandKind::Register) {
+            const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+            if (!src_reg) {
+                errors.push_back("x86 backend does not support that register in SUB reg, reg");
+                return result;
+            }
+            result.bytes = {0x29, static_cast<uint8_t>(0xC0 | ((*src_reg & 0x7) << 3) | (*dst_reg & 0x7))};
+            return result;
+        }
+
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[1].value).value;
+            if (fits_i8(imm)) {
+                result.bytes = {0x83, static_cast<uint8_t>(0xE8 | *dst_reg), static_cast<uint8_t>(static_cast<int8_t>(imm))};
+            } else {
+                result.bytes = {0x81, static_cast<uint8_t>(0xE8 | *dst_reg)};
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
+    }
+
+    if (mnemonic == "CMP") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects CMP with register first operand");
+            return result;
+        }
+        const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!dst_reg) {
+            errors.push_back("x86 backend does not support that register in CMP");
+            return result;
+        }
+
+        if (instruction.operands[1].kind == IROperandKind::Register) {
+            const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+            if (!src_reg) {
+                errors.push_back("x86 backend does not support that register in CMP reg, reg");
+                return result;
+            }
+            result.bytes = {0x39, static_cast<uint8_t>(0xC0 | ((*src_reg & 0x7) << 3) | (*dst_reg & 0x7))};
+            return result;
+        }
+
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[1].value).value;
+            if (fits_i8(imm)) {
+                result.bytes = {0x83, static_cast<uint8_t>(0xF8 | *dst_reg), static_cast<uint8_t>(static_cast<int8_t>(imm))};
+            } else {
+                result.bytes = {0x81, static_cast<uint8_t>(0xF8 | *dst_reg)};
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
             }
             return result;
         }
