@@ -1427,6 +1427,14 @@ private:
             return;
         }
 
+        auto should_print_compile_details = []() {
+            return Config::verbose || Config::debug;
+        };
+
+        auto print_compile_detail = [](const std::string& line) {
+            std::cout << line << std::endl;
+        };
+
         // Check if file exists and has .asm extension
         if (!fs::exists(Config::assembly_file)) {
             std::cerr << "Error: Assembly file not found: " << Config::assembly_file << std::endl;
@@ -1450,17 +1458,38 @@ private:
             return;
         }
 
+        const auto& symbols = assembler.get_symbols();
+        uint32_t entry_addr = assembler.get_entry_address();
+
         if (Config::verbose) {
             std::cout << "Assembly successful. Generated " << bytecode.size() << " bytes of bytecode." << std::endl;
 
             // Show symbol table if verbose
-            const auto& symbols = assembler.get_symbols();
             if (!symbols.empty()) {
                 std::cout << "Symbol table:" << std::endl;
                 for (const auto& [name, symbol] : symbols) {
                     std::cout << "  " << name << " = 0x" << std::hex << symbol.address << std::dec << std::endl;
                 }
             }
+        }
+
+        if (should_print_compile_details()) {
+            size_t defined_symbols = 0;
+            size_t undefined_symbols = 0;
+            for (const auto& [name, symbol] : symbols) {
+                (void)name;
+                if (symbol.defined) defined_symbols++;
+                else undefined_symbols++;
+            }
+
+            print_compile_detail(fmt::format("[ASM] input            : {}", Config::assembly_file));
+            print_compile_detail(fmt::format("[ASM] entry symbol     : {} @ 0x{:04X}", Config::entry_point_symbol, entry_addr));
+            print_compile_detail(fmt::format("[ASM] bytecode size    : {} bytes (0x{:X})", bytecode.size(), bytecode.size()));
+            print_compile_detail(fmt::format("[ASM] symbol count     : {} total ({} defined, {} undefined)", symbols.size(), defined_symbols, undefined_symbols));
+            print_compile_detail(fmt::format("[ASM] output mode      : {}",
+                Config::compile_only ? "assemble + native compile" :
+                (!Config::assembly_output.empty() ? "assemble-only binary output" :
+                (!Config::hex_out.empty() ? "assemble-only hex output" : "assemble + execute"))));
         }
 
         // Save bytecode to file if -ao option is specified
@@ -1562,16 +1591,28 @@ private:
 
             // Compile bytecode to native x86-64
             CodeGen::DISAToX86Compiler compiler;
-            uint32_t entry_addr = assembler.get_entry_address();
             auto native_code = compiler.compile_program(bytecode, entry_addr);
 
             if (Config::verbose) {
                 std::cout << "Compiled to " << native_code.size() << " bytes of native x86-64 code" << std::endl;
             }
 
+            if (should_print_compile_details()) {
+                print_compile_detail(fmt::format("[CG ] target           : x86-64 ELF"));
+                print_compile_detail(fmt::format("[CG ] source entry     : bytecode 0x{:04X}", entry_addr));
+                print_compile_detail(fmt::format("[CG ] generated code   : {} bytes (0x{:X})", native_code.size(), native_code.size()));
+            }
+
             // Wrap in ELF64 executable
             CodeGen::ELFEmitter elf_emitter;
             auto elf_data = elf_emitter.generate_executable(native_code);
+
+            if (should_print_compile_details()) {
+                long long size_delta = static_cast<long long>(elf_data.size()) - static_cast<long long>(native_code.size());
+                print_compile_detail(fmt::format("[ELF] image size       : {} bytes (0x{:X})", elf_data.size(), elf_data.size()));
+                print_compile_detail(fmt::format("[ELF] runtime/stub ovh : {} bytes", size_delta));
+                print_compile_detail(fmt::format("[OUT] executable path  : {}", output_name));
+            }
 
             if (elf_emitter.write_to_file(elf_data, output_name)) {
                 std::cout << "Successfully compiled to executable: " << output_name << std::endl;
@@ -1609,8 +1650,6 @@ private:
         initialize_devices();
 
         // Set PC to entry address if available
-        uint32_t entry_addr = assembler.get_entry_address();
-
         // Print hex dump of assembled bytecode
         // Use HexDumper for --hexdump flag (always prints)
         if (Logging::HexDumper::is_enabled()) {
