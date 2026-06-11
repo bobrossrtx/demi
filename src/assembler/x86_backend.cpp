@@ -56,6 +56,7 @@ struct EncodedMemoryOperand {
     bool has_symbol_relocation = false;
     int64_t relocation_addend = 0;
     std::string relocation_symbol;
+    bool is_pc_relative = false;
 };
 
 std::optional<uint8_t> parse_reg_id(const std::string& upper) {
@@ -117,6 +118,7 @@ EncodedMemoryOperand encode_memory_operand32(
         encoded.has_symbol_relocation = true;
         encoded.relocation_symbol = *memory.symbol;
         encoded.relocation_addend = memory.displacement;
+        encoded.is_pc_relative = is64; // x86-64 uses RIP-relative for [symbol]
         return encoded;
     }
 
@@ -995,7 +997,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = IRRelocationKind::Absolute32;
+                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32 : IRRelocationKind::Absolute32;
                 relocation.addend = encoded_mem.relocation_addend;
                 result.relocations.push_back(std::move(relocation));
             }
@@ -1021,7 +1023,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = IRRelocationKind::Absolute32;
+                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32 : IRRelocationKind::Absolute32;
                 relocation.addend = encoded_mem.relocation_addend;
                 result.relocations.push_back(std::move(relocation));
             }
@@ -1429,7 +1431,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = IRRelocationKind::Absolute32;
+                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32 : IRRelocationKind::Absolute32;
                 relocation.addend = encoded_mem.relocation_addend;
                 result.relocations.push_back(std::move(relocation));
             }
