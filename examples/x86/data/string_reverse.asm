@@ -2,6 +2,10 @@
 ; Reverses a string in place using indirect addressing
 
 .data
+.org 0x20
+prefix_msg:
+    DB 'string_reverse: ', 0
+
 .org 0x50
 string_data:
     DB "Hello World!", 0
@@ -11,7 +15,7 @@ string_data:
 
 _start:
     ; Find string length
-    LEA EAX, string_data
+    LOAD_IMM EAX, 0x50
     MOV EBX, EAX
     LOAD_IMM ESI, 0          ; Load 0 for comparison
 
@@ -32,16 +36,18 @@ reverse_loop:
     LOADR ECX, EAX      ; Load character from start
     LOADR EDX, EBX      ; Load character from end
     
-    ; Swap using STORE (direct addressing)
-    STORE EDX, [EAX]    ; Store end char at start position
-    STORE ECX, [EBX]    ; Store start char at end position
+    ; Swap using explicit indirect stores
+    STORER EAX, EDX     ; Store end char at start position
+    STORER EBX, ECX     ; Store start char at end position
     
     INC EAX
     DEC EBX
     JMP reverse_loop
 
 done:
-    ; Print reversed string
+    ; Print a labeled reversed string
+    LOAD_IMM EAX, 0x20
+    OUTSTR EAX, 1
     LOAD_IMM EAX, 0x50
     OUTSTR EAX, 1
     LOAD_IMM EAX, 10

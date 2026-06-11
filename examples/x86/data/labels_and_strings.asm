@@ -5,7 +5,7 @@
 ; Uses 32-bit addressing with .data and .text sections
 
 .data
-    mystring: DB 'Hello from labeled data!', 10, 0
+    mystring: DB 'labels_and_strings: LOAD_IMM resolved this labeled string', 10, 0
 
 .text
 .org 0x100

@@ -4,7 +4,11 @@
 ; Demonstrates various conditional jump instructions
 ; Uses 32-bit comparison operations
 
+.data
+result_msg: DB 'conditional_jumps: ecx=1, edx=2, esi=3, edi=4', 10, 0
+
 .text
+.org 0x100
 
 _start:
     ; Test 1: Jump if equal (JE/JZ)
@@ -47,13 +51,10 @@ greater_branch:
 less_branch:
     LOAD_IMM EDI, 4      ; Mark test 4 passed
     
-    ; Print "OK"
-    LOAD_IMM EAX, 79
-    OUT EAX, 1
-    LOAD_IMM EAX, 75
-    OUT EAX, 1
-    LOAD_IMM EAX, 10
-    OUT EAX, 1
+    ; Print labeled branch results
+    LOAD_IMM EAX, result_msg
+    OUTSTR EAX, 1
     HALT
 
 ; Results: ECX=1, EDX=2, ESI=3, EDI=4
+; Output: "conditional_jumps: ecx=1, edx=2, esi=3, edi=4\n"

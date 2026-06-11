@@ -11,9 +11,9 @@
 
 ; Define multiple labeled strings
 greeting: 
-    DB 'Hi!', 10, 0
+    DB 'data_labels: greeting label says Hi!', 10, 0
 message: 
-    DB 'Labels work!', 10, 0
+    DB 'data_labels: second label says Labels work!', 10, 0
 
 _start:
     ; Use both labels

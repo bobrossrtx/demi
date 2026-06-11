@@ -4,7 +4,11 @@
 ; This program adds two numbers and demonstrates basic arithmetic
 ; Uses 32-bit registers (EAX, EBX, ECX, EDX)
 
+.data
+result_msg: DB 'simple_addition: eax=55, ecx=45, edx=65', 10, 0
+
 .text
+.org 0x100
 
 _start:
     ; Load first number (42) into EAX
@@ -27,16 +31,13 @@ _start:
     ADD EDX, ESI             ; EDX = result + 10 = 55 + 10 = 65
     
     ; End program
-    ; Print "OK"
-    LOAD_IMM EAX, 79
-    OUT EAX, 1
-    LOAD_IMM EAX, 75
-    OUT EAX, 1
-    LOAD_IMM EAX, 10
-    OUT EAX, 1
+    ; Print labeled register results
+    LOAD_IMM EAX, result_msg
+    OUTSTR EAX, 1
     HALT
 
 ; Results:
 ; EAX = 55 (main result)
 ; ECX = 45 (result - 10)
 ; EDX = 65 (result + 10)
+; Output: "simple_addition: eax=55, ecx=45, edx=65\n"

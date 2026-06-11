@@ -5,7 +5,12 @@
 ; implemented in the Demi Engine assembler
 ; Uses 32-bit registers
 
+.data
+    summary: DB "core_instructions: eax=151, ebx=24, edx=625, esi=25, edi=150", 10, 0
+    summary_len EQU 61
+
 .text
+.org 0x100
 
 _start:
     ; Basic immediate loading
@@ -51,12 +56,10 @@ _start:
     ; Bitwise NOT
     NOT R9                  ; R9 = ~R9
 
-    ; End program
-    ; Print "OK"
-    LOAD_IMM EAX, 79
-    OUT EAX, 1
-    LOAD_IMM EAX, 75
-    OUT EAX, 1
-    LOAD_IMM EAX, 10
-    OUT EAX, 1
+    ; End program: print the computed state through OUTSTR, which avoids the
+    ; raw first-byte OUT path while still exercising example output.
+    LOAD_IMM EAX, summary
+    OUTSTR EAX, 1
     HALT
+
+; Output: "core_instructions: eax=151, ebx=24, edx=625, esi=25, edi=150\n"

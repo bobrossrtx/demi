@@ -9,7 +9,7 @@ _start:
     LOAD_IMM EAX, 4         ; sys_write
     LOAD_IMM EBX, 1         ; stdout (fd=1)
     LOAD_IMM ECX, msg       ; buffer address
-    LOAD_IMM EDX, 14        ; count
+    LOAD_IMM EDX, 41        ; count
     INT 0x80
     
     ; sys_exit
@@ -20,4 +20,4 @@ _start:
     HALT
 
 msg:
-    DB "Hello, World!", 10
+    DB "simple_write: sys_write -> Hello, World!", 10

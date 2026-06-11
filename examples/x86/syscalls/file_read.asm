@@ -5,7 +5,8 @@
 ; Uses 32-bit registers with .data and .text sections
 
 .data
-    filename: DB "/tmp/demi_input.txt", 0
+    filename: DB "/etc/hostname", 0
+    missing_msg: DB "file_read: could not open /etc/hostname", 10, 0
     buffer: RESB 50
 
 .text
@@ -16,6 +17,9 @@ _start:
     LOAD_IMM ECX, 0         ; O_RDONLY (0)
     LOAD_IMM EDX, 0         ; mode (not used for read)
     INT 0x80                ; Call kernel - returns fd in EAX
+
+    CMP EAX, 0
+    JL open_failed
     
     ; Save file descriptor
     MOV ESI, EAX            ; ESI = fd
@@ -47,4 +51,16 @@ _start:
     LOAD_IMM EBX, 0         ; exit code 0
     INT 0x80
     
+    HALT
+
+open_failed:
+    LOAD_IMM EAX, 4
+    LOAD_IMM EBX, 1
+    LOAD_IMM ECX, missing_msg
+    LOAD_IMM EDX, 40
+    INT 0x80
+
+    LOAD_IMM EAX, 1
+    LOAD_IMM EBX, 1
+    INT 0x80
     HALT

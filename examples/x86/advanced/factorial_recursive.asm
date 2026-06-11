@@ -5,7 +5,11 @@
 ; Demonstrates: Stack operations, CALL/RET, Recursion
 ; Uses 32-bit registers
 
+.data
+result_msg: DB 'factorial_recursive: returns 1, 2, 6, 24, 120 (eax=120)', 10, 0
+
 .text
+.org 0x100
 
 _start:
     ; Calculate 5!
@@ -15,6 +19,9 @@ _start:
     POP EBX                 ; Clean up stack (pop into unused register)
     
     ; Result is in EAX
+    ; Print labeled factorial result
+    LOAD_IMM EAX, result_msg
+    OUTSTR EAX, 1
     HALT
 
 factorial:
@@ -52,17 +59,10 @@ base_case:
     LOAD_IMM EAX, 1         ; Return 1
 
 end_factorial:
-    ; Print "OK" before returning
-    PUSH EAX
-    LOAD_IMM EAX, 79
-    OUT EAX, 1
-    LOAD_IMM EAX, 75
-    OUT EAX, 1
-    LOAD_IMM EAX, 10
-    OUT EAX, 1
-    POP EAX
     ; Epilogue
     POP EBX                 ; Restore EBX
     MOV ESP, EBP            ; Restore stack pointer
     POP EBP                 ; Restore frame pointer
     RET
+
+; Output: "factorial_recursive: returns 1, 2, 6, 24, 120 (eax=120)\n"

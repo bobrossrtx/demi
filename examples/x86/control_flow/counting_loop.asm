@@ -5,9 +5,16 @@
 ; Counts from 1 to 5 and outputs each number
 ; Uses 32-bit registers
 
+.data
+prefix_msg: DB 'counting_loop: ', 0
+
 .text
+.org 0x100
 
 _start:
+    LOAD_IMM EDX, prefix_msg
+    OUTSTR EDX, 1
+
     ; Initialize counter in EAX
     LOAD_IMM EAX, 1     ; Start from 1
     LOAD_IMM EBX, 5     ; Loop limit
@@ -38,4 +45,4 @@ loop_start:
     ; End program
     HALT
 
-; Expected output: "1 2 3 4 5 \n"
+; Expected output: "counting_loop: 1 2 3 4 5 \n"

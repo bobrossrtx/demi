@@ -37,7 +37,7 @@ _start:
     LOAD_IMM EAX, 4         ; sys_write
     LOAD_IMM EBX, 1         ; stdout
     LOAD_IMM ECX, success_msg ; success message address
-    LOAD_IMM EDX, 28        ; count
+    LOAD_IMM EDX, 27        ; count
     INT 0x80
     
     ; sys_exit

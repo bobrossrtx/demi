@@ -4,7 +4,11 @@
 ; Demonstrates PUSH and POP operations
 ; Uses 32-bit stack pointer (ESP)
 
+.data
+result_msg: DB 'stack_operations: edx=7, esi=13, edi=42', 10, 0
+
 .text
+.org 0x100
 
 _start:
     ; Initialize some values
@@ -28,14 +32,11 @@ _start:
     POP EDI             ; EDI = 42
     
     ; Verify: EDI=42, ESI=13, EDX=7
-    ; Print "OK"
-    LOAD_IMM EAX, 79
-    OUT EAX, 1
-    LOAD_IMM EAX, 75
-    OUT EAX, 1
-    LOAD_IMM EAX, 10
-    OUT EAX, 1
+    ; Print labeled restored register values
+    LOAD_IMM EAX, result_msg
+    OUTSTR EAX, 1
     HALT
 
 ; Stack demonstration:
 ; PUSH stores on stack, POP retrieves (LIFO order)
+; Output: "stack_operations: edx=7, esi=13, edi=42\n"

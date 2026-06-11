@@ -11,7 +11,7 @@ _start:
     LOAD_IMM EAX, 4         ; syscall 4 = sys_write
     LOAD_IMM EBX, 1         ; fd = 1 (stdout)
     LOAD_IMM ECX, msg       ; buffer address
-    LOAD_IMM EDX, 14        ; message length
+    LOAD_IMM EDX, 49        ; message length
     INT 0x80                ; Call kernel
     
     ; sys_exit(0)
@@ -22,4 +22,4 @@ _start:
     HALT                    ; Should not reach here
 
 msg:
-    DB "Hello, World!", 10  ; Message with newline
+    DB "syscalls_hello_world: sys_write -> Hello, World!", 10  ; Message with newline

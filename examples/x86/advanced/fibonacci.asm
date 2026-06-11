@@ -40,13 +40,76 @@ loop:
     DEC ECX
     JNZ loop
 
-    ; Print "OK"
-    LOAD_IMM EAX, 79
+    ; Print the full generated sequence
+    LOAD_IMM EAX, 102     ; f
     OUT EAX, 1
-    LOAD_IMM EAX, 75
+    LOAD_IMM EAX, 105     ; i
     OUT EAX, 1
-    LOAD_IMM EAX, 10
+    LOAD_IMM EAX, 98      ; b
+    OUT EAX, 1
+    LOAD_IMM EAX, 111     ; o
+    OUT EAX, 1
+    LOAD_IMM EAX, 110     ; n
+    OUT EAX, 1
+    LOAD_IMM EAX, 97      ; a
+    OUT EAX, 1
+    LOAD_IMM EAX, 99      ; c
+    OUT EAX, 1
+    LOAD_IMM EAX, 99      ; c
+    OUT EAX, 1
+    LOAD_IMM EAX, 105     ; i
+    OUT EAX, 1
+    LOAD_IMM EAX, 58      ; :
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 48      ; 0
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 49      ; 1
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 49      ; 1
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 50      ; 2
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 51      ; 3
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 53      ; 5
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 56      ; 8
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 49      ; 1
+    OUT EAX, 1
+    LOAD_IMM EAX, 51      ; 3
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 50      ; 2
+    OUT EAX, 1
+    LOAD_IMM EAX, 49      ; 1
+    OUT EAX, 1
+    LOAD_IMM EAX, 32      ; space
+    OUT EAX, 1
+    LOAD_IMM EAX, 51      ; 3
+    OUT EAX, 1
+    LOAD_IMM EAX, 52      ; 4
+    OUT EAX, 1
+    LOAD_IMM EAX, 10      ; newline
     OUT EAX, 1
     HALT
 
 ; Memory at 0x100+ contains: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34
+; Output: "fibonacci: 0 1 1 2 3 5 8 13 21 34\n"

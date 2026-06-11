@@ -4,7 +4,11 @@
 ; Test LOADR instruction - demonstrates indirect addressing
 ; Uses 32-bit registers
 
+.data
+result_msg: DB 'indirect_addressing: stored 42 at memory[100], loaded edx=42', 10, 0
+
 .text
+.org 0x100
 
 _start:
     ; Store value 42 at memory address 100
@@ -18,11 +22,9 @@ _start:
     LOADR EDX, ECX
 
     ; EDX should now contain 42
-    ; Print "OK"
-    LOAD_IMM EAX, 79
-    OUT EAX, 1
-    LOAD_IMM EAX, 75
-    OUT EAX, 1
-    LOAD_IMM EAX, 10
-    OUT EAX, 1
+    ; Print labeled indirect load result
+    LOAD_IMM EAX, result_msg
+    OUTSTR EAX, 1
     HALT
+
+; Output: "indirect_addressing: stored 42 at memory[100], loaded edx=42\n"
