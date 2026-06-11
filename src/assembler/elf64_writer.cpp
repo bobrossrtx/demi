@@ -256,8 +256,10 @@ std::vector<uint8_t> ELF64ObjectWriter::write_object(
             }
         }
 
-        uint8_t sym_type = symbol.is_function ? STT_FUNC : STT_NOTYPE;
-        write_symbol(name_offset, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | sym_type), 0, shndx, symbol.offset, 0);
+        uint8_t sym_type = symbol.is_function ? STT_FUNC : 
+                           (symbol.section == IRSectionKind::Data || symbol.section == IRSectionKind::Rodata || 
+                            symbol.section == IRSectionKind::Bss) ? STT_OBJECT : STT_NOTYPE;
+        write_symbol(name_offset, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | sym_type), 0, shndx, symbol.offset, symbol.size);
         symbol_indices[symbol.name] = next_symbol_index++;
     }
 
@@ -279,8 +281,10 @@ std::vector<uint8_t> ELF64ObjectWriter::write_object(
             }
         }
 
-        uint8_t sym_type = symbol.is_function ? STT_FUNC : STT_NOTYPE;
-        write_symbol(name_offset, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | sym_type), 0, shndx, symbol.offset, 0);
+        uint8_t sym_type = symbol.is_function ? STT_FUNC : 
+                           (symbol.section == IRSectionKind::Data || symbol.section == IRSectionKind::Rodata || 
+                            symbol.section == IRSectionKind::Bss) ? STT_OBJECT : STT_NOTYPE;
+        write_symbol(name_offset, static_cast<uint8_t>((symbol_binding(symbol.binding) << 4) | sym_type), 0, shndx, symbol.offset, symbol.size);
         symbol_indices[symbol.name] = next_symbol_index++;
     }
 
@@ -349,6 +353,11 @@ std::vector<uint8_t> ELF64ObjectWriter::write_object(
     const uint32_t shstrtab_index = static_cast<uint32_t>(sections.size());
     sections.push_back({".shstrtab", 0, SHT_STRTAB, 0, 0, 0, 0, 0, 1, 0, shstrtab});
     sections.push_back({".note.GNU-stack", 0, SHT_NOTE, 0, 0, 0, 0, 0, 1, 0, {}});
+
+    const std::string comment_str = "DASM x86 assembler (DemiEngine v1.0)";
+    std::vector<uint8_t> comment_data(comment_str.begin(), comment_str.end());
+    comment_data.push_back(0);
+    sections.push_back({".comment", 0, SHT_PROGBITS, 0, 0, static_cast<uint64_t>(comment_data.size()), 0, 0, 1, 0, comment_data});
 
     for (auto& section : sections) {
         section.name_offset = static_cast<uint32_t>(append_string(shstrtab, section.name));

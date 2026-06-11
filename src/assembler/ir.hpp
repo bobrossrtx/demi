@@ -111,6 +111,7 @@ struct IRSymbol {
     IRSymbolBinding binding = IRSymbolBinding::Local;
     bool defined = false;
     bool is_function = false;
+    uint64_t size = 0;
 };
 
 struct IRRelocation {

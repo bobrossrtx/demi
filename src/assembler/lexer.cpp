@@ -34,6 +34,8 @@ void Lexer::init_tables() {
     keywords[".resb"] = TokenType::DIRECTIVE;
     keywords[".zero"] = TokenType::DIRECTIVE;
     keywords[".comm"] = TokenType::DIRECTIVE;
+    keywords[".type"] = TokenType::DIRECTIVE;
+    keywords[".size"] = TokenType::DIRECTIVE;
     // GNU-style aliases
     keywords[".byte"] = TokenType::DIRECTIVE;
     keywords[".word"] = TokenType::DIRECTIVE;

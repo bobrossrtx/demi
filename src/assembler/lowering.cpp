@@ -118,6 +118,7 @@ void LoweringContext::lower_directive(const Directive& directive, IRProgram& ir_
                 symbol.offset = bss_offset_;
                 symbol.binding = IRSymbolBinding::Global;
                 symbol.defined = true;
+                symbol.size = static_cast<uint64_t>(std::max<int64_t>(0, size_imm->value));
                 ir_program.symbols.push_back(std::move(symbol));
 
                 IRDataRecord record;
@@ -126,6 +127,42 @@ void LoweringContext::lower_directive(const Directive& directive, IRProgram& ir_
                 record.values.push_back({IROperandKind::Immediate, IRImmediateOperand{size_imm->value}});
                 ir_program.data_records.push_back(std::move(record));
                 bss_offset_ += static_cast<size_t>(std::max<int64_t>(0, size_imm->value));
+            }
+        }
+        return;
+    }
+
+    if (directive.name == ".type") {
+        // .type name, @function  or  .type name, @object
+        if (directive.arguments.size() >= 2) {
+            auto name_ident = dynamic_cast<const IdentifierExpression*>(directive.arguments[0].get());
+            auto type_ident = dynamic_cast<const IdentifierExpression*>(directive.arguments[1].get());
+            if (name_ident && type_ident) {
+                for (auto& sym : ir_program.symbols) {
+                    if (sym.name == name_ident->name) {
+                        if (type_ident->name == "@function" || type_ident->name == "function")
+                            sym.is_function = true;
+                        // @object is the default (already STT_OBJECT via section check)
+                        break;
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    if (directive.name == ".size") {
+        // .size name, expression
+        if (directive.arguments.size() >= 2) {
+            auto name_ident = dynamic_cast<const IdentifierExpression*>(directive.arguments[0].get());
+            auto size_imm = dynamic_cast<const ImmediateExpression*>(directive.arguments[1].get());
+            if (name_ident && size_imm) {
+                for (auto& sym : ir_program.symbols) {
+                    if (sym.name == name_ident->name) {
+                        sym.size = static_cast<uint64_t>(size_imm->value);
+                        break;
+                    }
+                }
             }
         }
         return;
