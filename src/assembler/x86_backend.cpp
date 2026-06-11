@@ -339,10 +339,6 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         }
 
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
-            if (is_64bit_mode()) {
-                errors.push_back("x86-64 backend does not yet support MOV reg, [mem]");
-                return 0;
-            }
             const auto& mem = std::get<IRMemoryOperand>(src.value);
             if (mem.symbol && !mem.base && !mem.index) {
                 return 6;
@@ -351,10 +347,6 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         }
 
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
-            if (is_64bit_mode()) {
-                errors.push_back("x86-64 backend does not yet support MOV [mem], reg");
-                return 0;
-            }
             const auto& mem = std::get<IRMemoryOperand>(dst.value);
             if (mem.symbol && !mem.base && !mem.index) {
                 return 6;
@@ -803,10 +795,6 @@ EncodedInstructionResult X86Backend::encode_instruction(
             return result;
         }
         if (instruction.operands[0].kind == IROperandKind::Memory) {
-            if (is_64bit_mode()) {
-                errors.push_back("x86-64 backend does not yet support INC [mem]");
-                return result;
-            }
             const auto& mem = std::get<IRMemoryOperand>(instruction.operands[0].value);
             const auto encoded_mem = encode_memory_operand32(mem, 0, 0xFF, errors);
             if (!errors.empty()) return result;
@@ -834,10 +822,6 @@ EncodedInstructionResult X86Backend::encode_instruction(
             return result;
         }
         if (instruction.operands[0].kind == IROperandKind::Memory) {
-            if (is_64bit_mode()) {
-                errors.push_back("x86-64 backend does not yet support DEC [mem]");
-                return result;
-            }
             const auto& mem = std::get<IRMemoryOperand>(instruction.operands[0].value);
             const auto encoded_mem = encode_memory_operand32(mem, 1, 0xFF, errors);
             if (!errors.empty()) return result;
