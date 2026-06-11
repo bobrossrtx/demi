@@ -339,6 +339,25 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             }
             return size + (fits_i8(mem.displacement) ? 1 : 4);
         }
+
+        if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
+            const auto& mem = std::get<IRMemoryOperand>(dst.value);
+            if (mem.index || mem.symbol) {
+                errors.push_back("x86 backend does not yet support MOV [mem], imm with index or symbol");
+                return 0;
+            }
+            if (!mem.base) {
+                errors.push_back("x86 backend requires a base register for MOV [mem], imm");
+                return 0;
+            }
+            const auto base = encode_register_id(*mem.base);
+            if (!base) { errors.push_back("bad base register"); return 0; }
+            size_t size = 2;
+            if (*base == 4) size += 1;
+            if (mem.displacement == 0 && *base != 5) { /* no extra */ }
+            else size += fits_i8(mem.displacement) ? 1 : 4;
+            return size + 1; // +1 for imm8 (always use imm8 for simplicity)
+        }
     }
 
     if (mnemonic == "PUSH" || mnemonic == "POP") {
@@ -454,6 +473,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return 0;
         }
         const auto& mem = std::get<IRMemoryOperand>(instruction.operands[1].value);
+        if (mem.symbol && !mem.base) {
+            return 6; // opcode + modrm + disp32
+        }
         if (!mem.base) {
             errors.push_back("x86 backend requires a base register for LEA memory operand");
             return 0;
@@ -659,6 +681,20 @@ EncodedInstructionResult X86Backend::encode_instruction(
             }
             return result;
         }
+
+        if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
+            const auto& mem = std::get<IRMemoryOperand>(dst.value);
+            const auto encoded_mem = encode_memory_operand32(mem, 0, static_cast<uint8_t>(fits_i8(imm) ? 0xC6 : 0xC7), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            if (fits_i8(imm)) {
+                result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(imm)));
+            } else {
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
     }
 
     if (mnemonic == "PUSH") {
@@ -803,6 +839,22 @@ EncodedInstructionResult X86Backend::encode_instruction(
             result.bytes = encoded_mem.bytes;
             return result;
         }
+
+        if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
+            if (fits_i8(imm)) {
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 0, 0x83, errors);
+                if (!errors.empty()) return result;
+                result.bytes = encoded_mem.bytes;
+                result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(imm)));
+            } else {
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 0, 0x81, errors);
+                if (!errors.empty()) return result;
+                result.bytes = encoded_mem.bytes;
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
     }
 
     if (mnemonic == "SUB") {
@@ -852,6 +904,22 @@ EncodedInstructionResult X86Backend::encode_instruction(
             const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x29, errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
+            return result;
+        }
+
+        if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
+            if (fits_i8(imm)) {
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 5, 0x83, errors);
+                if (!errors.empty()) return result;
+                result.bytes = encoded_mem.bytes;
+                result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(imm)));
+            } else {
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 5, 0x81, errors);
+                if (!errors.empty()) return result;
+                result.bytes = encoded_mem.bytes;
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
             return result;
         }
     }
@@ -1007,6 +1075,24 @@ EncodedInstructionResult X86Backend::encode_instruction(
         }
 
         const auto& mem = std::get<IRMemoryOperand>(instruction.operands[1].value);
+
+        // Symbol-only memory (e.g., LEA reg, [msg])
+        if (!mem.base && mem.symbol) {
+            const auto encoded_mem = encode_memory_operand32(mem, *dst_reg, 0x8D, errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            if (encoded_mem.has_symbol_relocation) {
+                IRRelocation relocation;
+                relocation.section = IRSectionKind::Text;
+                relocation.offset = instruction_offset + encoded_mem.displacement_offset;
+                relocation.symbol = encoded_mem.relocation_symbol;
+                relocation.kind = IRRelocationKind::Absolute32;
+                relocation.addend = encoded_mem.relocation_addend;
+                result.relocations.push_back(std::move(relocation));
+            }
+            return result;
+        }
+
         if (mem.index) {
             errors.push_back("x86 backend does not yet support indexed memory operands in LEA");
             return result;

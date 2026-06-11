@@ -801,6 +801,56 @@ void run_builtin_tests() {
                 if (text[inc_off+3] != 0xFF || text[inc_off+4] != 0x4D || text[inc_off+5] != 0xFC)
                     fail_test("Expected DEC [EBP-4] (FF 4D FC)");
             }
+        },
+        {
+            "x86_32_backend_assembles_memory_immediate_and_symbol_lea",
+            []() {
+                auto program = parse_program_or_fail(
+                    ".data\n"
+                    "msg: .dd 42\n"
+                    ".text\n"
+                    "LEA EAX, [msg]\n"
+                    "ADD [EBP-4], 1\n"
+                    "SUB [EBP-4], 1\n"
+                    "MOV dword [EBP-4], 0\n"
+                    "RET\n");
+                auto lowered = Assembler::lower_program(*program);
+                lowered.target = Assembler::IRTarget::X86Elf32;
+
+                Assembler::X86Backend backend(Assembler::X86BackendMode::X86_32);
+                auto artifact = backend.emit(lowered);
+                if (!artifact.ok()) {
+                    std::ostringstream oss;
+                    oss << "x86 backend errors:";
+                    for (const auto& error : artifact.errors) {
+                        oss << "\n  " << error;
+                    }
+                    fail_test(oss.str());
+                }
+
+                const auto text = read_section_bytes(artifact.bytes, ".text");
+                // LEA EAX,[msg] = 8D 05 ... (6 bytes with relocation)
+                if (text[0] != 0x8D || text[1] != 0x05)
+                    fail_test("Expected LEA EAX,[msg] (8D 05 ...)");
+                // ADD [EBP-4],1 = 83 45 FC 01
+                if (text[6] != 0x83 || text[7] != 0x45 || text[8] != 0xFC || text[9] != 0x01)
+                    fail_test("Expected ADD [EBP-4],1 (83 45 FC 01)");
+                // SUB [EBP-4],1 = 83 6D FC 01
+                if (text[10] != 0x83 || text[11] != 0x6D || text[12] != 0xFC || text[13] != 0x01)
+                    fail_test("Expected SUB [EBP-4],1 (83 6D FC 01)");
+                // MOV [EBP-4],0 = C6 45 FC 00
+                if (text[14] != 0xC6 || text[15] != 0x45 || text[16] != 0xFC || text[17] != 0x00)
+                    fail_test("Expected MOV [EBP-4],0 (C6 45 FC 00)");
+
+                // Verify relocations for LEA
+                const auto rel_text = read_section_bytes(artifact.bytes, ".rel.text");
+                if (rel_text.size() != 8)
+                    fail_test("Expected one .rel.text entry for LEA EAX,[msg]");
+                if (read_u32(rel_text, 0) != 2)
+                    fail_test("Expected LEA relocation at .text+2");
+                if ((read_u32(rel_text, 4) & 0xFF) != 1)
+                    fail_test("Expected R_386_32 relocation for LEA");
+            }
         }
     };
 
