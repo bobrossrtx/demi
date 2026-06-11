@@ -543,9 +543,21 @@ void run_builtin_tests() {
             }
         },
         {
-            "x86_64_backend_emits_elf64_text_object",
+            "x86_64_backend_emits_elf64_text_object_with_arithmetic",
             []() {
-                auto program = parse_program_or_fail(".text\n_start:\nMOV RAX, 1\nRET\n");
+                auto program = parse_program_or_fail(
+                    ".text\n"
+                    "_start:\n"
+                    "MOV RAX, 1\n"
+                    "ADD RAX, RBX\n"
+                    "SUB RAX, 5\n"
+                    "CMP RAX, RBX\n"
+                    "XOR RAX, RAX\n"
+                    "INC RAX\n"
+                    "DEC RAX\n"
+                    "PUSH RBP\n"
+                    "POP RBP\n"
+                    "RET\n");
                 auto lowered = Assembler::lower_program(*program);
                 lowered.target = Assembler::IRTarget::X86Elf64;
 
@@ -565,10 +577,19 @@ void run_builtin_tests() {
                 }
 
                 const auto text = read_section_bytes64(artifact.bytes, ".text");
-                const std::vector<uint8_t> expected = {0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00, 0xC3};
-                if (text != expected) {
-                    fail_test("Expected ELF64 .text bytes for MOV RAX,1 / RET");
-                }
+                // MOV RAX,1 = 48 C7 C0 01 00 00 00
+                if (text[0] != 0x48 || text[1] != 0xC7 || text[2] != 0xC0)
+                    fail_test("Expected MOV RAX,1 (48 C7 C0 ...)");
+                // ADD RAX,RBX = 48 01 D8
+                if (text[7] != 0x48 || text[8] != 0x01 || text[9] != 0xD8)
+                    fail_test("Expected ADD RAX,RBX (48 01 D8)");
+                // INC RAX = 48 FF C0 at offset 20
+                if (text[20] != 0x48 || text[21] != 0xFF || text[22] != 0xC0)
+                    fail_test("Expected INC RAX (48 FF C0)");
+                // PUSH RBP = 55
+                if (text[text.size()-3] != 0x55) fail_test("Expected PUSH RBP (55)");
+                if (text[text.size()-2] != 0x5D) fail_test("Expected POP RBP (5D)");
+                if (text[text.size()-1] != 0xC3) fail_test("Expected RET (C3)");
             }
         },
         {
