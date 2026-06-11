@@ -74,6 +74,7 @@ EncodedMemoryOperand encode_memory_operand32(
     const IRMemoryOperand& memory,
     uint8_t reg_field,
     uint8_t opcode,
+    bool is64,
     std::vector<std::string>& errors) {
     EncodedMemoryOperand encoded;
 
@@ -82,6 +83,7 @@ EncodedMemoryOperand encode_memory_operand32(
         return encoded;
     }
 
+    if (is64) encoded.bytes.push_back(0x48);
     encoded.bytes.push_back(opcode);
 
     auto emit_disp8 = [&](uint8_t modrm, int8_t disp) {
@@ -692,7 +694,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 return result;
             }
 
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *dst_reg, 0x8B, errors);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *dst_reg, 0x8B, is_64bit_mode(), errors);
             if (!errors.empty()) {
                 return result;
             }
@@ -716,7 +718,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 return result;
             }
 
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x89, errors);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x89, is_64bit_mode(), errors);
             if (!errors.empty()) {
                 return result;
             }
@@ -736,7 +738,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             const auto& mem = std::get<IRMemoryOperand>(dst.value);
-            const auto encoded_mem = encode_memory_operand32(mem, 0, static_cast<uint8_t>(fits_i8(imm) ? 0xC6 : 0xC7), errors);
+            const auto encoded_mem = encode_memory_operand32(mem, 0, static_cast<uint8_t>(fits_i8(imm) ? 0xC6 : 0xC7), is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             if (fits_i8(imm)) {
@@ -796,7 +798,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         }
         if (instruction.operands[0].kind == IROperandKind::Memory) {
             const auto& mem = std::get<IRMemoryOperand>(instruction.operands[0].value);
-            const auto encoded_mem = encode_memory_operand32(mem, 0, 0xFF, errors);
+            const auto encoded_mem = encode_memory_operand32(mem, 0, 0xFF, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             return result;
@@ -823,7 +825,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         }
         if (instruction.operands[0].kind == IROperandKind::Memory) {
             const auto& mem = std::get<IRMemoryOperand>(instruction.operands[0].value);
-            const auto encoded_mem = encode_memory_operand32(mem, 1, 0xFF, errors);
+            const auto encoded_mem = encode_memory_operand32(mem, 1, 0xFF, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             return result;
@@ -877,7 +879,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 errors.push_back("x86 backend does not support that register in ADD [mem], reg");
                 return result;
             }
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x01, errors);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x01, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             return result;
@@ -886,12 +888,12 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             if (fits_i8(imm)) {
-                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 0, 0x83, errors);
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 0, 0x83, is_64bit_mode(), errors);
                 if (!errors.empty()) return result;
                 result.bytes = encoded_mem.bytes;
                 result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(imm)));
             } else {
-                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 0, 0x81, errors);
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 0, 0x81, is_64bit_mode(), errors);
                 if (!errors.empty()) return result;
                 result.bytes = encoded_mem.bytes;
                 append_u32(result.bytes, static_cast<uint32_t>(imm));
@@ -944,7 +946,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
             const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
             if (!src_reg) { errors.push_back("bad src register in SUB [mem], reg"); return result; }
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x29, errors);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x29, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             return result;
@@ -953,12 +955,12 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             if (fits_i8(imm)) {
-                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 5, 0x83, errors);
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 5, 0x83, is_64bit_mode(), errors);
                 if (!errors.empty()) return result;
                 result.bytes = encoded_mem.bytes;
                 result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(imm)));
             } else {
-                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 5, 0x81, errors);
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 5, 0x81, is_64bit_mode(), errors);
                 if (!errors.empty()) return result;
                 result.bytes = encoded_mem.bytes;
                 append_u32(result.bytes, static_cast<uint32_t>(imm));
@@ -1011,7 +1013,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
             const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
             if (!src_reg) { errors.push_back("bad src register in CMP [mem], reg"); return result; }
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x39, errors);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x39, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             return result;
@@ -1020,12 +1022,12 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             if (fits_i8(imm)) {
-                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 7, 0x83, errors);
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 7, 0x83, is_64bit_mode(), errors);
                 if (!errors.empty()) return result;
                 result.bytes = encoded_mem.bytes;
                 result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(imm)));
             } else {
-                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 7, 0x81, errors);
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), 7, 0x81, is_64bit_mode(), errors);
                 if (!errors.empty()) return result;
                 result.bytes = encoded_mem.bytes;
                 append_u32(result.bytes, static_cast<uint32_t>(imm));
@@ -1080,7 +1082,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
             const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
             if (!src_reg) { errors.push_back("bad src register in " + instruction.mnemonic + " [mem], reg"); return result; }
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, reg_opcode, errors);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, reg_opcode, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             return result;
@@ -1121,7 +1123,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
 
         // Symbol-only memory (e.g., LEA reg, [msg])
         if (!mem.base && mem.symbol) {
-            const auto encoded_mem = encode_memory_operand32(mem, *dst_reg, 0x8D, errors);
+            const auto encoded_mem = encode_memory_operand32(mem, *dst_reg, 0x8D, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             if (encoded_mem.has_symbol_relocation) {
@@ -1137,7 +1139,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
         }
 
         // Base-only, indexed, or base+index: use shared memory encoder
-        const auto encoded_mem = encode_memory_operand32(mem, *dst_reg, 0x8D, errors);
+        const auto encoded_mem = encode_memory_operand32(mem, *dst_reg, 0x8D, is_64bit_mode(), errors);
         if (!errors.empty()) return result;
         result.bytes = encoded_mem.bytes;
         return result;

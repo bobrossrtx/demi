@@ -26,10 +26,13 @@ void Lexer::init_tables() {
     // .db directive removed - use DB instruction instead
     keywords[".dw"] = TokenType::DIRECTIVE;
     keywords[".dd"] = TokenType::DIRECTIVE;
+    keywords[".dq"] = TokenType::DIRECTIVE;
     keywords[".string"] = TokenType::DIRECTIVE;
+    keywords[".asciz"] = TokenType::DIRECTIVE;
     keywords[".align"] = TokenType::DIRECTIVE;
     keywords[".bss"] = TokenType::DIRECTIVE;
     keywords[".resb"] = TokenType::DIRECTIVE;
+    keywords[".zero"] = TokenType::DIRECTIVE;
     keywords["RESB"] = TokenType::DIRECTIVE;
     keywords[".end"] = TokenType::DIRECTIVE;
     keywords[".memory"] = TokenType::DIRECTIVE;

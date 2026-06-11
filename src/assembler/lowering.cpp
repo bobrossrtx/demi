@@ -261,9 +261,9 @@ void LoweringContext::record_instruction_relocations(const IRInstruction& instru
 }
 
 void LoweringContext::record_data_record_relocations(const IRDataRecord& record, IRProgram& ir_program, uint64_t offset) {
-    // .string and DB directives use Symbol operands for inline string data,
+    // .string, .asciz, and DB directives use Symbol operands for inline string data,
     // not actual symbol references — skip relocation recording for them.
-    if (record.directive == ".string" || record.directive == "DB") {
+    if (record.directive == ".string" || record.directive == ".asciz" || record.directive == "DB") {
         return;
     }
     for (size_t operand_index = 0; operand_index < record.values.size(); ++operand_index) {
@@ -319,8 +319,10 @@ IRSectionKind LoweringContext::parse_section_name(const std::string& name) const
 }
 
 bool LoweringContext::is_data_directive(const std::string& name) const {
-    return name == ".dw" || name == ".dd" || name == ".string" ||
-           name == ".resb" || name == "RESB" || name == ".bss";
+    return name == ".dw" || name == ".dd" || name == ".dq" ||
+           name == ".string" || name == ".asciz" ||
+           name == ".resb" || name == "RESB" || name == ".bss" ||
+           name == ".zero";
 }
 
 bool LoweringContext::is_data_instruction(const std::string& mnemonic) const {
@@ -356,7 +358,10 @@ size_t LoweringContext::estimate_data_record_size(const IRDataRecord& record) co
     if (record.directive == ".dd") {
         return record.values.size() * 4;
     }
-    if (record.directive == ".string") {
+    if (record.directive == ".dq") {
+        return record.values.size() * 8;
+    }
+    if (record.directive == ".string" || record.directive == ".asciz") {
         size_t total = 0;
         for (const auto& value : record.values) {
             if (value.kind == IROperandKind::Symbol) {
@@ -367,7 +372,8 @@ size_t LoweringContext::estimate_data_record_size(const IRDataRecord& record) co
         }
         return total;
     }
-    if (record.directive == ".resb" || record.directive == "RESB" || record.directive == ".bss") {
+    if (record.directive == ".resb" || record.directive == "RESB" || record.directive == ".bss" ||
+        record.directive == ".zero") {
         if (record.values.empty() || record.values.front().kind != IROperandKind::Immediate) {
             return 0;
         }

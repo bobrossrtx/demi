@@ -113,6 +113,35 @@ std::vector<uint8_t> emit_section_payload(const IRProgram& program, IRSectionKin
                     write32(out, 0);
                 }
             }
+            continue;
+        }
+
+        if (record.directive == ".dq") {
+            for (const auto& value : record.values) {
+                const auto imm = static_cast<uint64_t>(std::get<IRImmediateOperand>(value.value).value);
+                write32(out, static_cast<uint32_t>(imm & 0xFFFFFFFF));
+                write32(out, static_cast<uint32_t>((imm >> 32) & 0xFFFFFFFF));
+            }
+            continue;
+        }
+
+        if (record.directive == ".asciz") {
+            for (const auto& value : record.values) {
+                if (value.kind == IROperandKind::Symbol) {
+                    const auto& text = std::get<IRSymbolOperand>(value.value).name;
+                    out.insert(out.end(), text.begin(), text.end());
+                    out.push_back('\0');
+                }
+            }
+            continue;
+        }
+
+        if (record.directive == ".zero") {
+            if (!record.values.empty() && record.values.front().kind == IROperandKind::Immediate) {
+                const auto count = static_cast<size_t>(std::max<int64_t>(0, std::get<IRImmediateOperand>(record.values.front().value).value));
+                out.resize(out.size() + count, 0);
+            }
+            continue;
         }
     }
 
