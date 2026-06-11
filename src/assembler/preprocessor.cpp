@@ -37,6 +37,55 @@ std::string Preprocessor::preprocess(const std::string& source, const std::strin
     
     while (std::getline(stream, line)) {
         current_line++;
+        std::string trimmed_line = trim(line);
+        
+        // Handle .rept / .endr blocks
+        if (trimmed_line.substr(0, 5) == ".rept") {
+            if (!should_include_line()) {
+                // Skip lines until .endr
+                while (std::getline(stream, line)) {
+                    current_line++;
+                    if (trim(line) == ".endr") break;
+                }
+                continue;
+            }
+            std::string count_str = trim(trimmed_line.substr(5));
+            int count = 0;
+            try { count = std::stoi(count_str); }
+            catch (...) { add_error("Invalid .rept count: " + count_str); continue; }
+            if (count < 0) { add_error("Negative .rept count"); continue; }
+            
+            // Collect body lines until .endr
+            std::vector<std::string> body;
+            int endr_line = 0;
+            while (std::getline(stream, line)) {
+                current_line++;
+                std::string tl = trim(line);
+                if (tl == ".endr") { endr_line = current_line; break; }
+                body.push_back(line);
+            }
+            if (endr_line == 0) {
+                add_error(".rept without matching .endr at line " + std::to_string(current_line - (int)body.size()));
+                continue;
+            }
+            
+            // Output body count times
+            for (int i = 0; i < count; i++) {
+                for (const auto& body_line : body) {
+                    std::string processed = process_line(body_line, base_path);
+                    if (!processed.empty()) {
+                        result += processed + "\n";
+                    }
+                }
+            }
+            continue;
+        }
+        
+        if (trimmed_line == ".endr") {
+            add_error("Stray .endr without .rept at line " + std::to_string(current_line));
+            continue;
+        }
+        
         std::string processed_line = process_line(line, base_path);
         if (!processed_line.empty()) {
             result += processed_line + "\n";

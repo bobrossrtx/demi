@@ -215,31 +215,101 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
     std::vector<uint8_t> text_bytes;
     std::unordered_map<uint64_t, uint64_t> text_offset_map;
 
-    for (size_t instruction_index = 0; instruction_index < program.instructions.size(); ++instruction_index) {
-        text_offset_map[static_cast<uint64_t>(instruction_index)] = text_bytes.size();
-        const auto estimated = estimate_instruction_size(program.instructions[instruction_index], artifact.errors);
-        if (!artifact.ok()) {
-            return artifact;
+    // Collect function entry instruction indices
+    std::unordered_map<uint64_t, std::string> function_entries; // instruction_index -> name
+    for (const auto& symbol : program.symbols) {
+        if (symbol.is_function && symbol.defined && symbol.section == IRSectionKind::Text) {
+            // Find the instruction index at this symbol's logical offset
+            for (size_t idx = 0; idx < program.instructions.size(); ++idx) {
+                if (program.instructions[idx].section == IRSectionKind::Text) {
+                    // Logical offset is instruction count before this one in text
+                    size_t logical_offset = 0;
+                    for (size_t j = 0; j < idx; ++j)
+                        if (program.instructions[j].section == IRSectionKind::Text) ++logical_offset;
+                    if (logical_offset == symbol.offset) {
+                        function_entries[idx] = symbol.name;
+                        break;
+                    }
+                }
+            }
         }
-        text_bytes.resize(text_bytes.size() + estimated);
+    }
+
+    // Track function state for epilogue insertion
+    bool in_function = false;
+
+    const size_t prologue_size = is_64bit_mode() ? 4 : 3;  // PUSH EBP + MOV EBP,ESP (or RBP variant)
+    const size_t epilogue_size = 1;  // LEAVE
+
+    for (size_t instruction_index = 0; instruction_index < program.instructions.size(); ++instruction_index) {
+        size_t base_size = 0;
+        if (function_entries.count(instruction_index)) {
+            base_size += prologue_size;
+            in_function = true;
+        }
+        text_offset_map[static_cast<uint64_t>(instruction_index)] = text_bytes.size() + base_size;
+        const auto estimated = estimate_instruction_size(program.instructions[instruction_index], artifact.errors);
+        if (!artifact.ok()) return artifact;
+        if (in_function && program.instructions[instruction_index].mnemonic == "RET") {
+            text_bytes.resize(text_bytes.size() + estimated + epilogue_size);
+        } else {
+            text_bytes.resize(text_bytes.size() + estimated + base_size);
+        }
     }
 
     text_bytes.clear();
     auto adjusted_program = adjust_program_for_encoded_text(program, text_offset_map);
+
+    // Fix function symbol offsets: they point to instruction start,
+    // but should point to prologue start
+    for (auto& symbol : adjusted_program.symbols) {
+        if (symbol.is_function && symbol.defined && symbol.section == IRSectionKind::Text) {
+            symbol.offset = (symbol.offset >= prologue_size) ? symbol.offset - prologue_size : 0;
+        }
+    }
+
     std::unordered_map<std::string, uint64_t> text_symbol_offsets;
     for (const auto& symbol : adjusted_program.symbols) {
         if (symbol.defined && symbol.section == IRSectionKind::Text) {
-            text_symbol_offsets[symbol.name] = symbol.offset;
+            uint64_t offset = symbol.offset;
+            if (symbol.is_function) {
+                offset = (offset >= prologue_size) ? offset - prologue_size : 0;
+            }
+            text_symbol_offsets[symbol.name] = offset;
         }
     }
 
     std::vector<IRRelocation> text_relocations;
+
+    in_function = false;
 
     for (size_t instruction_index = 0; instruction_index < program.instructions.size(); ++instruction_index) {
         const auto& instruction = program.instructions[instruction_index];
         if (instruction.section != IRSectionKind::Text) {
             artifact.errors.push_back("x86 backend only supports .text instructions right now");
             return artifact;
+        }
+
+        // Emit prologue at function entry
+        if (function_entries.count(instruction_index)) {
+            in_function = true;
+            if (is_64bit_mode()) {
+                // PUSH RBP (55) + MOV RBP, RSP (48 89 E5)
+                text_bytes.push_back(0x55);
+                text_bytes.push_back(0x48);
+                text_bytes.push_back(0x89);
+                text_bytes.push_back(0xE5);
+            } else {
+                // PUSH EBP (55) + MOV EBP, ESP (89 E5)
+                text_bytes.push_back(0x55);
+                text_bytes.push_back(0x89);
+                text_bytes.push_back(0xE5);
+            }
+        }
+
+        // Emit epilogue (LEAVE) before RET in function bodies
+        if (in_function && instruction.mnemonic == "RET") {
+            text_bytes.push_back(0xC9); // LEAVE
         }
 
         const auto instruction_offset = text_offset_map[static_cast<uint64_t>(instruction_index)];

@@ -106,14 +106,15 @@ void LoweringContext::lower_directive(const Directive& directive, IRProgram& ir_
         return;
     }
 
-    if (directive.name == "global" || directive.name == ".global") {
+    if (directive.name == "global" || directive.name == ".global" || directive.name == ".function") {
         for (const auto& arg : directive.arguments) {
             if (auto ident = dynamic_cast<const IdentifierExpression*>(arg.get())) {
                 IRSymbol symbol;
                 symbol.name = ident->name;
                 symbol.section = current_section_;
                 symbol.offset = current_offset();
-                symbol.binding = IRSymbolBinding::Global;
+                symbol.binding = (directive.name == ".function") ? IRSymbolBinding::Global : IRSymbolBinding::Global;
+                symbol.is_function = (directive.name == ".function");
                 ir_program.symbols.push_back(std::move(symbol));
             }
         }

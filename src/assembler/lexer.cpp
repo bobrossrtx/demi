@@ -42,6 +42,7 @@ void Lexer::init_tables() {
     keywords[".section"] = TokenType::SECTION;
     keywords["global"] = TokenType::GLOBAL;
     keywords[".global"] = TokenType::GLOBAL;
+    keywords[".function"] = TokenType::GLOBAL;  // reuse GLOBAL token type
     keywords["extern"] = TokenType::EXTERN;
     keywords[".extern"] = TokenType::EXTERN;
     

@@ -109,6 +109,7 @@ struct IRSymbol {
     uint64_t offset = 0;
     IRSymbolBinding binding = IRSymbolBinding::Local;
     bool defined = false;
+    bool is_function = false;
 };
 
 struct IRRelocation {
