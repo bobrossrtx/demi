@@ -34,8 +34,8 @@ DemiEngine serves as the foundation for the upcoming **Demi programming language
 | Stage       | Status        | Target  | Description                                  |
 | ----------- | ------------- | ------- | -------------------------------------------- |
 | **Stage 1** | ✅ Complete   | Q4 2025 | Core VM Backend (63 opcodes, 134 registers)  |
-| **Stage 2** | ✅ Complete   | Q1 2026 | Assembly Language Expansion (SIMD, FPU, AVX) |
-| **Stage 3** | ✅ Complete   | Q2 2026 | DASM x86/x64 Cross-Assembler + ELF Output    |
+| **Stage 2** | 🚧 In Progress | Q1 2026 | Assembly Language Expansion (SIMD, FPU, AVX) |
+| **Stage 3** | 🚧 In Progress | Q2 2026 | DASM x86/x64 Cross-Assembler + ELF Output    |
 | **Stage 4** | 🔜 Planning   | Q3 2026 | Demi Language Frontend (High-level syntax)   |
 | **Stage 5** | 🔜 Planning   | Q4 2026 | D-ISA Assembler Integration                  |
 | **Stage 6** | 🔜 Planning   | Q1 2027 | Custom Linker                                |
