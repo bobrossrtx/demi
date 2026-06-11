@@ -131,6 +131,27 @@ void Lexer::init_tables() {
     mnemonics["IMUL"] = TokenType::MNEMONIC;
     mnemonics["DIV"] = TokenType::MNEMONIC;
     mnemonics["MOD"] = TokenType::MNEMONIC;
+    mnemonics["ADC"] = TokenType::MNEMONIC;
+    mnemonics["SBB"] = TokenType::MNEMONIC;
+    mnemonics["MOVSX"] = TokenType::MNEMONIC;
+    mnemonics["MOVZX"] = TokenType::MNEMONIC;
+    mnemonics["SETZ"] = TokenType::MNEMONIC;
+    mnemonics["SETNZ"] = TokenType::MNEMONIC;
+    mnemonics["SETG"] = TokenType::MNEMONIC;
+    mnemonics["SETGE"] = TokenType::MNEMONIC;
+    mnemonics["SETL"] = TokenType::MNEMONIC;
+    mnemonics["SETLE"] = TokenType::MNEMONIC;
+    mnemonics["SETC"] = TokenType::MNEMONIC;
+    mnemonics["SETNC"] = TokenType::MNEMONIC;
+    mnemonics["SETO"] = TokenType::MNEMONIC;
+    mnemonics["SETNO"] = TokenType::MNEMONIC;
+    mnemonics["SETS"] = TokenType::MNEMONIC;
+    mnemonics["SETNS"] = TokenType::MNEMONIC;
+    mnemonics["SAL"] = TokenType::MNEMONIC;
+    mnemonics["SAR"] = TokenType::MNEMONIC;
+    mnemonics["LOOP"] = TokenType::MNEMONIC;
+    mnemonics["LOOPE"] = TokenType::MNEMONIC;
+    mnemonics["LOOPNE"] = TokenType::MNEMONIC;
     mnemonics["INC"] = TokenType::MNEMONIC;
     mnemonics["DEC"] = TokenType::MNEMONIC;
     mnemonics["AND"] = TokenType::MNEMONIC;
@@ -309,6 +330,18 @@ void Lexer::init_tables() {
     registers["EDI"] = TokenType::REGISTER;
     registers["ESP"] = TokenType::REGISTER;
     registers["EBP"] = TokenType::REGISTER;
+
+    // 16-bit register aliases
+    registers["AX"] = TokenType::REGISTER;
+    registers["BX"] = TokenType::REGISTER;
+    registers["CX"] = TokenType::REGISTER;
+    registers["DX"] = TokenType::REGISTER;
+
+    // 8-bit register aliases
+    registers["AL"] = TokenType::REGISTER;
+    registers["BL"] = TokenType::REGISTER;
+    registers["CL"] = TokenType::REGISTER;
+    registers["DL"] = TokenType::REGISTER;
 
     // XMM registers (128-bit SIMD)
     for (int i = 0; i < 16; ++i) {

@@ -32,6 +32,7 @@ enum class IRRelocationKind {
     Absolute32,
     Absolute64,
     PcRelative32,
+    PcRelative8,
     PcRelative64,
     SectionRelative
 };

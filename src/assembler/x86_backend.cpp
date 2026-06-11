@@ -59,14 +59,14 @@ struct EncodedMemoryOperand {
 };
 
 std::optional<uint8_t> parse_reg_id(const std::string& upper) {
-    if (upper == "EAX" || upper == "RAX") return 0;
-    if (upper == "ECX" || upper == "RCX") return 1;
-    if (upper == "EDX" || upper == "RDX") return 2;
-    if (upper == "EBX" || upper == "RBX") return 3;
-    if (upper == "ESP" || upper == "RSP") return 4;
-    if (upper == "EBP" || upper == "RBP") return 5;
-    if (upper == "ESI" || upper == "RSI") return 6;
-    if (upper == "EDI" || upper == "RDI") return 7;
+    if (upper == "EAX" || upper == "RAX" || upper == "AX" || upper == "AL") return 0;
+    if (upper == "ECX" || upper == "RCX" || upper == "CX" || upper == "CL") return 1;
+    if (upper == "EDX" || upper == "RDX" || upper == "DX" || upper == "DL") return 2;
+    if (upper == "EBX" || upper == "RBX" || upper == "BX" || upper == "BL") return 3;
+    if (upper == "ESP" || upper == "RSP" || upper == "SP") return 4;
+    if (upper == "EBP" || upper == "RBP" || upper == "BP") return 5;
+    if (upper == "ESI" || upper == "RSI" || upper == "SI") return 6;
+    if (upper == "EDI" || upper == "RDI" || upper == "DI") return 7;
     return std::nullopt;
 }
 
@@ -601,6 +601,55 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return 0;
         }
         return 2;
+    }
+
+    if (mnemonic == "ADC" || mnemonic == "SBB") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, reg");
+            return 0;
+        }
+        return 2;
+    }
+
+    if (mnemonic == "MOVSX" || mnemonic == "MOVZX") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, reg");
+            return 0;
+        }
+        return 3; // 0F opcode + modrm
+    }
+
+    if (mnemonic == "SAL" || mnemonic == "SAR") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm8 or reg, CL");
+            return 0;
+        }
+        if (instruction.operands[1].kind == IROperandKind::Immediate) return 3;
+        if (instruction.operands[1].kind == IROperandKind::Register) return 2;
+        if (instruction.operands[1].kind == IROperandKind::Symbol) return 2;
+    }
+
+    if (mnemonic == "LOOP" || mnemonic == "LOOPE" || mnemonic == "LOOPNE") {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Symbol) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " label");
+            return 0;
+        }
+        return 2; // opcode + rel8
+    }
+
+    if (mnemonic.rfind("SET", 0) == 0) { // SETcc
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg8");
+            return 0;
+        }
+        return 3; // 0F 9x C0+reg
     }
 
     if (mnemonic == "IMUL") {
@@ -1410,6 +1459,118 @@ EncodedInstructionResult X86Backend::encode_instruction(
             }
             return result;
         }
+    }
+
+    if (mnemonic == "ADC" || mnemonic == "SBB") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, reg");
+            return result;
+        }
+        const auto dst = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        const auto src = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+        if (!dst || !src) { errors.push_back("bad register in " + instruction.mnemonic); return result; }
+        const uint8_t opcode = mnemonic == "ADC" ? 0x11 : 0x19;
+        if (is_64bit_mode()) result.bytes.push_back(0x48);
+        result.bytes.push_back(opcode);
+        result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src & 0x7) << 3) | (*dst & 0x7)));
+        return result;
+    }
+
+    if (mnemonic == "MOVSX" || mnemonic == "MOVZX") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register ||
+            instruction.operands[1].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, reg");
+            return result;
+        }
+        const auto dst = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        const auto src = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
+        if (!dst || !src) { errors.push_back("bad register in " + instruction.mnemonic); return result; }
+        const uint8_t subcode = mnemonic == "MOVSX" ? 0xBE : 0xB6;
+        if (is_64bit_mode()) result.bytes.push_back(0x48);
+        result.bytes.push_back(0x0F);
+        result.bytes.push_back(subcode);
+        result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src & 0x7) << 3) | (*dst & 0x7)));
+        return result;
+    }
+
+    if (mnemonic == "SAL" || mnemonic == "SAR") {
+        if (instruction.operands.size() != 2 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm8 or reg, CL");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) { errors.push_back("bad register in " + instruction.mnemonic); return result; }
+        const uint8_t subcode = mnemonic == "SAL" ? 0xE0 : 0xF8;
+        if (instruction.operands[1].kind == IROperandKind::Immediate) {
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            result.bytes.push_back(0xC1);
+            result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
+            result.bytes.push_back(static_cast<uint8_t>(std::get<IRImmediateOperand>(instruction.operands[1].value).value & 0xFF));
+            return result;
+        }
+        if (instruction.operands[1].kind == IROperandKind::Register || instruction.operands[1].kind == IROperandKind::Symbol) {
+            if (is_64bit_mode()) result.bytes.push_back(0x48);
+            result.bytes.push_back(0xD3);
+            result.bytes.push_back(static_cast<uint8_t>(subcode | (*reg & 0x7)));
+            return result;
+        }
+    }
+
+    if (mnemonic == "LOOP" || mnemonic == "LOOPE" || mnemonic == "LOOPNE") {
+        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Symbol) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " label");
+            return result;
+        }
+        const auto& symbol = std::get<IRSymbolOperand>(instruction.operands[0].value).name;
+        uint8_t opcode = 0xE2;
+        if (mnemonic == "LOOPE") opcode = 0xE1;
+        if (mnemonic == "LOOPNE") opcode = 0xE0;
+        result.bytes.push_back(opcode);
+        auto it = text_symbol_offsets.find(symbol);
+        if (it != text_symbol_offsets.end()) {
+            const int64_t rel = static_cast<int64_t>(it->second) - static_cast<int64_t>(instruction_offset + 2);
+            result.bytes.push_back(static_cast<uint8_t>(static_cast<int8_t>(rel)));
+            return result;
+        }
+        result.bytes.push_back(0);
+        IRRelocation relocation;
+        relocation.section = IRSectionKind::Text;
+        relocation.offset = instruction_offset + 1;
+        relocation.symbol = symbol;
+        relocation.kind = IRRelocationKind::PcRelative8;
+        relocation.addend = 0;
+        result.relocations.push_back(std::move(relocation));
+        return result;
+    }
+
+    if (mnemonic.rfind("SET", 0) == 0) {
+        if (instruction.operands.size() != 1 ||
+            instruction.operands[0].kind != IROperandKind::Register) {
+            errors.push_back("x86 backend expects SETcc reg8");
+            return result;
+        }
+        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+        if (!reg) { errors.push_back("bad register in " + instruction.mnemonic); return result; }
+        uint8_t cc = 0x94;
+        if (mnemonic == "SETNZ" || mnemonic == "SETNE") cc = 0x95;
+        else if (mnemonic == "SETC" || mnemonic == "SETB") cc = 0x92;
+        else if (mnemonic == "SETNC" || mnemonic == "SETNB") cc = 0x93;
+        else if (mnemonic == "SETO") cc = 0x90;
+        else if (mnemonic == "SETNO") cc = 0x91;
+        else if (mnemonic == "SETS") cc = 0x98;
+        else if (mnemonic == "SETNS") cc = 0x99;
+        else if (mnemonic == "SETG") cc = 0x9F;
+        else if (mnemonic == "SETGE") cc = 0x9D;
+        else if (mnemonic == "SETL") cc = 0x9C;
+        else if (mnemonic == "SETLE") cc = 0x9E;
+        result.bytes.push_back(0x0F);
+        result.bytes.push_back(cc);
+        result.bytes.push_back(static_cast<uint8_t>(0xC0 | (*reg & 0x7)));
+        return result;
     }
 
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);
