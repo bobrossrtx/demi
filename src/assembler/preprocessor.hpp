@@ -57,6 +57,8 @@ public:
     const std::vector<std::string>& get_errors() const { return errors; }
     bool has_errors() const { return !errors.empty(); }
     
+    bool evaluate_expression(const std::string& expr);
+    
 private:
     std::unordered_map<std::string, MacroDefinition> macros;
     std::unordered_map<std::string, std::unique_ptr<std::regex>> macro_regex_cache_;
@@ -83,7 +85,7 @@ private:
     void handle_endif();
     
     // Utility methods
-    bool evaluate_condition(const std::string& condition);
+    int64_t resolve_value(const std::string& s) const;
     std::string read_file(const std::string& filepath);
     std::vector<std::string> parse_macro_args(const std::string& args_str);
     std::string trim(const std::string& str);

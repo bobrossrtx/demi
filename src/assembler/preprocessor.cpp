@@ -3,6 +3,7 @@
 #include <sstream>
 #include <algorithm>
 #include <regex>
+#include <cstring>
 #include <filesystem>
 #include <iostream>
 
@@ -223,6 +224,15 @@ std::string Preprocessor::process_line(const std::string& line, const std::strin
     } else if (trimmed.substr(0, 7) == ".ifndef") {
         std::string name = trimmed.substr(7);
         bool condition = handle_ifndef(trim(name));
+        ConditionalState state;
+        state.is_true = condition;
+        state.has_matched = condition;
+        state.in_else = false;
+        conditional_stack.push(state);
+        return "";
+    } else if (trimmed.substr(0, 3) == ".if" && trimmed.substr(0, 6) != ".ifdef" && trimmed.substr(0, 7) != ".ifndef") {
+        std::string expr = trim(trimmed.substr(3));
+        bool condition = evaluate_expression(expr);
         ConditionalState state;
         state.is_true = condition;
         state.has_matched = condition;
@@ -466,7 +476,7 @@ void Preprocessor::handle_elif(const std::string& condition) {
         return;
     }
     
-    bool cond_result = evaluate_condition(condition);
+    bool cond_result = evaluate_expression(condition);
     state.is_true = !state.has_matched && cond_result;
     if (state.is_true) {
         state.has_matched = true;
@@ -498,18 +508,66 @@ void Preprocessor::handle_endif() {
     conditional_stack.pop();
 }
 
-bool Preprocessor::evaluate_condition(const std::string& condition) {
-    std::string trimmed = trim(condition);
-    
-    // Simple condition evaluation - just check if macro is defined
-    if (trimmed.length() >= 10 && trimmed.substr(0, 8) == "defined(" && trimmed.back() == ')') {
-        std::string macro_name = trimmed.substr(8, trimmed.length() - 9);
-        macro_name = trim(macro_name);
-        return is_defined(macro_name);
+bool Preprocessor::evaluate_expression(const std::string& expr) {
+    std::string s = trim(expr);
+
+    // Check for comparison operators
+    const char* ops[] = {"==", "!=", "<=", ">=", "<", ">"};
+    for (auto op : ops) {
+        size_t pos = s.find(op);
+        if (pos != std::string::npos) {
+            std::string left = trim(s.substr(0, pos));
+            std::string right = trim(s.substr(pos + strlen(op)));
+
+            int64_t l = resolve_value(left);
+            int64_t r = resolve_value(right);
+
+            if (strcmp(op, "==") == 0) return l == r;
+            if (strcmp(op, "!=") == 0) return l != r;
+            if (strcmp(op, "<") == 0)  return l < r;
+            if (strcmp(op, ">") == 0)  return l > r;
+            if (strcmp(op, "<=") == 0) return l <= r;
+            if (strcmp(op, ">=") == 0) return l >= r;
+            return false;
+        }
     }
-    
-    // Direct macro name check
-    return is_defined(trimmed);
+
+    // No operator — truthy check: non-zero value or defined macro
+    int64_t val = resolve_value(s);
+    return val != 0;
+}
+
+int64_t Preprocessor::resolve_value(const std::string& s) const {
+    // Inline trim to avoid non-const method call
+    auto trim_local = [](const std::string& str) -> std::string {
+        const char* ws = " \t\n\r\f\v";
+        size_t start = str.find_first_not_of(ws);
+        if (start == std::string::npos) return "";
+        size_t end = str.find_last_not_of(ws);
+        return str.substr(start, end - start + 1);
+    };
+    std::string t = trim_local(s);
+    if (t.empty()) return 0;
+
+    // Check if it's a hex literal
+    if (t.size() >= 2 && t[0] == '0' && (t[1] == 'x' || t[1] == 'X')) {
+        try { return std::stoll(t.substr(2), nullptr, 16); }
+        catch (...) { return 0; }
+    }
+    // Check if it's a number
+    bool is_num = true;
+    for (char c : t) if (!isdigit(c) && c != '-') { is_num = false; break; }
+    if (is_num) {
+        try { return std::stoll(t); }
+        catch (...) { return 0; }
+    }
+    // Check if it's a defined macro
+    auto it = macros.find(t);
+    if (it != macros.end() && !it->second.is_function_macro) {
+        return resolve_value(it->second.body);
+    }
+    // Unknown — return 0
+    return 0;
 }
 
 std::string Preprocessor::read_file(const std::string& filepath) {
