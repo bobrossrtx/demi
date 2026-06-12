@@ -199,13 +199,18 @@ void LoweringContext::lower_directive(const Directive& directive, IRProgram& ir_
     }
 
     if (directive.name == ".equ") {
-        if (!directive.arguments.empty()) {
-            if (auto ident = dynamic_cast<const IdentifierExpression*>(directive.arguments.front().get())) {
+        if (directive.arguments.size() >= 2) {
+            if (auto ident = dynamic_cast<const IdentifierExpression*>(directive.arguments[0].get())) {
                 IRSymbol symbol;
                 symbol.name = ident->name;
-                symbol.section = current_section_;
+                symbol.section = IRSectionKind::Custom;
                 symbol.offset = 0;
                 symbol.defined = true;
+                // Extract value from second argument
+                if (auto imm = dynamic_cast<const ImmediateExpression*>(directive.arguments[1].get())) {
+                    symbol.equ_value = imm->value;
+                    ir_program.equ_constants[ident->name] = imm->value;
+                }
                 ir_program.symbols.push_back(std::move(symbol));
             }
         }

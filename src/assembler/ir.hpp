@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -112,6 +113,7 @@ struct IRSymbol {
     bool defined = false;
     bool is_function = false;
     uint64_t size = 0;
+    std::optional<int64_t> equ_value;  // .equ constant value
 };
 
 struct IRRelocation {
@@ -129,6 +131,7 @@ struct IRProgram {
     std::vector<IRDataRecord> data_records;
     std::vector<IRSymbol> symbols;
     std::vector<IRRelocation> relocations;
+    std::unordered_map<std::string, int64_t> equ_constants;
     std::string entry_symbol = "_start";
 };
 

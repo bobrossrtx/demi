@@ -123,6 +123,14 @@ void Lexer::init_tables() {
     mnemonics["JNS"] = TokenType::MNEMONIC;
     mnemonics["JC"] = TokenType::MNEMONIC;
     mnemonics["JNC"] = TokenType::MNEMONIC;
+    mnemonics["JB"] = TokenType::MNEMONIC;
+    mnemonics["JNAE"] = TokenType::MNEMONIC;
+    mnemonics["JAE"] = TokenType::MNEMONIC;
+    mnemonics["JNB"] = TokenType::MNEMONIC;
+    mnemonics["JBE"] = TokenType::MNEMONIC;
+    mnemonics["JNA"] = TokenType::MNEMONIC;
+    mnemonics["JA"] = TokenType::MNEMONIC;
+    mnemonics["JNBE"] = TokenType::MNEMONIC;
     mnemonics["JO"] = TokenType::MNEMONIC;
     mnemonics["JNO"] = TokenType::MNEMONIC;
     mnemonics["JG"] = TokenType::MNEMONIC;

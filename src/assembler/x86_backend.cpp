@@ -41,12 +41,14 @@ std::optional<uint8_t> jcc_opcode(const std::string& mnemonic) {
     if (mnemonic == "JGE") return 0x8D;
     if (mnemonic == "JL") return 0x8C;
     if (mnemonic == "JLE") return 0x8E;
-    if (mnemonic == "JC") return 0x82;
-    if (mnemonic == "JNC") return 0x83;
+    if (mnemonic == "JC" || mnemonic == "JB" || mnemonic == "JNAE") return 0x82;
+    if (mnemonic == "JNC" || mnemonic == "JAE" || mnemonic == "JNB") return 0x83;
     if (mnemonic == "JO") return 0x80;
     if (mnemonic == "JNO") return 0x81;
     if (mnemonic == "JS") return 0x88;
     if (mnemonic == "JNS") return 0x89;
+    if (mnemonic == "JBE" || mnemonic == "JNA") return 0x86;
+    if (mnemonic == "JA" || mnemonic == "JNBE") return 0x87;
     return std::nullopt;
 }
 
@@ -372,7 +374,7 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
         }
 
         const auto instruction_offset = text_offset_map[static_cast<uint64_t>(instruction_index)];
-        auto encoded = encode_instruction(instruction, instruction_offset, text_symbol_offsets, artifact.errors, artifact.warnings);
+        auto encoded = encode_instruction(instruction, instruction_offset, text_symbol_offsets, adjusted_program.equ_constants, artifact.errors, artifact.warnings);
         if (!artifact.ok()) {
             return artifact;
         }
@@ -527,11 +529,18 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
     }
 
     if (mnemonic == "PUSH" || mnemonic == "POP") {
-        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects " + instruction.mnemonic + " reg");
+        if (instruction.operands.size() != 1) {
+            errors.push_back("x86 backend expects " + instruction.mnemonic + " with one operand");
             return 0;
         }
-        return 1;
+        if (instruction.operands[0].kind == IROperandKind::Register)
+            return 1;
+        if (instruction.operands[0].kind == IROperandKind::Immediate) {
+            const auto imm = std::get<IRImmediateOperand>(instruction.operands[0].value).value;
+            return fits_i8(imm) ? 2 : 5;
+        }
+        errors.push_back("x86 backend expects " + instruction.mnemonic + " reg or imm");
+        return 0;
     }
 
     if (mnemonic == "INC" || mnemonic == "DEC") {
@@ -883,10 +892,26 @@ EncodedInstructionResult X86Backend::encode_instruction(
     const IRInstruction& instruction,
     uint64_t instruction_offset,
     const std::unordered_map<std::string, uint64_t>& text_symbol_offsets,
+    const std::unordered_map<std::string, int64_t>& equ_constants,
     std::vector<std::string>& errors,
     std::vector<std::string>& warnings) const {
     EncodedInstructionResult result;
     const std::string mnemonic = upper_copy(instruction.mnemonic);
+
+    // Substitute .equ constants: replace Symbol operands with Immediate
+    auto resolve_equ = [&](const IROperand& op) -> IROperand {
+        if (op.kind == IROperandKind::Symbol) {
+            auto it = equ_constants.find(std::get<IRSymbolOperand>(op.value).name);
+            if (it != equ_constants.end())
+                return {IROperandKind::Immediate, IRImmediateOperand{it->second}};
+        }
+        return op;
+    };
+
+    // Create a local copy with resolved operands
+    IRInstruction resolved = instruction;
+    for (auto& op : resolved.operands)
+        op = resolve_equ(op);
 
     auto warn_unsized_memory = [&](const IRMemoryOperand& mem, const std::string& context) {
         if (!mem.width_bits && !mem.symbol) {
@@ -1121,18 +1146,33 @@ EncodedInstructionResult X86Backend::encode_instruction(
     }
 
     if (mnemonic == "PUSH") {
-        if (instruction.operands.size() != 1 || instruction.operands[0].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects PUSH reg");
+        if (instruction.operands.size() != 1) {
+            errors.push_back("x86 backend expects PUSH with one operand");
             return result;
         }
-        const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
-        if (!reg) {
-            errors.push_back("x86 backend does not support that register in PUSH");
+
+        if (instruction.operands[0].kind == IROperandKind::Register) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
+            if (!reg) { errors.push_back("x86 backend does not support that register in PUSH"); return result; }
+            if (is_64bit_mode() && *reg >= 8)
+                result.bytes.push_back(0x41);
+            result.bytes.push_back(static_cast<uint8_t>(0x50 + (*reg & 0x7)));
             return result;
         }
-        if (is_64bit_mode() && *reg >= 8)
-            result.bytes.push_back(0x41); // REX.B
-        result.bytes.push_back(static_cast<uint8_t>(0x50 + (*reg & 0x7)));
+
+        if (instruction.operands[0].kind == IROperandKind::Immediate) {
+            const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[0].value).value;
+            if (fits_i8(imm)) {
+                result.bytes.push_back(0x6A);
+                result.bytes.push_back(static_cast<uint8_t>(imm));
+            } else {
+                result.bytes.push_back(0x68);
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
+
+        errors.push_back("x86 backend expects PUSH reg or imm");
         return result;
     }
 
