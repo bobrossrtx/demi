@@ -91,6 +91,23 @@ std::optional<uint8_t> parse_reg_id(const std::string& upper) {
     return std::nullopt;
 }
 
+// Determine operand size in bits from register name
+static int operand_size_from_reg(const std::string& name) {
+    std::string upper = upper_copy(name);
+    if (upper.empty()) return 32;
+    if (upper.back() == 'L' || upper.back() == 'H') return 8;
+    if (upper.back() == 'X' && upper.size() == 2) return 16;   // AX, BX, ...
+    if (upper.back() == 'L' && upper.size() > 2) return 8;      // R8B, etc already caught
+    if (upper.back() == 'W' && upper.size() > 2) return 16;     // R8W
+    if (upper.back() == 'D' && upper.size() > 2) return 32;     // R8D
+    if (upper[0] == 'R' && upper.size() >= 2) {
+        if (upper[1] >= '0' && upper[1] <= '9') return 64;     // R8, R9, ...
+    }
+    if (upper[0] == 'E') return 32;  // EAX, EBX, ...
+    if (upper[0] == 'R' && upper.size() >= 2 && upper[1] != '8' && upper[1] != '9' && upper[1] != '1') return 64; // RAX, etc.
+    return 32;
+}
+
 // Compute REX prefix byte for x86-64.
 // reg_id: the register field (ModR/M reg or opcode reg), can be nullopt
 // rm_id: the ModR/M rm field or base, can be nullopt
@@ -125,6 +142,14 @@ EncodedMemoryOperand encode_memory_operand32(
         if (memory.base) base_id = parse_reg_id(upper_copy(*memory.base));
         if (memory.index) idx_id = parse_reg_id(upper_copy(*memory.index));
         encoded.bytes.push_back(compute_rex(true, reg_field, base_id, idx_id));
+    } else {
+        // 8-bit ops in 64-bit mode still need REX for R8-R15, but without REX.W
+        std::optional<uint8_t> base_id, idx_id;
+        if (memory.base) base_id = parse_reg_id(upper_copy(*memory.base));
+        if (memory.index) idx_id = parse_reg_id(upper_copy(*memory.index));
+        bool needs_rex = (base_id && *base_id >= 8) || (idx_id && *idx_id >= 8) || reg_field >= 8;
+        if (needs_rex)
+            encoded.bytes.push_back(compute_rex(false, reg_field, base_id, idx_id));
     }
     encoded.bytes.push_back(opcode);
 
@@ -1086,7 +1111,11 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 return result;
             }
 
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *dst_reg, 0x8B, is_64bit_mode(), errors);
+            int opsize = operand_size_from_reg(std::get<IRRegisterOperand>(dst.value).name);
+            uint8_t opcode = (opsize == 8) ? 0x8A : 0x8B;
+            bool use_64 = (opsize == 64) || (is_64bit_mode() && opsize >= 32);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *dst_reg, opcode, use_64, errors);
+            if (opsize == 16) result.bytes.push_back(0x66); // operand size override
             if (!errors.empty()) {
                 return result;
             }
@@ -1112,7 +1141,11 @@ EncodedInstructionResult X86Backend::encode_instruction(
 
             warn_unsized_memory(std::get<IRMemoryOperand>(dst.value), "MOV [mem], reg");
 
-            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x89, is_64bit_mode(), errors);
+            int opsize = operand_size_from_reg(std::get<IRRegisterOperand>(src.value).name);
+            uint8_t opcode = (opsize == 8) ? 0x88 : 0x89;
+            bool use_64 = (opsize == 64) || (is_64bit_mode() && opsize >= 32);
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, opcode, use_64, errors);
+            if (opsize == 16) result.bytes.push_back(0x66);
             if (!errors.empty()) {
                 return result;
             }
