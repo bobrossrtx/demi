@@ -1,5 +1,6 @@
 #include "x86_backend.hpp"
 
+#include "elf32_executable.hpp"
 #include "elf32_writer.hpp"
 #include "elf64_writer.hpp"
 
@@ -335,46 +336,17 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
 }
 
 BackendArtifact X86Backend::emit_executable(const IRProgram& program) {
-    BackendArtifact artifact;
-    std::unordered_map<uint64_t, uint64_t> text_offset_map;
-
-    // First pass: size estimation (same as emit)
-    // ... [existing code omitted for brevity — this would duplicate emit's logic]
-    // Instead, call emit() to get the relocatable, then convert
     auto reloc = emit(program);
     if (!reloc.ok()) return reloc;
 
-    // Extract section data from relocatable
-    auto read_sec = [](const std::vector<uint8_t>& elf, const std::string& name) -> std::vector<uint8_t> {
-        if (elf.size() < 52) return {};
-        uint32_t shoff = (uint32_t)elf[32]|((uint32_t)elf[33]<<8)|((uint32_t)elf[34]<<16)|((uint32_t)elf[35]<<24);
-        uint16_t shnum = (uint16_t)elf[48]|((uint16_t)elf[49]<<8);
-        uint16_t shstrndx = (uint16_t)elf[50]|((uint16_t)elf[51]<<8);
-        uint32_t sso = (uint32_t)elf[shoff+shstrndx*40+16]|((uint32_t)elf[shoff+shstrndx*40+17]<<8)|((uint32_t)elf[shoff+shstrndx*40+18]<<16)|((uint32_t)elf[shoff+shstrndx*40+19]<<24);
-        for (uint16_t i=0;i<shnum;i++){size_t b=shoff+i*40;
-            uint32_t no=(uint32_t)elf[b]|((uint32_t)elf[b+1]<<8)|((uint32_t)elf[b+2]<<16)|((uint32_t)elf[b+3]<<24);
-            uint32_t so=(uint32_t)elf[b+16]|((uint32_t)elf[b+17]<<8)|((uint32_t)elf[b+18]<<16)|((uint32_t)elf[b+19]<<24);
-            uint32_t ss=(uint32_t)elf[b+20]|((uint32_t)elf[b+21]<<8)|((uint32_t)elf[b+22]<<16)|((uint32_t)elf[b+23]<<24);
-            std::string n;for(size_t j=sso+no;j<elf.size()&&elf[j];j++)n+=(char)elf[j];
-            if(n==name&&ss>0)return std::vector<uint8_t>(elf.begin()+so,elf.begin()+so+ss);}
-        return {};
-    };
-
-    auto text = read_sec(reloc.bytes, ".text");
-    auto data = read_sec(reloc.bytes, ".data");
-    auto rodata = read_sec(reloc.bytes, ".rodata");
-
-    // Get adjusted program with remapped offsets
-    auto adjusted = adjust_program_for_encoded_text(program, text_offset_map);
-    // Collect text relocations from encoded instructions (re-run the encode pass)
-    std::vector<IRRelocation> text_rels;
-    // We need to re-collect from the emit pass — for now, pass empty
-    // This means relocations won't be resolved for executable output
-    // A full implementation would duplicate the encode pass
-
-    ELF32ObjectWriter writer;
-    artifact.bytes = writer.write_executable(adjusted, artifact.errors, &text, &data, &rodata, &text_rels);
-    return artifact;
+    std::vector<std::string> errs;
+    auto exe = make_elf32_executable(reloc.bytes, program, errs);
+    if (!errs.empty()) {
+        reloc.errors.insert(reloc.errors.end(), errs.begin(), errs.end());
+        return reloc;
+    }
+    reloc.bytes = exe;
+    return reloc;
 }
 
 std::optional<uint8_t> X86Backend::encode_register_id(const std::string& name) const {
