@@ -157,7 +157,25 @@ EncodedMemoryOperand encode_memory_operand32(
         encoded.has_symbol_relocation = true;
         encoded.relocation_symbol = *memory.symbol;
         encoded.relocation_addend = memory.displacement;
-        encoded.is_pc_relative = is64; // x86-64 uses RIP-relative for [symbol]
+        encoded.is_pc_relative = is64;
+        return encoded;
+    }
+
+    // Symbol + index (no base): [symbol + index*scale + displacement]
+    if (memory.symbol && !memory.base && memory.index) {
+        auto idx_id = parse_reg_id(upper_copy(*memory.index));
+        if (!idx_id) { errors.push_back("unknown index register"); return encoded; }
+        uint8_t scale_val = memory.scale ? static_cast<uint8_t>(memory.scale) : 1;
+        uint8_t sib = sib_byte(scale_val, *idx_id, 5); // base=5 (no base with disp32)
+        encoded.bytes.push_back(static_cast<uint8_t>((0b00 << 6) | ((reg_field & 0x7) << 3) | 0b100));
+        encoded.bytes.push_back(sib);
+        encoded.displacement_offset = encoded.bytes.size();
+        encoded.displacement_size = 4;
+        append_i32(encoded.bytes, static_cast<int32_t>(memory.displacement));
+        encoded.has_symbol_relocation = true;
+        encoded.relocation_symbol = *memory.symbol;
+        encoded.relocation_addend = memory.displacement;
+        encoded.is_pc_relative = is64;
         return encoded;
     }
 
@@ -1605,10 +1623,10 @@ EncodedInstructionResult X86Backend::encode_instruction(
             const auto dst = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[0].value).name);
             const auto src = encode_register_id(std::get<IRRegisterOperand>(instruction.operands[1].value).name);
             if (!dst || !src) { errors.push_back("bad register in IMUL"); return result; }
-            if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, dst, src));
+            if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, src, dst));
             result.bytes.push_back(0x0F);
             result.bytes.push_back(0xAF);
-            result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src & 0x7) << 3) | (*dst & 0x7)));
+            result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*dst & 0x7) << 3) | (*src & 0x7)));
             return result;
         }
         if (instruction.operands.size() == 3 &&
