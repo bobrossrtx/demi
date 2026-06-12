@@ -61,10 +61,11 @@ private:
     std::unordered_map<std::string, MacroDefinition> macros;
     std::unordered_map<std::string, std::unique_ptr<std::regex>> macro_regex_cache_;
     std::stack<ConditionalState> conditional_stack;
-    std::vector<std::string> included_files;  // Track to prevent circular includes
+    std::vector<std::string> included_files;
     std::vector<std::string> errors;
     std::string current_file;
     size_t current_line;
+    std::string next_macro_expansion_;  // queued macro expansions
     
     // Preprocessing methods
     std::string process_line(const std::string& line, const std::string& base_path);

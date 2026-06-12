@@ -86,6 +86,76 @@ std::string Preprocessor::preprocess(const std::string& source, const std::strin
             continue;
         }
         
+        // Handle .macro / .endm blocks
+        if (trimmed_line.substr(0, 6) == ".macro") {
+            if (!should_include_line()) {
+                while (std::getline(stream, line)) {
+                    current_line++;
+                    if (trim(line) == ".endm") break;
+                }
+                continue;
+            }
+            std::string rest = trim(trimmed_line.substr(6));
+            std::istringstream rs(rest);
+            std::string macro_name;
+            rs >> macro_name;
+            if (macro_name.empty()) {
+                add_error(".macro without name");
+                continue;
+            }
+            std::vector<std::string> params;
+            std::string param;
+            while (rs >> param) {
+                if (!param.empty() && param.back() == ',') param.pop_back();
+                if (!param.empty()) params.push_back(param);
+            }
+            std::vector<std::string> body;
+            int endm_line = 0;
+            while (std::getline(stream, line)) {
+                current_line++;
+                if (trim(line) == ".endm") { endm_line = current_line; break; }
+                body.push_back(line);
+            }
+            if (endm_line == 0) {
+                add_error(".macro without matching .endm");
+                continue;
+            }
+            std::string body_str;
+            for (size_t i = 0; i < body.size(); i++) {
+                if (i > 0) body_str += "\n";
+                body_str += body[i];
+            }
+            macros[macro_name] = MacroDefinition(macro_name, params, body_str);
+            continue;
+        }
+        
+        if (trimmed_line == ".endm") {
+            add_error("Stray .endm without .macro at line " + std::to_string(current_line));
+            continue;
+        }
+        
+        // Check for macro invocation: first word matches a function macro
+        std::string first_word;
+        { std::istringstream ls(trimmed_line); ls >> first_word; }
+        if (!first_word.empty() && first_word[0] != '.') {
+            auto it = macros.find(first_word);
+            if (it != macros.end() && it->second.is_function_macro) {
+                std::string rest_of_line = trim(trimmed_line.substr(first_word.length()));
+                std::vector<std::string> args;
+                if (!rest_of_line.empty()) {
+                    std::istringstream as(rest_of_line);
+                    std::string arg;
+                    while (std::getline(as, arg, ',')) args.push_back(trim(arg));
+                }
+                std::string expanded = expand_function_macro(it->second, args);
+                if (!expanded.empty()) {
+                    // Re-preprocess to handle nested macros and .equ
+                    result += preprocess(expanded, base_path);
+                }
+                continue;
+            }
+        }
+        
         std::string processed_line = process_line(line, base_path);
         if (!processed_line.empty()) {
             result += processed_line + "\n";
