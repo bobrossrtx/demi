@@ -977,6 +977,30 @@ int main(int argc, char* argv[]) {
         try {
             run_builtin_tests();
             std::cout << "\nTest completed successfully!\n";
+
+            // R8-R15
+            {
+                std::string src = ".text\n_start:\nMOV R8, R9\nMOV R10, 42\nADD R11, R12\n"
+                                  "PUSH R13\nPOP R14\nINC R15\nRET\n";
+                Assembler::Lexer lexer(src); auto tokens = lexer.tokenize();
+                Assembler::Parser parser(tokens); auto program = parser.parse();
+                auto lowered = Assembler::lower_program(*program);
+                lowered.target = Assembler::IRTarget::X86Elf64;
+                Assembler::X86Backend backend(Assembler::X86BackendMode::X86_64);
+                auto artifact = backend.emit(lowered);
+                if (!artifact.ok()) { std::cerr << "[FAIL] R8-R15: " << artifact.errors[0] << "\n"; return 1; }
+                auto text = std::vector<uint8_t>(artifact.bytes.begin()+64, artifact.bytes.begin()+64+30);
+                bool ok = true;
+                if (text[0]!=0x4D||text[1]!=0x89||text[2]!=0xC8) { printf("FAIL MOV R8,R9: %02X %02X %02X\n",text[0],text[1],text[2]); ok=false; }
+                if (text[3]!=0x49||text[4]!=0xC7||text[5]!=0xC2) { printf("FAIL MOV R10,42\n"); ok=false; }
+                if (text[10]!=0x4D||text[11]!=0x01||text[12]!=0xE3) { printf("FAIL ADD R11,R12\n"); ok=false; }
+                if (text[13]!=0x41||text[14]!=0x55) { printf("FAIL PUSH R13\n"); ok=false; }
+                if (text[15]!=0x41||text[16]!=0x5E) { printf("FAIL POP R14\n"); ok=false; }
+                if (text[17]!=0x49||text[18]!=0xFF||text[19]!=0xC7) { printf("FAIL INC R15\n"); ok=false; }
+                if (ok) std::cout << "[PASS] x86_64_backend_encodes_r8_through_r15\n";
+                else return 1;
+            }
+
             return 0;
         } catch (const std::exception&) {
             return 1;
@@ -1046,6 +1070,5 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::cout << "\nTest completed successfully!\n";
     return 0;
 }

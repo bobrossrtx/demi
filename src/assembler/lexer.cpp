@@ -385,6 +385,8 @@ void Lexer::init_tables() {
     for (int i = 8; i < 16; ++i) {
         registers["R" + std::to_string(i)] = TokenType::REGISTER;
         registers["R" + std::to_string(i) + "D"] = TokenType::REGISTER;
+        registers["R" + std::to_string(i) + "W"] = TokenType::REGISTER;
+        registers["R" + std::to_string(i) + "B"] = TokenType::REGISTER;
     }
     
     // Special registers
