@@ -1,6 +1,7 @@
 #include "x86_backend.hpp"
 
 #include "elf32_executable.hpp"
+#include "elf64_executable.hpp"
 #include "elf32_writer.hpp"
 #include "elf64_writer.hpp"
 
@@ -423,7 +424,12 @@ BackendArtifact X86Backend::emit_executable(const IRProgram& program) {
     if (!reloc.ok()) return reloc;
 
     std::vector<std::string> errs;
-    auto exe = make_elf32_executable(reloc.bytes, program, errs);
+    std::vector<uint8_t> exe;
+    if (is_64bit_mode()) {
+        exe = make_elf64_executable(reloc.bytes, program, errs);
+    } else {
+        exe = make_elf32_executable(reloc.bytes, program, errs);
+    }
     if (!errs.empty()) {
         reloc.errors.insert(reloc.errors.end(), errs.begin(), errs.end());
         return reloc;
