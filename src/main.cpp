@@ -1515,8 +1515,7 @@ private:
         }
 
         if (!is_demi_target && Config::compile_only) {
-            std::cerr << "Error: Native compile mode is only supported for demi-bytecode assembly target right now" << std::endl;
-            return;
+            // x86 target: write ELF object file
         }
 
         if (!is_demi_target && Config::assembly_output.empty()) {

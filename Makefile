@@ -104,7 +104,7 @@ CXXFLAGS += -I$(INCLUDE_DIR)
 # =============================================================================
 
 # Find all source files (cached for performance)
-MAIN_SRCS := $(shell find $(SRC_DIR) -name '*.cpp' -not -name 'test_assembler.cpp')
+MAIN_SRCS := $(shell find $(SRC_DIR) -name '*.cpp' -not -name 'test_assembler.cpp' -not -name 'test_level2.cpp')
 TEST_SRCS := $(shell find $(SRC_DIR)/test -name 'test_assembler.cpp' -type f 2>/dev/null)
 ALL_SRCS := $(MAIN_SRCS) $(TEST_SRCS)
 
