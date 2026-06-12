@@ -25,6 +25,7 @@ public:
 
     IRTarget target() const override;
     BackendArtifact emit(const IRProgram& program) override;
+    BackendArtifact emit_executable(const IRProgram& program);
 
 private:
     std::optional<uint8_t> encode_register_id(const std::string& name) const;
