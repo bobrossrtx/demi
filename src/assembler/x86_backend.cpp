@@ -564,7 +564,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             const auto imm = std::get<IRImmediateOperand>(instruction.operands[0].value).value;
             return fits_i8(imm) ? 2 : 5;
         }
-        errors.push_back("x86 backend expects " + instruction.mnemonic + " reg or imm");
+        if (instruction.operands[0].kind == IROperandKind::Memory)
+            return compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
+        errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm, or [mem]");
         return 0;
     }
 
@@ -668,7 +670,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
     if (mnemonic == "NEG") {
         if (instruction.operands.size() != 1 ||
             instruction.operands[0].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects NEG reg");
+            errors.push_back("x86 backend expects NEG with one operand");
             return 0;
         }
         return 2;
@@ -1208,23 +1210,42 @@ EncodedInstructionResult X86Backend::encode_instruction(
             return result;
         }
 
-        errors.push_back("x86 backend expects PUSH reg or imm");
+        if (inst.operands[0].kind == IROperandKind::Memory) {
+            const auto& mem = std::get<IRMemoryOperand>(inst.operands[0].value);
+            const auto encoded_mem = encode_memory_operand32(mem, 6, 0xFF, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
+
+        errors.push_back("x86 backend expects PUSH reg, imm, or [mem]");
         return result;
     }
 
     if (mnemonic == "POP") {
-        if (inst.operands.size() != 1 || inst.operands[0].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects POP reg");
+        if (inst.operands.size() != 1) {
+            errors.push_back("x86 backend expects POP with one operand");
             return result;
         }
-        const auto reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
-        if (!reg) {
-            errors.push_back("x86 backend does not support that register in POP");
+
+        if (inst.operands[0].kind == IROperandKind::Register) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
+            if (!reg) { errors.push_back("x86 backend does not support that register in POP"); return result; }
+            if (is_64bit_mode() && *reg >= 8)
+                result.bytes.push_back(0x41);
+            result.bytes.push_back(static_cast<uint8_t>(0x58 + (*reg & 0x7)));
             return result;
         }
-        if (is_64bit_mode() && *reg >= 8)
-            result.bytes.push_back(0x41); // REX.B
-        result.bytes.push_back(static_cast<uint8_t>(0x58 + (*reg & 0x7)));
+
+        if (inst.operands[0].kind == IROperandKind::Memory) {
+            const auto& mem = std::get<IRMemoryOperand>(inst.operands[0].value);
+            const auto encoded_mem = encode_memory_operand32(mem, 0, 0x8F, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
+
+        errors.push_back("x86 backend expects POP reg or [mem]");
         return result;
     }
 
@@ -1602,32 +1623,85 @@ EncodedInstructionResult X86Backend::encode_instruction(
     }
 
     if (mnemonic == "NEG") {
-        if (inst.operands.size() != 1 ||
-            inst.operands[0].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects NEG reg");
+        if (inst.operands.size() != 1) {
+            errors.push_back("x86 backend expects NEG with one operand");
             return result;
         }
-        const auto reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
-        if (!reg) { errors.push_back("bad register in NEG"); return result; }
-        if (is_64bit_mode()) result.bytes.push_back(0x48);
-        result.bytes.push_back(0xF7);
-        result.bytes.push_back(static_cast<uint8_t>(0xD8 | (*reg & 0x7)));
+        if (inst.operands[0].kind == IROperandKind::Register) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
+            if (!reg) { errors.push_back("bad register in NEG"); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, std::nullopt, reg));
+            result.bytes.push_back(0xF7);
+            result.bytes.push_back(static_cast<uint8_t>(0xD8 | (*reg & 0x7)));
+            return result;
+        }
+        if (inst.operands[0].kind == IROperandKind::Memory) {
+            const auto& mem = std::get<IRMemoryOperand>(inst.operands[0].value);
+            const auto encoded_mem = encode_memory_operand32(mem, 3, 0xF7, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
+        errors.push_back("x86 backend expects NEG reg or [mem]");
         return result;
     }
 
     if (mnemonic == "TEST") {
-        if (inst.operands.size() != 2 ||
-            inst.operands[0].kind != IROperandKind::Register ||
-            inst.operands[1].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects TEST reg, reg");
+        if (inst.operands.size() != 2) {
+            errors.push_back("x86 backend expects TEST with two operands");
             return result;
         }
-        const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
-        const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[1].value).name);
-        if (!dst_reg || !src_reg) { errors.push_back("bad register in TEST"); return result; }
-        if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, dst_reg, src_reg));
-        result.bytes.push_back(0x85);
-        result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src_reg & 0x7) << 3) | (*dst_reg & 0x7)));
+        const auto& dst = inst.operands[0];
+        const auto& src = inst.operands[1];
+
+        // TEST reg, reg
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Register) {
+            const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
+            if (!dst_reg || !src_reg) { errors.push_back("bad register in TEST"); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, dst_reg, src_reg));
+            result.bytes.push_back(0x85);
+            result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src_reg & 0x7) << 3) | (*dst_reg & 0x7)));
+            return result;
+        }
+        // TEST reg, imm
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Immediate) {
+            const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            if (!dst_reg) { errors.push_back("bad register in TEST"); return result; }
+            int64_t imm = std::get<IRImmediateOperand>(src.value).value;
+            if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, std::nullopt, dst_reg));
+            if (fits_i8(imm)) {
+                result.bytes.push_back(0xF6);
+                result.bytes.push_back(static_cast<uint8_t>(0xC0 | (*dst_reg & 0x7)));
+                result.bytes.push_back(static_cast<uint8_t>(imm));
+            } else {
+                result.bytes.push_back(0xF7);
+                result.bytes.push_back(static_cast<uint8_t>(0xC0 | (*dst_reg & 0x7)));
+                append_u32(result.bytes, static_cast<uint32_t>(imm));
+            }
+            return result;
+        }
+        // TEST [mem], reg
+        if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
+            const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
+            if (!src_reg) { errors.push_back("bad register in TEST"); return result; }
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, 0x85, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
+        // TEST [mem], imm
+        if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
+            int64_t imm = std::get<IRImmediateOperand>(src.value).value;
+            const auto& mem = std::get<IRMemoryOperand>(dst.value);
+            const auto encoded_mem = encode_memory_operand32(mem, 0, fits_i8(imm) ? 0xF6 : 0xF7, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            if (fits_i8(imm)) result.bytes.push_back(static_cast<uint8_t>(imm));
+            else append_u32(result.bytes, static_cast<uint32_t>(imm));
+            return result;
+        }
+        errors.push_back("x86 backend: unsupported TEST operand combination");
         return result;
     }
 
@@ -1745,20 +1819,44 @@ EncodedInstructionResult X86Backend::encode_instruction(
     }
 
     if (mnemonic == "MOVSX" || mnemonic == "MOVZX") {
-        if (inst.operands.size() != 2 ||
-            inst.operands[0].kind != IROperandKind::Register ||
-            inst.operands[1].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects " + inst.mnemonic + " reg, reg");
+        if (inst.operands.size() != 2) {
+            errors.push_back("x86 backend expects " + inst.mnemonic + " with two operands");
             return result;
         }
-        const auto dst = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
-        const auto src = encode_register_id(std::get<IRRegisterOperand>(inst.operands[1].value).name);
-        if (!dst || !src) { errors.push_back("bad register in " + inst.mnemonic); return result; }
+        const auto& dst = inst.operands[0];
+        const auto& src = inst.operands[1];
         const uint8_t subcode = mnemonic == "MOVSX" ? 0xBE : 0xB6;
-        if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, dst, src));
-        result.bytes.push_back(0x0F);
-        result.bytes.push_back(subcode);
-        result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*src & 0x7) << 3) | (*dst & 0x7)));
+
+        // MOVSX/MOVZX reg, reg
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Register) {
+            const auto d = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            const auto s = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
+            if (!d || !s) { errors.push_back("bad register in " + inst.mnemonic); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, d, s));
+            result.bytes.push_back(0x0F);
+            result.bytes.push_back(subcode);
+            result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*s & 0x7) << 3) | (*d & 0x7)));
+            return result;
+        }
+        // MOVSX/MOVZX reg, [mem]
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
+            const auto d = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            if (!d) { errors.push_back("bad register in " + inst.mnemonic); return result; }
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *d, 0x0F, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            // Override the opcode byte: encode_memory_operand32 puts opcode first, but MOVSX/MOVZX use 0F prefix
+            if (encoded_mem.bytes.size() > 0) {
+                // Insert 0x0F prefix before the memory operand opcode
+                result.bytes = encoded_mem.bytes;
+                result.bytes.insert(result.bytes.begin() + (is_64bit_mode() ? 1 : 0), 0x0F);
+                result.bytes.insert(result.bytes.begin() + (is_64bit_mode() ? 1 : 0), subcode);
+                // Remove the original opcode byte that was used as placeholder
+                size_t rex_offset = is_64bit_mode() ? 1 : 0;
+                result.bytes.erase(result.bytes.begin() + rex_offset + 2); // remove placeholder opcode
+            }
+            return result;
+        }
+        errors.push_back("x86 backend expects " + inst.mnemonic + " reg, reg or reg, [mem]");
         return result;
     }
 
@@ -1878,7 +1976,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
 
     // IDIV
     if (mnemonic == "IDIV") {
-        if (inst.operands.size() != 1 || inst.operands[0].kind != IROperandKind::Register) {
+        if (inst.operands.size() != 1) {
             errors.push_back("x86 backend expects IDIV reg"); return result;
         }
         const auto reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
@@ -1890,7 +1988,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
 
     // BSWAP
     if (mnemonic == "BSWAP") {
-        if (inst.operands.size() != 1 || inst.operands[0].kind != IROperandKind::Register) {
+        if (inst.operands.size() != 1) {
             errors.push_back("x86 backend expects BSWAP reg"); return result;
         }
         const auto reg = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
@@ -1902,15 +2000,40 @@ EncodedInstructionResult X86Backend::encode_instruction(
 
     // XCHG
     if (mnemonic == "XCHG") {
-        if (inst.operands.size() != 2 || inst.operands[0].kind != IROperandKind::Register
-            || inst.operands[1].kind != IROperandKind::Register) {
-            errors.push_back("x86 backend expects XCHG reg, reg"); return result;
+        if (inst.operands.size() != 2) {
+            errors.push_back("x86 backend expects XCHG with two operands"); return result;
         }
-        const auto d = encode_register_id(std::get<IRRegisterOperand>(inst.operands[0].value).name);
-        const auto s = encode_register_id(std::get<IRRegisterOperand>(inst.operands[1].value).name);
-        if (!d || !s) { errors.push_back("bad register in XCHG"); return result; }
-        if (is_64bit_mode()) result.bytes.push_back(0x48);
-        result.bytes.push_back(0x87); result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*s & 0x7) << 3) | (*d & 0x7)));
+        const auto& op1 = inst.operands[0];
+        const auto& op2 = inst.operands[1];
+
+        // XCHG reg, reg
+        if (op1.kind == IROperandKind::Register && op2.kind == IROperandKind::Register) {
+            const auto d = encode_register_id(std::get<IRRegisterOperand>(op1.value).name);
+            const auto s = encode_register_id(std::get<IRRegisterOperand>(op2.value).name);
+            if (!d || !s) { errors.push_back("bad register in XCHG"); return result; }
+            if (is_64bit_mode()) result.bytes.push_back(compute_rex(true, d, s));
+            result.bytes.push_back(0x87);
+            result.bytes.push_back(static_cast<uint8_t>(0xC0 | ((*s & 0x7) << 3) | (*d & 0x7)));
+            return result;
+        }
+        // XCHG reg, [mem] or XCHG [mem], reg
+        if (op1.kind == IROperandKind::Register && op2.kind == IROperandKind::Memory) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(op1.value).name);
+            if (!reg) { errors.push_back("bad register in XCHG"); return result; }
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(op2.value), *reg, 0x87, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
+        if (op1.kind == IROperandKind::Memory && op2.kind == IROperandKind::Register) {
+            const auto reg = encode_register_id(std::get<IRRegisterOperand>(op2.value).name);
+            if (!reg) { errors.push_back("bad register in XCHG"); return result; }
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(op1.value), *reg, 0x87, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
+        errors.push_back("x86 backend expects XCHG reg,reg or reg,[mem]");
         return result;
     }
 
