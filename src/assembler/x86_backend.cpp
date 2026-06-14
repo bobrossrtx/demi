@@ -4,6 +4,7 @@
 #include "elf64_executable.hpp"
 #include "elf32_writer.hpp"
 #include "elf64_writer.hpp"
+#include "../config.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -400,6 +401,7 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
         }
 
         const auto instruction_offset = text_offset_map[static_cast<uint64_t>(instruction_index)];
+
         auto encoded = encode_instruction(instruction, instruction_offset, text_symbol_offsets, adjusted_program.equ_constants, artifact.errors, artifact.warnings);
         if (!artifact.ok()) {
             return artifact;
@@ -423,10 +425,22 @@ BackendArtifact X86Backend::emit_executable(const IRProgram& program) {
     auto reloc = emit(program);
     if (!reloc.ok()) return reloc;
 
+    // Build line entries from program instructions for DWARF
+    std::vector<Assembler::LineEntry> line_entries;
+    if (Config::debug_info) {
+        size_t offset = 0;
+        for (const auto& instr : program.instructions) {
+            if (instr.section == IRSectionKind::Text && instr.line > 0) {
+                line_entries.push_back({offset, instr.line});
+            }
+            offset += 4;  // approximate
+        }
+    }
+
     std::vector<std::string> errs;
     std::vector<uint8_t> exe;
     if (is_64bit_mode()) {
-        exe = make_elf64_executable(reloc.bytes, program, errs);
+        exe = make_elf64_executable(reloc.bytes, program, errs, &line_entries);
     } else {
         exe = make_elf32_executable(reloc.bytes, program, errs);
     }

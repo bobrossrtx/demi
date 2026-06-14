@@ -33,8 +33,6 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
         case Opcode::ADD64:
         case Opcode::SUB64:
         case Opcode::MOV64:
-        case Opcode::MUL64:
-        case Opcode::DIV64:
         case Opcode::AND64:
         case Opcode::OR64:
         case Opcode::XOR64:
@@ -42,22 +40,22 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
         case Opcode::SHR64:
         case Opcode::CMP64:
         case Opcode::MOD:
-        case Opcode::MOD64:
         case Opcode::MOVEX:
         case Opcode::ADDEX:
         case Opcode::SUBEX:
-        case Opcode::MULEX:
-        case Opcode::DIVEX:
         case Opcode::CMPEX:
         case Opcode::PUSHEX:
         case Opcode::POPEX:
         case Opcode::SWAP:
         case Opcode::LOADR:
         case Opcode::STORER:
-        case Opcode::INC64:
-        case Opcode::DEC64:
-        case Opcode::NOT64:
             return 3;
+        case Opcode::MUL64:
+        case Opcode::DIV64:
+        case Opcode::MOD64:
+        case Opcode::MULEX:
+        case Opcode::DIVEX:
+            return 4;
         case Opcode::LEA:
             return 6;
         case Opcode::LOAD:
@@ -86,6 +84,9 @@ size_t get_instruction_length(uint8_t opcode_byte, const uint8_t* program, size_
         case Opcode::INC:
         case Opcode::DEC:
         case Opcode::NOT:
+        case Opcode::INC64:
+        case Opcode::DEC64:
+        case Opcode::NOT64:
         case Opcode::PUSH_ARG:
         case Opcode::POP_ARG:
             return 2;
@@ -277,9 +278,9 @@ void DISAToX86Compiler::translate_instruction(Opcode opcode, const uint8_t* oper
         case Opcode::NOT64: translate_not(operands[0]); break;
         case Opcode::SHL64: translate_shl(operands[0], operands[1]); break;
         case Opcode::SHR64: translate_shr(operands[0], operands[1]); break;
-        case Opcode::MUL64: translate_mul(operands[0], operands[1]); break;
-        case Opcode::DIV64: translate_div(operands[0], operands[1]); break;
-        case Opcode::MOD64: translate_mod(operands[0], operands[1]); break;
+        case Opcode::MUL64: translate_mul(operands[0], operands[2]); break;
+        case Opcode::DIV64: translate_div(operands[1], operands[2]); break;
+        case Opcode::MOD64: translate_mod(operands[0], operands[2]); break;
 
         // Extended register ops
         case Opcode::MOVEX: translate_mov(operands[0], operands[1]); break;
@@ -1304,22 +1305,27 @@ void DISAToX86Compiler::translate_mul(uint8_t dst_reg, uint8_t src_reg) {
 }
 
 void DISAToX86Compiler::translate_div(uint8_t dst_reg, uint8_t src_reg) {
-    X86Register src = get_loaded_physical(src_reg);
-    X86Register dst = get_loaded_physical(dst_reg);
-
     // x86 DIV uses RDX:RAX / r/m -> RAX quotient, RDX remainder
     // VM semantics: dst = dst / src (single-width)
-    // We need to move dst to RAX, zero RDX, then DIV
-    if (dst != X86Register::RAX) {
-        encoder.emit_mov_reg_reg(X86Register::RAX, dst);
-    }
-    encoder.emit_xor_reg_reg(X86Register::RDX, X86Register::RDX);
-    encoder.emit_div_reg(src);
+    // Save state, load operands into RAX/RCX, execute DIV, store back.
+    flush_all_registers();
+    clear_cached_registers();
 
-    X86Register out = get_writable_physical(dst_reg);
-    if (out != X86Register::RAX) {
-        encoder.emit_mov_reg_reg(out, X86Register::RAX);
-    }
+    // Load dividend into RAX, divisor into RCX
+    restore_virtual_value(dst_reg, X86Register::RAX);
+    restore_virtual_value(src_reg, X86Register::RCX);
+
+    // Zero-extend into RDX for DIV
+    encoder.emit_xor_reg_reg(X86Register::RDX, X86Register::RDX);
+
+    // DIV rcx → RAX = quotient, RDX = remainder
+    encoder.emit_div_reg(X86Register::RCX);
+
+    // Store quotient back to dst, remainder to virtual reg 2 (RDX)
+    spill_virtual_value(dst_reg, X86Register::RAX);
+    spill_virtual_value(2, X86Register::RDX);
+
+    clear_cached_registers();
 }
 
 void DISAToX86Compiler::translate_mod(uint8_t dst_reg, uint8_t src_reg) {
@@ -1553,15 +1559,44 @@ void DISAToX86Compiler::translate_jle(uint32_t target_address) {
 
 void DISAToX86Compiler::translate_call(uint32_t target_address) {
     flush_all_registers();
+
+    // Save caller's spill frame to stack so callee doesn't clobber it.
+    // Allocate save area: sub rsp, SPILL_FRAME_SIZE
+    encoder.emit_sub_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
+
+    // Copy SPILL_FRAME_SIZE bytes from [RBP - SPILL_FRAME_SIZE] to [RSP]
+    // using R10 as source, R11 as dest, RCX as counter
+    encoder.emit_mov_reg_reg(X86Register::R10, X86Register::RBP);
+    encoder.emit_sub_reg_imm32(X86Register::R10, SPILL_FRAME_SIZE);
+    encoder.emit_mov_reg_reg(X86Register::R11, X86Register::RSP);
+    encoder.emit_mov_reg_imm32(X86Register::RCX, SPILL_FRAME_SIZE / 8);
+    auto copy_loop = encoder.create_label();
+    auto copy_done = encoder.create_label();
+    encoder.bind_label(copy_loop);
+    encoder.emit_cmp_reg_imm32(X86Register::RCX, 0);
+    encoder.emit_jz_label(copy_done);
+    encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::R10, 0);
+    encoder.emit_mov_mem_reg(X86Register::R11, 0, X86Register::RAX);
+    encoder.emit_add_reg_imm32(X86Register::R10, 8);
+    encoder.emit_add_reg_imm32(X86Register::R11, 8);
+    encoder.emit_dec_reg(X86Register::RCX);
+    encoder.emit_jmp_label(copy_loop);
+    encoder.bind_label(copy_done);
+
+    // Save old RBP, set new frame pointer to saved spill area
+    encoder.emit_push_reg(X86Register::RBP);
+    encoder.emit_mov_reg_reg(X86Register::RBP, X86Register::RSP);
+
+    // Allocate callee's spill frame
+    encoder.emit_sub_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
+
     clear_cached_registers();  // callee starts fresh
+
     auto& label = get_or_create_label(target_address);
-    
     if (label.bound) {
-        // Backward reference — compute offset now
         int32_t offset = static_cast<int32_t>(label.position - (encoder.size() + 5));
         encoder.emit_call_rel32(offset);
     } else {
-        // Forward reference — emit placeholder, patch later
         label.unresolved_jumps.push_back(encoder.size() + 1);
         encoder.emit_call_rel32(0);
     }
@@ -1569,8 +1604,35 @@ void DISAToX86Compiler::translate_call(uint32_t target_address) {
 
 void DISAToX86Compiler::translate_ret() {
     flush_all_registers();
-    clear_cached_registers();
 
+    // Free callee's spill frame
+    encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
+
+    // Restore caller's RBP (points to saved spill frame)
+    encoder.emit_pop_reg(X86Register::RBP);
+
+    // Copy saved spill frame back to [RBP - SPILL_FRAME_SIZE]
+    encoder.emit_mov_reg_reg(X86Register::R10, X86Register::RBP);
+    encoder.emit_sub_reg_imm32(X86Register::R10, SPILL_FRAME_SIZE);
+    encoder.emit_mov_reg_reg(X86Register::R11, X86Register::RSP);
+    encoder.emit_mov_reg_imm32(X86Register::RCX, SPILL_FRAME_SIZE / 8);
+    auto restore_loop = encoder.create_label();
+    auto restore_done = encoder.create_label();
+    encoder.bind_label(restore_loop);
+    encoder.emit_cmp_reg_imm32(X86Register::RCX, 0);
+    encoder.emit_jz_label(restore_done);
+    encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::R11, 0);
+    encoder.emit_mov_mem_reg(X86Register::R10, 0, X86Register::RAX);
+    encoder.emit_add_reg_imm32(X86Register::R10, 8);
+    encoder.emit_add_reg_imm32(X86Register::R11, 8);
+    encoder.emit_dec_reg(X86Register::RCX);
+    encoder.emit_jmp_label(restore_loop);
+    encoder.bind_label(restore_done);
+
+    // Free the saved spill frame area
+    encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
+
+    clear_cached_registers();
     encoder.emit_ret();
 }
 
@@ -1598,6 +1660,7 @@ void DISAToX86Compiler::scan_for_jump_targets(const std::vector<uint8_t>& byteco
             case Opcode::JGE:
             case Opcode::JLE:
             case Opcode::CALL:
+                function_has_calls = true;
                 if (pos + 5 <= bytecode.size()) {
                     uint32_t target = 0;
                     for (int i = 0; i < 4; i++) {

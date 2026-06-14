@@ -18,8 +18,8 @@ public:
     // Returns the complete ELF binary data ready to write to a file
     std::vector<uint8_t> generate_executable(
         const std::vector<uint8_t>& compiled_code,
-        const std::string& entry_name = "_start"
-    );
+        const std::string& entry_name = "_start",
+        bool include_debug_info = false);
 
     // Write the generated ELF to a file
     bool write_to_file(const std::vector<uint8_t>& elf_data,
@@ -39,6 +39,10 @@ private:
     void write_phdr(std::vector<uint8_t>& buf, uint32_t flags,
                     uint64_t offset, uint64_t vaddr,
                     uint64_t filesz, uint64_t memsz);
+
+    // Add ELF section headers with DWARF debug info stubs
+    void add_debug_sections(std::vector<uint8_t>& elf,
+        uint64_t code_start, size_t stub_size, size_t code_size);
 };
 
 } // namespace CodeGen

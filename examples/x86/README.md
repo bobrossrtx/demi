@@ -1,6 +1,8 @@
 # x86 32-bit Examples
 
 This directory contains assembly examples targeting **x86 32-bit architecture**.
+All examples are in the `ground-up/` subdirectory, ported from the book
+"Programming from the Ground Up" by Jonathan Bartlett.
 
 ## Register Usage
 
@@ -15,90 +17,49 @@ x86 32-bit uses the following general-purpose registers:
 - **ESP** - Stack pointer (32-bit)
 - **EBP** - Base pointer (32-bit)
 
-## Directory Structure
+## Examples (ground-up/)
 
-### basic/
+| File | What It Does | Expected Output |
+|------|-------------|-----------------|
+| `exit.asm` | Minimal exit with code 0 | `echo $?` → `0` |
+| `hello.asm` | Write "Hello, World!\n" to stdout | `Hello, World!` |
+| `hello-macro.asm` | Same as hello, using macros | `Hello, World!` |
+| `maximum.asm` | Find max in array `[3,67,34,222,...]` | `echo $?` → `222` |
+| `power.asm` | Recursive 2^5 computation | `echo $?` → `32` |
+| `factorial.asm` | Recursive 5! computation | `echo $?` → `120` |
+| `toupper.asm` | Filter stdin: lowercase → uppercase | `echo "hello" \| ./toupper` → `HELLO` |
+| `toupper-macro.asm` | Same as toupper, using macros | `echo "hello" \| ./toupper-macro` → `HELLO` |
+| `write-records.asm` | Write 3 structured records to file | Creates `records.dat` (252 bytes) |
+| `read-records.asm` | Read records.dat, print names+ages | `Fredrick - age 34` etc. |
+| `macros.inc` | Shared macro definitions | (included by other files) |
 
-Fundamental assembly operations and concepts:
+## Assembling
 
-- **simple_addition.asm** - Basic arithmetic operations
-- **hello_world.asm** - String output using DB directive
-- **simple_digit.asm** - Number to ASCII conversion and output
-- **stack_operations.asm** - PUSH and POP demonstrations
-
-### control_flow/
-
-Branching and loop constructs:
-
-- **counting_loop.asm** - Loop demonstration with output
-- **conditional_jumps.asm** - Conditional branching (JE, JNE, JG, JL)
-
-### data/
-
-Data storage and manipulation:
-
-- **data_storage.asm** - DB directive and string operations
-- **data_labels.asm** - Multiple labeled data blocks
-- **indirect_addressing.asm** - LOADR instruction demonstration
-- **string_reverse.asm** - In-place string reversal algorithm
-
-### io/
-
-Input/output operations:
-
-- **char_output.asm** - Single character output test
-- **decimal_output.asm** - Number to decimal string conversion
-
-### features/
-
-Feature demonstrations:
-
-- **core_instructions.asm** - All basic instruction demonstrations
-- **fpu_showcase.asm** - Narrated x87 FPU showcase with self-checking verification
-
-### interrupts/
-
-Interrupt handling:
-
-- **cli_sti.asm** - Interrupt enable/disable and handlers
-
-### syscalls/
-
-System call demonstrations:
-
-- **hello_world.asm** - sys_write syscall example
-- **simple_write.asm** - Basic stdout write test
-
-### advanced/
-
-Complex algorithms and computations:
-
-- **fibonacci.asm** - Fibonacci sequence generator
-- **factorial.asm** - Iterative factorial calculation
-- **factorial_recursive.asm** - Recursive factorial with stack frames
-
-## Running Examples
+All x86 examples must be assembled with the `--assembly-target x86-elf32` flag:
 
 ```bash
-# Assemble only
-./bin/demi-engine-debug -A examples/x86/basic/simple_addition.asm
+# Assemble to ELF32 object
+./bin/demi-engine-debug --assembly-target x86-elf32 -A examples/x86/ground-up/hello.asm
 
 # Assemble and run
-./bin/demi-engine-debug examples/x86/basic/simple_addition.asm
+./bin/demi-engine-debug --assembly-target x86-elf32 examples/x86/ground-up/hello.asm
 
-# With hexdump
-./bin/demi-engine-debug --hexdump -A examples/x86/basic/simple_addition.asm
+# To produce a standalone executable (ELF32):
+./bin/demi-engine-debug --assembly-target x86-elf32 -o hello examples/x86/ground-up/hello.asm
 ```
 
-## DASM Coding Standards
+## Running the Executables
 
-All examples follow DASM coding standards:
+```bash
+# Programs that use sys_write print directly to stdout:
+./examples/bin/x86/basic/hello_world
 
-- Entry point labeled as `_start`
-- Uppercase instructions (LOAD_IMM, MOV, ADD, etc.)
-- Clear comments explaining each section
-- Proper use of `.org` directives for memory layout
-- Consistent indentation (4 spaces)
+# Programs that return a value via exit, check with:
+./examples/bin/x86/basic/simple_addition; echo $?
+
+# Interactive/filter programs:
+echo "hello world" | ./examples/bin/x86/syscalls/echo_input
+```
 
 ## Key Differences from x64
 
@@ -106,7 +67,4 @@ All examples follow DASM coding standards:
 - Smaller address space (4GB max)
 - Stack alignment is 4 bytes instead of 8 bytes
 - Cannot use R8-R15 registers (x64 only)
-
-## Notes
-
-All examples in this directory use 32-bit register conventions and are designed to demonstrate core assembly concepts in x86 architecture.
+- Syscalls use `INT 0x80` with EAX=syscall number

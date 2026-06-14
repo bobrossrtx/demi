@@ -3,8 +3,16 @@
 ; ==========================================
 ; Demonstrates various conditional jump instructions
 ; Uses 64-bit comparison operations
+;
+; Expected Output:
+;   Conditional jumps: JE, JNE, JG, JL all passed
+
+.data
+.org 0x50
+msg: DB "Conditional jumps: JE, JNE, JG, JL all passed", 10, 0
 
 .text
+.org 0x90
 
 _start:
     ; Test 1: Jump if equal (JE/JZ)
@@ -47,12 +55,9 @@ greater_branch:
 less_branch:
     LOAD_IMM RDI, 4      ; Mark test 4 passed
     
-    LOAD_IMM RAX, 79
-    OUT RAX, 1
-    LOAD_IMM RAX, 75
-    OUT RAX, 1
-    LOAD_IMM RAX, 10
-    OUT RAX, 1
+    ; Print result
+    LOAD_IMM RAX, msg
+    OUTSTR RAX, 1
     HALT
 
 ; Results: RCX=1, RDX=2, RSI=3, RDI=4

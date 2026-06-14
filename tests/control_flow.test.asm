@@ -79,13 +79,13 @@ end:
     
     LOAD_IMM R3, 0      ; Counter
     LOAD_IMM R4, 10     ; Limit
-loop:
+counter_loop:
     CMP R3, R4
     JL continue
     JMP end
 continue:
     INC R3
-    JMP loop
+    JMP counter_loop
 end:
     .assert_reg R3, 10
 }

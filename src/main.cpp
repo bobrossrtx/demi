@@ -941,6 +941,9 @@ public:
                 }
             });
 
+        // Debug info flag for compiled binaries
+        parser.add_bool_arg("debug_info", "--debug-info", "-g", "Include DWARF debug info in compiled binaries", "Execution", [this](bool value) { Config::debug_info = value; });
+
         // Memory dump argument
         parser.add_bool_arg("memdump", "--memdump", "-m", "Print memory dump after execution", "Debugging", [this](bool value) { Config::memdump = value; });
 
@@ -1646,7 +1649,7 @@ private:
 
             // Wrap in ELF64 executable
             CodeGen::ELFEmitter elf_emitter;
-            auto elf_data = elf_emitter.generate_executable(native_code);
+            auto elf_data = elf_emitter.generate_executable(native_code, "_start", Config::debug_info);
 
             if (should_print_compile_details()) {
                 long long size_delta = static_cast<long long>(elf_data.size()) - static_cast<long long>(native_code.size());

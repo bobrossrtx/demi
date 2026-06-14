@@ -3,23 +3,28 @@
 ; ==========================================
 ; Demonstrates DB directive and string operations
 ; Uses 64-bit addressing
+;
+; Expected Output:
+;   Hello, DemiEngine!
+;   x64 64-bit mode
 
-; Store string data at address 0x50
-DB 'Hello, DemiEngine!', 10, 0x50
+.data
+.org 0x50
+msg1: DB 'Hello, DemiEngine!', 10, 0
 
-; Store another string at 0x80
-DB 'x64 64-bit mode', 10, 0x80
+.org 0x80
+msg2: DB 'x64 64-bit mode', 10, 0
 
-; Start program at address 0xA0
+.text
 .org 0xA0
 
 _start:
     ; Print first string
-    LOAD_IMM RAX, 0x50      ; RAX = address of first string
-    OUTSTR RAX, 1           ; Output string at [RAX]
+    LOAD_IMM RAX, msg1
+    OUTSTR RAX, 1
 
     ; Print second string
-    LOAD_IMM RAX, 0x80      ; RAX = address of second string
-    OUTSTR RAX, 1           ; Output string at [RAX]
+    LOAD_IMM RAX, msg2
+    OUTSTR RAX, 1
 
     HALT

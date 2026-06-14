@@ -1,4 +1,8 @@
 ; toupper with macros
+;
+; Expected Output:
+;   Reads from stdin and echoes back with all lowercase letters uppercased.
+;   Example: echo "hello world" | ./toupper-macro  →  HELLO WORLD
 .include "macros.inc"
 
 .section .bss

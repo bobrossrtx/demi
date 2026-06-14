@@ -13,12 +13,12 @@
     LOAD_IMM EAX, 31         # Counter
     LOAD_IMM EBX, 0          # Recursion depth tracker
     
-loop:
+recurse_loop:
     CMP EAX, EBX
     JZ end
     INC EBX
     CALL recurse
-    JMP loop
+    JMP recurse_loop
     
 recurse:
     RET

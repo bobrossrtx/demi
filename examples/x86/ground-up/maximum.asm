@@ -1,5 +1,9 @@
 ; Programming from the Ground Up — Chapter 3
 ; maximum.s: Find the maximum value in an array
+;
+; Expected Output:
+;   Returns the maximum value (222) as exit code.
+;   echo $?  →  222
 
 .section .data
 data_items:

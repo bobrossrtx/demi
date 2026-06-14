@@ -1,6 +1,9 @@
 ; Programming from the Ground Up — Chapter 3
 ; hello.s: Hello World using write syscall
 ; Original: writes a greeting string to stdout
+;
+; Expected Output:
+;   Hello, World!
 
 .section .data
 hello:

@@ -1,5 +1,9 @@
 ; Programming from the Ground Up — Chapter 5
 ; toupper.s: Convert stdin text to uppercase (now with byte ops!)
+;
+; Expected Output:
+;   Reads from stdin and echoes back with all lowercase letters uppercased.
+;   Example: echo "hello world" | ./toupper  →  HELLO WORLD
 
 .section .bss
 buffer: .resb 256

@@ -1,4 +1,7 @@
 ; hello with macros
+;
+; Expected Output:
+;   Hello, World!
 .include "macros.inc"
 
 .section .data

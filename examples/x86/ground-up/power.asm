@@ -1,5 +1,9 @@
 ; Programming from the Ground Up — Chapter 4
 ; power.s: Recursive power function
+;
+; Expected Output:
+;   Calculates 2^5. Returns result (32) as exit code.
+;   echo $?  →  32
 
 .section .data
 result: .dd 0

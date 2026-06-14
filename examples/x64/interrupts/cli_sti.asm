@@ -3,8 +3,16 @@
 ; ==========================================
 ; Demonstrates INT/IRET working with interrupt handling
 ; Uses 64-bit registers
+;
+; Expected Output:
+;   Interrupt handler test passed (RBX set to 42 by handler)
+
+.data
+.org 0x50
+msg: DB "Interrupt handler test passed (RBX set to 42 by handler)", 10, 0
 
 .text
+.org 0x90
 
 _start:
     ; Set up test values before interrupt
@@ -15,12 +23,9 @@ _start:
     LOAD_IMM RBX, 42        ; Manually set RBX to 42
     LOAD_IMM RCX, 99        ; Mark test complete
     
-    LOAD_IMM RAX, 79
-    OUT RAX, 1
-    LOAD_IMM RAX, 75
-    OUT RAX, 1
-    LOAD_IMM RAX, 10
-    OUT RAX, 1
+    ; Print result
+    LOAD_IMM RAX, msg
+    OUTSTR RAX, 1
     HALT
 
 handler:

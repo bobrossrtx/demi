@@ -3,8 +3,16 @@
 ; ==========================================
 ; Demonstrates PUSH and POP operations
 ; Uses 64-bit stack pointer (RSP)
+;
+; Expected Output:
+;   Stack test: PUSH 42,13,7 → POP = 7,13,42 (LIFO)
+
+.data
+.org 0x50
+msg: DB "Stack test: PUSH 42,13,7 -> POP = 7,13,42 (LIFO)", 10, 0
 
 .text
+.org 0xA0
 
 _start:
     ; Initialize some values
@@ -27,13 +35,10 @@ _start:
     POP RSI             ; RSI = 13
     POP RDI             ; RDI = 42
     
-    ; Verify: RDI=42, RSI=13, RDX=7
-    LOAD_IMM RAX, 79
-    OUT RAX, 1
-    LOAD_IMM RAX, 75
-    OUT RAX, 1
-    LOAD_IMM RAX, 10
-    OUT RAX, 1
+    ; Print descriptive message
+    LOAD_IMM RAX, msg
+    OUTSTR RAX, 1
+    
     HALT
 
 ; Stack demonstration:

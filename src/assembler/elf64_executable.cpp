@@ -1,6 +1,7 @@
 // ELF64 executable converter — converts relocatable .o to standalone executable
 
 #include "elf32_executable.hpp"   // reuse IRProgram
+#include "dwarf_emitter.hpp"
 #include <cstring>
 #include <unordered_map>
 
@@ -34,7 +35,9 @@ static uint64_t align_up(uint64_t addr, uint64_t a) { return (addr + a - 1) & ~(
 std::vector<uint8_t> make_elf64_executable(
     const std::vector<uint8_t>& rel,
     const IRProgram& program,
-    std::vector<std::string>& errors) {
+    std::vector<std::string>& errors,
+    const std::vector<LineEntry>* line_entries,
+    const std::string& source_file) {
 
     if (rel.size() < 64) { errors.push_back("ELF too small"); return {}; }
     if (std::memcmp(rel.data(), "\x7f""ELF", 4) != 0) { errors.push_back("not ELF"); return {}; }
@@ -158,6 +161,17 @@ std::vector<uint8_t> make_elf64_executable(
     name_offs.push_back(add_name(".bss"));
     name_offs.push_back(add_name(".comment"));
     name_offs.push_back(add_name(".note.GNU-stack"));
+    uint32_t debug_line_idx = 0, debug_info_idx = 0, debug_abbrev_idx = 0, debug_str_idx = 0;
+    if (line_entries && !line_entries->empty()) {
+        debug_line_idx = static_cast<uint32_t>(name_offs.size());
+        name_offs.push_back(add_name(".debug_line"));
+        debug_info_idx = static_cast<uint32_t>(name_offs.size());
+        name_offs.push_back(add_name(".debug_info"));
+        debug_abbrev_idx = static_cast<uint32_t>(name_offs.size());
+        name_offs.push_back(add_name(".debug_abbrev"));
+        debug_str_idx = static_cast<uint32_t>(name_offs.size());
+        name_offs.push_back(add_name(".debug_str"));
+    }
     name_offs.push_back(add_name(".symtab"));
     name_offs.push_back(add_name(".strtab"));
     name_offs.push_back(add_name(".shstrtab"));
@@ -225,12 +239,24 @@ std::vector<uint8_t> make_elf64_executable(
     FSec fsm{new_symtab, 0, new_symtab.size(), 0};
     FSec fst{new_strtab, 0, new_strtab.size(), 0};
     FSec fsh{shstrtab, 0, shstrtab.size(), 0};
+    FSec fdl, fdi, fda, fds;  // DWARF sections
 
     uint64_t foff = exe_foff;
     ftx.off = foff; foff += ftx.sz;
     fdt.off = foff; foff += fdt.sz;
     fro.off = foff; foff += fro.sz;
     fcm.off = foff; foff += fcm.sz;
+    if (line_entries && !line_entries->empty()) {
+        DWARFSections dwarf = generate_dwarf(source_file, text_vaddr, *line_entries, ".");
+        fdl = {dwarf.debug_line, 0, dwarf.debug_line.size(), 0};
+        fdi = {dwarf.debug_info, 0, dwarf.debug_info.size(), 0};
+        fda = {dwarf.debug_abbrev, 0, dwarf.debug_abbrev.size(), 0};
+        fds = {dwarf.debug_str, 0, dwarf.debug_str.size(), 0};
+        fdl.off = foff; foff += fdl.sz;
+        fdi.off = foff; foff += fdi.sz;
+        fda.off = foff; foff += fda.sz;
+        fds.off = foff; foff += fds.sz;
+    }
     fsm.off = foff; foff += fsm.sz;
     fst.off = foff; foff += fst.sz;
     fsh.off = foff; foff += fsh.sz;
@@ -291,6 +317,12 @@ std::vector<uint8_t> make_elf64_executable(
     write_at(elf, ftx.off, ftx.data);
     write_at(elf, fdt.off, fdt.data);
     write_at(elf, fcm.off, fcm.data);
+    if (line_entries && !line_entries->empty()) {
+        write_at(elf, fdl.off, fdl.data);
+        write_at(elf, fdi.off, fdi.data);
+        write_at(elf, fda.off, fda.data);
+        write_at(elf, fds.off, fds.data);
+    }
     uint64_t symtab_exe_off = fsm.off;
     write_at(elf, fsm.off, fsm.data);
     uint64_t strtab_exe_off = fst.off;
@@ -310,16 +342,28 @@ std::vector<uint8_t> make_elf64_executable(
         push32(elf, link); push32(elf, info); push64(elf, align); push64(elf, entsize);
     };
 
-    push_shdr64(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);                                                                  // NULL
-    push_shdr64(name_offs[1], 1, 6, text_vaddr, ftx.off, ftx.sz, 0, 0, 16, 0);                                   // .text
-    push_shdr64(name_offs[2], 1, 2, text_vaddr, fro.off, fro.sz, 0, 0, 4, 0);                                    // .rodata
-    push_shdr64(name_offs[3], 1, 3, data_vaddr, fdt.off, fdt.sz, 0, 0, 4, 0);                                    // .data
-    push_shdr64(name_offs[4], 8, 3, data_vaddr + fdt.sz, 0, bss_size, 0, 0, 4, 0);                               // .bss
-    push_shdr64(name_offs[5], 1, 0, 0, fcm.off, fcm.sz, 0, 0, 1, 0);                                             // .comment
-    push_shdr64(name_offs[6], 7, 0, 0, 0, 0, 0, 0, 1, 0);                                                        // .note.GNU-stack
-    push_shdr64(name_offs[7], 2, 0, 0, symtab_exe_off, new_symtab.size(), 8, 1, 8, 24);                           // .symtab
-    push_shdr64(name_offs[8], 3, 0, 0, strtab_exe_off, new_strtab.size(), 0, 0, 1, 0);                            // .strtab
-    push_shdr64(name_offs[9], 3, 0, 0, shstr_exe_off, shstrtab.size(), 0, 0, 1, 0);                               // .shstrtab
+    push_shdr64(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    push_shdr64(name_offs[1], 1, 6, text_vaddr, ftx.off, ftx.sz, 0, 0, 16, 0);
+    push_shdr64(name_offs[2], 1, 2, text_vaddr, fro.off, fro.sz, 0, 0, 4, 0);
+    push_shdr64(name_offs[3], 1, 3, data_vaddr, fdt.off, fdt.sz, 0, 0, 4, 0);
+    push_shdr64(name_offs[4], 8, 3, data_vaddr + fdt.sz, 0, bss_size, 0, 0, 4, 0);
+    push_shdr64(name_offs[5], 1, 0, 0, fcm.off, fcm.sz, 0, 0, 1, 0);
+    push_shdr64(name_offs[6], 7, 0, 0, 0, 0, 0, 0, 1, 0);
+    uint32_t next_idx = 7;
+    if (line_entries && !line_entries->empty()) {
+        push_shdr64(name_offs[debug_line_idx], 1, 0, 0, fdl.off, fdl.sz, 0, 0, 1, 0);
+        push_shdr64(name_offs[debug_info_idx], 1, 0, 0, fdi.off, fdi.sz, 0, 0, 1, 0);
+        push_shdr64(name_offs[debug_abbrev_idx], 1, 0, 0, fda.off, fda.sz, 0, 0, 1, 0);
+        push_shdr64(name_offs[debug_str_idx], 1, 0, 0, fds.off, fds.sz, 0, 0, 1, 0);
+        next_idx += 4;
+    }
+    push_shdr64(name_offs[next_idx], 2, 0, 0, symtab_exe_off, new_symtab.size(), 8, 1, 8, 24);
+    push_shdr64(name_offs[next_idx+1], 3, 0, 0, strtab_exe_off, new_strtab.size(), 0, 0, 1, 0);
+    push_shdr64(name_offs[next_idx+2], 3, 0, 0, shstr_exe_off, shstrtab.size(), 0, 0, 1, 0);
+
+    // Fix shnum in ELF header
+    uint16_t shnum_total = static_cast<uint16_t>(next_idx + 3);
+    w16(elf, 60, shnum_total);
 
     return elf;
 }

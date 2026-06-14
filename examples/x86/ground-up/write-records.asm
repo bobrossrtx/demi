@@ -1,5 +1,10 @@
 ; Programming from the Ground Up — Chapter 6
 ; write-records.s: Write structured records to file
+;
+; Expected Output:
+;   Creates "records.dat" with 3 structured records (name + address + age).
+;   No stdout output; run read-records to verify.
+;   ls -l records.dat  →  252 bytes
 
 .section .data
 filename:

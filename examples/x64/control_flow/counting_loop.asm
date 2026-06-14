@@ -1,11 +1,14 @@
 ; ==========================================
 ; Counting Loop Example (x64 64-bit)
 ; ==========================================
-; This program demonstrates a counting loop
-; Counts from 1 to 5 and outputs each number
+; Demonstrates a counting loop from 1 to 5
 ; Uses 64-bit registers
+;
+; Expected Output:
+;   1 2 3 4 5
 
 .text
+.org 0x80
 
 _start:
     ; Initialize counter in RAX
@@ -13,7 +16,7 @@ _start:
     LOAD_IMM RBX, 5     ; Loop limit
     
 loop_start:
-    ; Output current counter value (as ASCII character)
+    ; Output current counter value as ASCII character
     ; Add 48 to convert number to ASCII digit
     MOV RCX, RAX        ; Copy counter to RCX
     LOAD_IMM RDX, 48    ; ASCII offset for '0'
@@ -35,7 +38,4 @@ loop_start:
     LOAD_IMM RAX, 10    ; ASCII newline
     OUT RAX, 1
     
-    ; End program
     HALT
-
-; Expected output: "1 2 3 4 5 \n"

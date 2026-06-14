@@ -3,6 +3,10 @@
 ; Original: movl $1, %eax / movl $0, %ebx / int $0x80
 ;
 ; Assembles with: --assembly-target x86-elf32
+;
+; Expected Output:
+;   Returns exit code 0 to the shell.
+;   echo $?  →  0
 
 .section .text
 .global _start

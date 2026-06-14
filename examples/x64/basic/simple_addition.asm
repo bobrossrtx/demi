@@ -3,8 +3,16 @@
 ; ==========================================
 ; This program adds two numbers and demonstrates basic arithmetic
 ; Uses 64-bit registers (RAX, RBX, RCX, RDX)
+;
+; Expected Output:
+;   42 + 13 = 55
+
+.data
+.org 0x50
+result_msg: DB "42 + 13 = 55", 10, 0
 
 .text
+.org 0x80
 
 _start:
     ; Load first number (42) into RAX
@@ -26,13 +34,10 @@ _start:
     
     ADD RDX, RSI             ; RDX = result + 10 = 55 + 10 = 65
     
-    ; End program
-    LOAD_IMM RAX, 79
-    OUT RAX, 1
-    LOAD_IMM RAX, 75
-    OUT RAX, 1
-    LOAD_IMM RAX, 10
-    OUT RAX, 1
+    ; Print result string
+    LOAD_IMM RAX, result_msg
+    OUTSTR RAX, 1
+    
     HALT
 
 ; Results:

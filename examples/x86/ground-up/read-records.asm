@@ -1,5 +1,11 @@
 ; Programming from the Ground Up — Chapter 6
 ; read-records.s: Read structured records, print name + age
+;
+; Expected Output:
+;   Reads "records.dat" (created by write-records) and prints each record:
+;     Fredrick - age 34
+;     Marilyn - age 29
+;     Derrick - age 52
 
 .section .bss
 buffer:     .resb 84

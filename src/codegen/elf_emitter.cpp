@@ -159,7 +159,8 @@ std::vector<uint8_t> ELFEmitter::build_start_stub(size_t& stub_size_out,
 
 std::vector<uint8_t> ELFEmitter::generate_executable(
     const std::vector<uint8_t>& compiled_code,
-    const std::string& entry_name)
+    const std::string& entry_name,
+    bool include_debug_info)
 {
     // Build the _start stub
     size_t stub_size = 0;
@@ -231,7 +232,93 @@ std::vector<uint8_t> ELFEmitter::generate_executable(
     // Append the compiled code
     elf.insert(elf.end(), compiled_code.begin(), compiled_code.end());
 
+    // If debug info requested, append ELF section headers with DWARF stubs
+    if (include_debug_info) {
+        add_debug_sections(elf, code_start, stub_size, compiled_code.size());
+    }
+
     return elf;
+}
+
+// Add ELF section headers and minimal DWARF debug sections
+void ELFEmitter::add_debug_sections(std::vector<uint8_t>& elf,
+    uint64_t code_start, size_t stub_size, size_t code_size)
+{
+    auto push32 = [&](uint32_t v) { for(int i=0;i<4;i++) elf.push_back((v>>(i*8))&0xFF); };
+    auto push64 = [&](uint64_t v) { for(int i=0;i<8;i++) elf.push_back((v>>(i*8))&0xFF); };
+
+    // Section name strings (use byte array for embedded nulls)
+    const uint8_t shstr_data[] = {
+        0, '.','t','e','x','t',0,
+        '.','s','h','s','t','r','t','a','b',0,
+        '.','d','e','b','u','g','_','i','n','f','o',0,
+        '.','d','e','b','u','g','_','l','i','n','e',0,
+        '.','d','e','b','u','g','_','a','b','b','r','e','v',0,
+        '.','d','e','b','u','g','_','s','t','r',0,
+    };
+    std::string shstr(reinterpret_cast<const char*>(shstr_data), sizeof(shstr_data));
+    uint32_t name_null=0, name_text=1, name_shstrtab=7, name_debug_info=17;
+    uint32_t name_debug_line=29, name_debug_abbrev=41, name_debug_str=55;
+
+    uint64_t text_size = stub_size + code_size;
+    uint64_t text_offset = code_start;  // _start stub + compiled code
+    uint64_t shstr_offset = elf.size();
+    elf.insert(elf.end(), shstr.begin(), shstr.end());
+
+    // Write empty DWARF section data (size 0 — GDB skips empty sections)
+    std::vector<uint8_t> empty_dwarf;  // truly empty — no bytes
+    auto write_dwarf = [&](const std::vector<uint8_t>& data) {
+        uint64_t off = elf.size();
+        elf.insert(elf.end(), data.begin(), data.end());
+        return off;
+    };
+    uint64_t debug_info_off = write_dwarf(empty_dwarf);
+    uint64_t debug_line_off = write_dwarf(empty_dwarf);
+    uint64_t debug_abbrev_off = write_dwarf(empty_dwarf);
+    uint64_t debug_str_off = write_dwarf(empty_dwarf);
+
+    // Section headers (64 bytes each)
+    uint64_t shdr_start = elf.size();
+    uint8_t shnum = 7;
+
+    // Fix ELF header: set shoff, shnum, shstrndx, shentsize
+    le64(&elf[0x28], shdr_start);
+    le16(&elf[0x3C], shnum);
+    le16(&elf[0x3E], 2);  // shstrndx = index of .shstrtab (after NULL and .text)
+    le16(&elf[0x3A], 64); // shentsize = sizeof(Elf64_Shdr)
+
+    // NULL section header
+    for(int i=0;i<64;i++) elf.push_back(0);
+
+    // .text section header
+    push32(name_text);  push32(1); push64(6); // SHT_PROGBITS, SHF_ALLOC|SHF_EXECINSTR
+    push64(BASE_ADDR + code_start); push64(text_offset); push64(text_size);
+    push32(0); push32(0); push64(16); push64(0);
+
+    // .shstrtab section header
+    push32(name_shstrtab); push32(3); push64(0); // SHT_STRTAB
+    push64(0); push64(shstr_offset); push64(shstr.size());
+    push32(0); push32(0); push64(1); push64(0);
+
+    // .debug_info
+    push32(name_debug_info); push32(1); push64(0);
+    push64(0); push64(debug_info_off); push64(empty_dwarf.size());
+    push32(0); push32(0); push64(1); push64(0);
+
+    // .debug_line
+    push32(name_debug_line); push32(1); push64(0);
+    push64(0); push64(debug_line_off); push64(empty_dwarf.size());
+    push32(0); push32(0); push64(1); push64(0);
+
+    // .debug_abbrev
+    push32(name_debug_abbrev); push32(1); push64(0);
+    push64(0); push64(debug_abbrev_off); push64(empty_dwarf.size());
+    push32(0); push32(0); push64(1); push64(0);
+
+    // .debug_str
+    push32(name_debug_str); push32(1); push64(0);
+    push64(0); push64(debug_str_off); push64(empty_dwarf.size());
+    push32(0); push32(0); push64(1); push64(0);
 }
 
 bool ELFEmitter::write_to_file(const std::vector<uint8_t>& elf_data,

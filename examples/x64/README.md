@@ -22,89 +22,106 @@ x64 64-bit uses the following general-purpose registers:
 
 Fundamental assembly operations and concepts:
 
-- **simple_addition.asm** - Basic arithmetic operations
-- **hello_world.asm** - String output using DB directive
-- **simple_digit.asm** - Number to ASCII conversion and output
-- **stack_operations.asm** - PUSH and POP demonstrations
+| File | Expected Output |
+|------|----------------|
+| `simple_addition.asm` | `42 + 13 = 55` |
+| `hello_world.asm` | `Hello, World!` |
+| `simple_digit.asm` | `Number output: 5` |
+| `stack_operations.asm` | `Stack test: PUSH 42,13,7 -> POP = 7,13,42 (LIFO)` |
 
 ### control_flow/
 
 Branching and loop constructs:
 
-- **counting_loop.asm** - Loop demonstration with output
-- **conditional_jumps.asm** - Conditional branching (JE, JNE, JG, JL)
+| File | Expected Output |
+|------|----------------|
+| `counting_loop.asm` | `1 2 3 4 5` |
+| `conditional_jumps.asm` | `Conditional jumps: JE, JNE, JG, JL all passed` |
 
 ### data/
 
 Data storage and manipulation:
 
-- **data_storage.asm** - DB directive and string operations
-- **data_labels.asm** - Multiple labeled data blocks
-- **indirect_addressing.asm** - LOADR instruction demonstration
-- **string_reverse.asm** - In-place string reversal algorithm
+| File | Expected Output |
+|------|----------------|
+| `data_storage.asm` | `Hello, DemiEngine!` / `x64 64-bit mode` |
+| `data_labels.asm` | `Hi!` / `Labels work!` |
+| `indirect_addressing.asm` | `LOADR test: stored 42 at [200], loaded back = 42` |
+| `string_reverse.asm` | `Reversed: !dlroW olleH` |
+| `labels_and_strings.asm` | `Hello from labeled data!` |
 
 ### io/
 
 Input/output operations:
 
-- **char_output.asm** - Single character output test
-- **decimal_output.asm** - Number to decimal string conversion
+| File | Expected Output |
+|------|----------------|
+| `char_output.asm` | `Character output: H` |
+| `decimal_output.asm` | `Decimal output: 123` |
 
 ### features/
 
 Feature demonstrations:
 
-- **core_instructions.asm** - All basic instruction demonstrations
+| File | Expected Output |
+|------|----------------|
+| `core_instructions.asm` | `Core instructions executed successfully` |
 
 ### interrupts/
 
 Interrupt handling:
 
-- **cli_sti.asm** - Interrupt enable/disable and handlers
+| File | Expected Output |
+|------|----------------|
+| `cli_sti.asm` | `Interrupt handler test passed (RBX set to 42 by handler)` |
 
 ### syscalls/
 
 System call demonstrations:
 
-- **hello_world.asm** - sys_write syscall example
-- **simple_write.asm** - Basic stdout write test
+| File | Expected Output |
+|------|----------------|
+| `hello_world.asm` | `Hello, World!` |
+| `simple_write.asm` | Basic stdout write |
+| `echo_input.asm` | `Enter your message: ` (interactive) |
+| `calculator.asm` | `Enter first number: ` (interactive) |
+| `line_calculator.asm` | `calc> ` (interactive) |
+| `file_write.asm` | `File written successfully!` |
+| `file_read.asm` | Reads back written file |
+| `multiple_syscalls.asm` | `Using REAL Linux syscalls from DemiEngine VM!` |
 
 ### advanced/
 
 Complex algorithms and computations:
 
-- **fibonacci.asm** - Fibonacci sequence generator
-- **factorial.asm** - Iterative factorial calculation (supports larger values)
-- **factorial_recursive.asm** - Recursive factorial with stack frames
+| File | Expected Output |
+|------|----------------|
+| `fibonacci.asm` | `Fibonacci (10 terms): 0 1 1 2 3 5 8 13 21 34` |
+| `factorial.asm` | `factorial(5) = 120` |
+| `factorial_recursive.asm` | Prints 1! through 5! results |
+| `readable_calculator.asm` | `5 + 3 = 8` |
 
 ### games/
 
-Small interactive programs:
+Interactive programs:
 
-- **number_guess.asm** - Three-try number guessing game using stdin/stdout syscalls
+| File | Expected Output |
+|------|----------------|
+| `number_guess.asm` | `Guess the hidden digit (0-9). You get 3 tries.` (interactive) |
 
 ## Running Examples
 
 ```bash
-# Assemble only
+# Assemble and run in VM
 ./bin/demi-engine-debug -A examples/x64/basic/simple_addition.asm
 
-# Assemble and run
-./bin/demi-engine-debug examples/x64/basic/simple_addition.asm
+# Compile to standalone executable
+./bin/demi-engine-debug -A examples/x64/basic/simple_addition.asm -o my_program
+./my_program
 
 # With hexdump
 ./bin/demi-engine-debug --hexdump -A examples/x64/basic/simple_addition.asm
 ```
-
-## DASM Coding Standards
-
-All examples follow DASM coding standards:
-
-- Entry point labeled as `_start`
-- Uppercase instructions (LOAD_IMM, MOV, ADD, etc.)
-- Clear comments explaining each section
-- Proper use of `.org` directives for memory layout
-- Consistent indentation (4 spaces)
 
 ## Key Differences from x86
 
@@ -112,8 +129,4 @@ All examples follow DASM coding standards:
 - Larger address space (16 exabytes theoretical)
 - Stack alignment is 8 bytes instead of 4 bytes
 - Access to R8-R15 additional registers
-- Can handle larger integers natively (e.g., factorial of 20!)
-
-## Notes
-
-All examples in this directory use 64-bit register conventions and demonstrate the advantages of x64 architecture for larger computations and memory addressing.
+- Can handle larger integers natively

@@ -1,5 +1,9 @@
 ; Programming from the Ground Up — Chapter 4
 ; factorial.s: Recursive factorial function
+;
+; Expected Output:
+;   Calculates 5!. Returns result (120) as exit code.
+;   echo $?  →  120
 
 .section .data
 result: .dd 0

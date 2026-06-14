@@ -268,6 +268,10 @@ test-assembler: $(ASSEMBLER_TEST_TARGET)
 	@echo "🧪 Running assembler tests..."
 	@./$(ASSEMBLER_TEST_TARGET)
 
+# Regression tests for x64 examples
+test-examples:
+	@bash tests/regression_x64.sh
+
 # Simple test alias
 test: unit-test
 
