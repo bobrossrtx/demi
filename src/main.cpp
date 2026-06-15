@@ -946,6 +946,12 @@ public:
 
         parser.add_bool_arg("listing", "--listing", "-l", "Generate assembly listing file (.lst)", "Execution", [this](bool value) { Config::listing = value; });
 
+        // Warning flags
+        parser.add_bool_arg("warn_all", "-W", "-w", "Enable assembler warnings (default: on)", "Execution",
+            [this](bool value) { Config::warn_all = value; });
+        parser.add_bool_arg("warn_error", "--Werror", "", "Treat warnings as errors", "Execution",
+            [this](bool value) { Config::warn_error = value; });
+
         // Memory dump argument
         parser.add_bool_arg("memdump", "--memdump", "-m", "Print memory dump after execution", "Debugging", [this](bool value) { Config::memdump = value; });
 

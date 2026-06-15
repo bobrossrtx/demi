@@ -6,6 +6,7 @@
 #include <map>
 #include <fstream>
 #include <vector>
+#include <iostream>
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
@@ -1124,7 +1125,10 @@ void Assembler::AssemblerEngine::enc_mov(const Instruction& instr, [[maybe_unuse
                 emit_byte(static_cast<uint8_t>(Opcode::LOAD_IMM64)); emit_byte(dst_reg_num);
                 bool is_symbol; std::string symbol_name;
                 int64_t val = evaluate_expression(*src, is_symbol, symbol_name);
-                if (is_symbol) emit_forward_ref(symbol_name, 8);
+                if (is_symbol) {
+                    add_warning(WarningCategory::ForwardRef, "forward reference to symbol '" + symbol_name + "'", instr.line, instr.column);
+                    emit_forward_ref(symbol_name, 8);
+                }
                 else for(int i=0; i<8; ++i) emit_byte((uint8_t)((val >> (i*8)) & 0xFF));
             } else {
                 emit_byte(static_cast<uint8_t>(Opcode::LOAD_IMM)); emit_byte(dst_reg_num);
@@ -2374,6 +2378,46 @@ void AssemblerEngine::handle_struct_directive(const std::vector<std::unique_ptr<
 
 void AssemblerEngine::handle_endstruct_directive(const std::vector<std::unique_ptr<Expression>>&) {
     in_struct = false;
+}
+
+// --- Warning Framework ---
+
+static const char* warning_category_name(WarningCategory cat) {
+    switch (cat) {
+        case WarningCategory::UnsizedMemory:    return "unsized-memory";
+        case WarningCategory::AmbiguousOperand: return "ambiguous-operand";
+        case WarningCategory::ForwardRef:       return "forward-ref";
+        case WarningCategory::UnusedLabel:      return "unused-label";
+        case WarningCategory::LargeImmediate:   return "large-immediate";
+        case WarningCategory::Alignment:        return "alignment";
+        case WarningCategory::Deprecated:       return "deprecated";
+        default: return "unknown";
+    }
+}
+
+void AssemblerEngine::add_warning(WarningCategory cat, const std::string& msg, size_t line, size_t col) {
+    if (!Config::warn_all) return;
+
+    Warning w;
+    w.category = cat;
+    w.message = msg;
+    w.line = line;
+    w.column = col;
+    w.is_error = Config::warn_error;
+    warnings.push_back(w);
+
+    if (Config::warn_error) {
+        add_error(msg, line, col);
+    }
+}
+
+void AssemblerEngine::print_warnings() const {
+    for (const auto& w : warnings) {
+        std::cerr << "warning: ";
+        if (w.line > 0) std::cerr << "line " << w.line << ": ";
+        std::cerr << "[-W" << warning_category_name(w.category) << "] ";
+        std::cerr << w.message << std::endl;
+    }
 }
 
 void AssemblerEngine::write_listing(const std::string& source, const std::string& filename) const {

@@ -21,6 +21,26 @@ struct Symbol {
         : name(n), address(addr), defined(def) {}
 };
 
+// Warning categories for -W flags
+enum class WarningCategory {
+    All,
+    UnsizedMemory,    // Memory operation without size specifier
+    AmbiguousOperand, // Ambiguous operand size
+    ForwardRef,       // Forward reference
+    UnusedLabel,      // Defined but unused label
+    LargeImmediate,   // Immediate value exceeds expected range
+    Alignment,        // Potentially misaligned access
+    Deprecated,       // Deprecated instruction form
+};
+
+struct Warning {
+    WarningCategory category;
+    std::string message;
+    size_t line;
+    size_t column;
+    bool is_error;  // true = treat as error (-Werror)
+};
+
 class AssemblerEngine {
     static uint32_t db_next_addr;
 public:
@@ -33,6 +53,12 @@ public:
     // Error handling
     const std::vector<std::string>& get_errors() const { return errors; }
     bool has_errors() const { return !errors.empty(); }
+
+    // Warning framework
+    void add_warning(WarningCategory cat, const std::string& msg, size_t line = 0, size_t col = 0);
+    const std::vector<Warning>& get_warnings() const { return warnings; }
+    bool has_warnings() const { return !warnings.empty(); }
+    void print_warnings() const;
     
     // Get symbol table for debugging
     const std::unordered_map<std::string, Symbol>& get_symbols() const { return symbol_table; }
@@ -53,6 +79,7 @@ public:
 
 private:
     std::vector<std::string> errors;
+    std::vector<Warning> warnings;
     std::unordered_map<std::string, Symbol> symbol_table;
     std::unordered_map<std::string, uint8_t> mnemonic_to_opcode;
     std::unordered_map<std::string, uint8_t> register_to_number;

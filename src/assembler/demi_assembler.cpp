@@ -87,6 +87,10 @@ std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source,
         memory_size = assembler.get_memory_size();
         bytecode_line_map = assembler.get_line_map();
 
+        if (assembler.has_warnings()) {
+            assembler.print_warnings();
+        }
+
         if (Config::listing) {
             assembler.write_listing(source, listing_name.empty() ? "<stdin>" : listing_name);
         }
