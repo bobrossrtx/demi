@@ -1109,7 +1109,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
             relocation.offset = instruction_offset + 1;
             relocation.symbol = symbol_name;
             relocation.kind = is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32;
-            relocation.addend = 0;
+            relocation.addend = src.reloc_addend;
             result.relocations.push_back(std::move(relocation));
             return result;
         }

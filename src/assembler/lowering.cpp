@@ -324,6 +324,27 @@ IROperand LoweringContext::lower_expression(const Expression& expression) {
 
             return {IROperandKind::Memory, lowered_mem};
         }
+        case ASTNodeType::EXPRESSION: {
+            const auto& binary = static_cast<const BinaryExpression&>(expression);
+            IROperand left = lower_expression(*binary.left);
+            IROperand right = lower_expression(*binary.right);
+            bool ls = left.kind == IROperandKind::Symbol, rs = right.kind == IROperandKind::Symbol;
+            bool li = left.kind == IROperandKind::Immediate, ri = right.kind == IROperandKind::Immediate;
+            
+            if ((ls && ri) || (rs && li)) {
+                IROperand result; result.kind = IROperandKind::Symbol;
+                result.value = ls ? std::get<IRSymbolOperand>(left.value) : std::get<IRSymbolOperand>(right.value);
+                int64_t av = li ? std::get<IRImmediateOperand>(left.value).value : std::get<IRImmediateOperand>(right.value).value;
+                result.reloc_addend = (binary.op == '+' && rs) ? -static_cast<int32_t>(av) : (binary.op == '-') ? -static_cast<int32_t>(av) : static_cast<int32_t>(av);
+                return result;
+            }
+            if (li && ri) {
+                int64_t lv = std::get<IRImmediateOperand>(left.value).value;
+                int64_t rv = std::get<IRImmediateOperand>(right.value).value;
+                switch (binary.op) { case '+': return {IROperandKind::Immediate, IRImmediateOperand{lv+rv}}; case '-': return {IROperandKind::Immediate, IRImmediateOperand{lv-rv}}; default: break; }
+            }
+            throw std::runtime_error("Unsupported expression in lowering");
+        }
         default:
             throw std::runtime_error("Unsupported expression type in lowering");
     }

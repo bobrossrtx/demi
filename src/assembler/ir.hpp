@@ -88,6 +88,7 @@ using IROperandValue = std::variant<
 struct IROperand {
     IROperandKind kind;
     IROperandValue value;
+    int64_t reloc_addend = 0;  // addend for symbol+offset expressions
 };
 
 struct IRInstruction {
