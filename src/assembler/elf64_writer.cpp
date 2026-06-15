@@ -68,7 +68,7 @@ size_t append_string(std::vector<uint8_t>& table, const std::string& value) {
 }
 
 uint8_t symbol_binding(IRSymbolBinding binding) {
-    return binding == IRSymbolBinding::Global ? STB_GLOBAL : STB_LOCAL;
+    return (binding == IRSymbolBinding::Global || binding == IRSymbolBinding::External) ? STB_GLOBAL : STB_LOCAL;
 }
 
 size_t align_to(size_t value, size_t alignment) {
