@@ -215,6 +215,10 @@ static std::vector<uint8_t> gen_debug_abbrev() {
     emit_uleb128(out, 0x11); // DW_AT_low_pc
     emit_uleb128(out, 0x01); // DW_FORM_addr
 
+    // DW_AT_high_pc: DW_FORM_addr
+    emit_uleb128(out, 0x12); // DW_AT_high_pc
+    emit_uleb128(out, 0x01); // DW_FORM_addr
+
     // DW_AT_stmt_list: DW_FORM_sec_offset
     emit_uleb128(out, 0x10); // DW_AT_stmt_list
     emit_uleb128(out, 0x17); // DW_FORM_sec_offset
@@ -278,6 +282,9 @@ static std::vector<uint8_t> gen_debug_info(
 
     // DW_AT_low_pc
     w64(out, text_vaddr);
+
+    // DW_AT_high_pc
+    w64(out, text_vaddr + text_size);
 
     // DW_AT_stmt_list (offset 0 — .debug_line starts at 0)
     w32(out, 0);

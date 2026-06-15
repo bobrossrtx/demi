@@ -238,6 +238,9 @@ std::vector<uint8_t> ELFEmitter::generate_executable(
     // If debug info requested, append ELF section headers with DWARF stubs
     if (include_debug_info) {
         add_debug_sections(elf, code_start, stub_size, compiled_code.size(), source_file, line_entries);
+        // Fix PT_LOAD filesz/memsz to cover the appended sections
+        le64(&elf[ELF_EH_SIZE + 32], elf.size());  // p_filesz
+        le64(&elf[ELF_EH_SIZE + 40], elf.size());  // p_memsz
     }
 
     return elf;
