@@ -193,7 +193,7 @@ static std::vector<uint8_t> gen_debug_abbrev() {
     // Abbrev 1: DW_TAG_compile_unit
     emit_uleb128(out, 1);  // abbreviation code
     emit_uleb128(out, 0x11); // DW_TAG_compile_unit
-    out.push_back(1);      // DW_CHILDREN_yes
+    out.push_back(0);      // DW_CHILDREN_no
 
     // DW_AT_producer: DW_FORM_string
     emit_uleb128(out, 0x25); // DW_AT_producer
@@ -281,12 +281,6 @@ static std::vector<uint8_t> gen_debug_info(
 
     // DW_AT_stmt_list (offset 0 — .debug_line starts at 0)
     w32(out, 0);
-
-    // DW_TAG_subprogram (abbrev 2) for _start
-    emit_uleb128(out, 2);
-    emit_string(out, "_start");
-    w64(out, text_vaddr);  // low_pc
-    w64(out, text_vaddr + text_size); // high_pc
 
     // End of children (null DIE)
     emit_uleb128(out, 0);

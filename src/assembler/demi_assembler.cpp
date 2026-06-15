@@ -85,6 +85,7 @@ std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source,
         symbols = assembler.get_symbols();
         entry_address = assembler.get_entry_address();
         memory_size = assembler.get_memory_size();
+        bytecode_line_map = assembler.get_line_map();
 
         return bytecode;
     }

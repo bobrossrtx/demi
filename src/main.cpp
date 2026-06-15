@@ -1635,7 +1635,9 @@ private:
 
             // Compile bytecode to native x86-64
             CodeGen::DISAToX86Compiler compiler;
-            auto native_code = compiler.compile_program(bytecode, entry_addr);
+            const auto& asm_line_map = assembler.get_line_map();
+            auto native_code = compiler.compile_program(bytecode, entry_addr,
+                Config::debug_info && !asm_line_map.empty() ? &asm_line_map : nullptr);
 
             if (Config::verbose) {
                 std::cout << "Compiled to " << native_code.size() << " bytes of native x86-64 code" << std::endl;
@@ -1649,7 +1651,9 @@ private:
 
             // Wrap in ELF64 executable
             CodeGen::ELFEmitter elf_emitter;
-            auto elf_data = elf_emitter.generate_executable(native_code, "_start", Config::debug_info);
+            auto elf_data = elf_emitter.generate_executable(native_code, "_start",
+                Config::debug_info, Config::assembly_file,
+                Config::debug_info ? &compiler.get_line_entries() : nullptr);
 
             if (should_print_compile_details()) {
                 long long size_delta = static_cast<long long>(elf_data.size()) - static_cast<long long>(native_code.size());

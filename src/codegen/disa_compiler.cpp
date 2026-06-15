@@ -158,7 +158,8 @@ struct VirtualRegState {
 // --- Main compilation ---
 
 std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_t>& disa_bytecode,
-                                                         uint32_t entry_point) {
+                                                         uint32_t entry_point,
+                                                         const std::vector<std::pair<size_t, uint32_t>>* line_map) {
     current_program = &disa_bytecode;
     encoder.clear();
     reg_alloc.reset_for_new_function();
@@ -169,6 +170,8 @@ std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_
     spill_slots.clear();
     slot_contains_valid.clear();
     function_has_calls = false;
+    bytecode_line_map = line_map;
+    dwarf_line_entries.clear();
 
     if (disa_bytecode.empty()) return {};
 
@@ -198,6 +201,17 @@ std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_
         const uint8_t* operands = (current_bytecode_pos + 1 < disa_bytecode.size())
                                   ? &disa_bytecode[current_bytecode_pos + 1]
                                   : nullptr;
+
+        // Record DWARF line entry for this instruction
+        if (bytecode_line_map) {
+            uint64_t native_pos = encoder.size();
+            for (const auto& [bc_offset, line] : *bytecode_line_map) {
+                if (bc_offset == current_bytecode_pos) {
+                    dwarf_line_entries.push_back({native_pos, line});
+                    break;
+                }
+            }
+        }
 
         translate_instruction(opcode, operands);
 

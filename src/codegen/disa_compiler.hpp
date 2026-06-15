@@ -48,9 +48,13 @@ public:
     DISAToX86Compiler() : current_bytecode_pos(0) {}
 
     // Main compilation interface
-    // entry_point: bytecode offset where code starts (data before this is embedded into memory)
+    // bytecode_line_map: optional mapping of bytecode offsets to source lines (for DWARF)
     std::vector<uint8_t> compile_program(const std::vector<uint8_t>& disa_bytecode,
-                                         uint32_t entry_point = 0);
+                                         uint32_t entry_point = 0,
+                                         const std::vector<std::pair<size_t, uint32_t>>* bytecode_line_map = nullptr);
+
+    // Get line entries generated during compilation (for DWARF .debug_line)
+    const std::vector<std::pair<uint64_t, uint32_t>>& get_line_entries() const { return dwarf_line_entries; }
 
     // Instruction translation dispatch
     void translate_instruction(Opcode opcode, const uint8_t* operands);
@@ -203,6 +207,10 @@ private:
     void emit_fpu_immediate_int32(int32_t value, uint8_t opcode, uint8_t reg_opcode);
     void emit_x87_raw_op(uint8_t opcode1, uint8_t opcode2);
     void emit_fpu_compare_flags();
+
+    // DWARF line tracking
+    const std::vector<std::pair<size_t, uint32_t>>* bytecode_line_map = nullptr;
+    std::vector<std::pair<uint64_t, uint32_t>> dwarf_line_entries; // (native_addr, source_line)
 };
 
 } // namespace CodeGen

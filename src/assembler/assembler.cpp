@@ -760,6 +760,10 @@ void Assembler::AssemblerEngine::process_directive(const Assembler::Directive& d
 }
 
 void Assembler::AssemblerEngine::process_instruction(const Assembler::Instruction& instruction) {
+    // Record source line for DWARF debug info
+    if (instruction.line > 0) {
+        bytecode_line_map.push_back({bytecode.size(), static_cast<uint32_t>(instruction.line)});
+    }
     encode_instruction(instruction);
 }
 

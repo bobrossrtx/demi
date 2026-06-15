@@ -19,7 +19,9 @@ public:
     std::vector<uint8_t> generate_executable(
         const std::vector<uint8_t>& compiled_code,
         const std::string& entry_name = "_start",
-        bool include_debug_info = false);
+        bool include_debug_info = false,
+        const std::string& source_file = "",
+        const std::vector<std::pair<uint64_t, uint32_t>>* line_entries = nullptr);
 
     // Write the generated ELF to a file
     bool write_to_file(const std::vector<uint8_t>& elf_data,
@@ -42,7 +44,9 @@ private:
 
     // Add ELF section headers with DWARF debug info stubs
     void add_debug_sections(std::vector<uint8_t>& elf,
-        uint64_t code_start, size_t stub_size, size_t code_size);
+        uint64_t code_start, size_t stub_size, size_t code_size,
+        const std::string& source_file,
+        const std::vector<std::pair<uint64_t, uint32_t>>* line_entries);
 };
 
 } // namespace CodeGen

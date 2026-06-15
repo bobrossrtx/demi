@@ -68,6 +68,9 @@ public:
      */
     void set_entry_point_symbol(const std::string& symbol) { entry_point_symbol = symbol; }
     void set_target(AssemblyTarget target) { target_ = target; }
+
+    // Get bytecode-to-source-line mapping (for DWARF debug info)
+    const std::vector<std::pair<size_t, uint32_t>>& get_line_map() const { return bytecode_line_map; }
     
     /**
      * Clear all errors and reset state
@@ -88,6 +91,7 @@ private:
     size_t memory_size = 0; // Memory size set by .memory directive
     std::string entry_point_symbol = "_start"; // Entry point symbol name
     AssemblyTarget target_ = AssemblyTarget::DemiBytecode;
+    std::vector<std::pair<size_t, uint32_t>> bytecode_line_map;
     
     void collect_errors(const std::vector<std::string>& errors);
     std::string read_file(const std::string& filename);

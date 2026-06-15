@@ -42,6 +42,9 @@ public:
     // Set entry point symbol (default: "_start")
     void set_entry_point_symbol(const std::string& symbol) { entry_point_symbol = symbol; }
 
+    // Get bytecode-to-source-line mapping (for DWARF debug info)
+    const std::vector<std::pair<size_t, uint32_t>>& get_line_map() const { return bytecode_line_map; }
+
     // Architecture detection
     Architecture detect_architecture(const Program& program);
 
@@ -55,6 +58,7 @@ private:
     // Current assembly state
     uint32_t current_address;
     std::vector<uint8_t> bytecode;
+    std::vector<std::pair<size_t, uint32_t>> bytecode_line_map; // (offset, source_line)
     uint32_t entry_address = 0; // Entry point for execution
     std::string entry_point_symbol = "_start"; // Entry point symbol name
     std::string last_label_name; // Track most recent label for DB assignment
