@@ -32,6 +32,10 @@ void append_i32(std::vector<uint8_t>& out, int32_t value) {
     append_u32(out, static_cast<uint32_t>(value));
 }
 
+void append_u64(std::vector<uint8_t>& out, uint64_t value) {
+    for (int i = 0; i < 8; i++) out.push_back(static_cast<uint8_t>((value >> (i * 8)) & 0xFF));
+}
+
 bool fits_i8(int64_t value) {
     return value >= -128 && value <= 127;
 }
@@ -1098,17 +1102,17 @@ EncodedInstructionResult X86Backend::encode_instruction(
             const auto& symbol_name = std::get<IRSymbolOperand>(src.value).name;
             if (is_64bit_mode()) {
                 uint8_t rex = compute_rex(true, std::nullopt, reg);
-                result.bytes = {rex, 0xC7, static_cast<uint8_t>(0xC0 | (*reg & 0x7))};
-                append_u32(result.bytes, 0);
+                result.bytes = {rex, static_cast<uint8_t>(0xB8 | (*reg & 0x7))};
+                append_u64(result.bytes, 0);  // 8-byte slot for R_X86_64_64 relocation
             } else {
                 result.bytes = {static_cast<uint8_t>(0xB8 + *reg)};
                 append_u32(result.bytes, 0);
             }
             IRRelocation relocation;
             relocation.section = IRSectionKind::Text;
-            relocation.offset = instruction_offset + 1;
+            relocation.offset = instruction_offset + (is_64bit_mode() ? 2 : 1); // REX+opcode=2 bytes
             relocation.symbol = symbol_name;
-            relocation.kind = is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32;
+            relocation.kind = is_64bit_mode() ? IRRelocationKind::Absolute64 : IRRelocationKind::Absolute32;
             relocation.addend = src.reloc_addend;
             result.relocations.push_back(std::move(relocation));
             return result;

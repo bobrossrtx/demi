@@ -102,7 +102,7 @@ std::vector<uint8_t> make_elf64_executable(
     const uint64_t BASE = 0x400000;
     uint64_t text_vaddr = BASE;
     uint64_t data_vaddr = BASE + PAGE;
-    if (!data_sec.empty() || !rodata_sec.empty()) data_vaddr = BASE + PAGE;
+    uint64_t rodata_vaddr = text_vaddr + align_up(text_sec.size(), 8);
     uint64_t entry = text_vaddr + entry_off;
 
     // Symbol vaddr map
@@ -113,7 +113,7 @@ std::vector<uint8_t> make_elf64_executable(
         switch (sym.section) {
             case IRSectionKind::Text: base = text_vaddr; break;
             case IRSectionKind::Data: base = data_vaddr; break;
-            case IRSectionKind::Rodata: base = text_vaddr; break; // simplified
+            case IRSectionKind::Rodata: base = rodata_vaddr; break;
             default: continue;
         }
         sym_vaddrs[sym.name] = base + sym.offset;
@@ -185,11 +185,20 @@ std::vector<uint8_t> make_elf64_executable(
     if (shared) {
         dynamic_idx = static_cast<uint32_t>(name_offs.size());
         name_offs.push_back(add_name(".dynamic"));
+        name_offs.push_back(add_name(".dynsym"));
+        name_offs.push_back(add_name(".dynstr"));
     }
 
     // Symbol table (24-byte entries)
     std::vector<uint8_t> new_strtab; new_strtab.push_back(0);
-    std::vector<uint8_t> new_symtab;
+    std::vector<uint8_t> new_symtab; 
+    
+    // Dynamic symbol table and string table (for .so)
+    std::vector<uint8_t> dynstr; dynstr.push_back(0);
+    std::vector<uint8_t> dynsym;
+    // NULL entry: 24 zero bytes
+    dynsym.insert(dynsym.end(), 24, 0);
+    
     // NULL entry: 24 zero bytes
     new_symtab.insert(new_symtab.end(), 24, 0);
 
@@ -224,6 +233,19 @@ std::vector<uint8_t> make_elf64_executable(
         push16(new_symtab, shn);              // st_shndx
         push64(new_symtab, base + sym.offset); // st_value
         push64(new_symtab, sym.size);          // st_size
+        
+        // Also add to dynamic symbol table for shared libraries
+        if (shared && bind == 1) {  // global symbol
+            uint32_t dyn_nm_off = static_cast<uint32_t>(dynstr.size());
+            dynstr.insert(dynstr.end(), sym.name.begin(), sym.name.end());
+            dynstr.push_back(0);
+            push32(dynsym, dyn_nm_off);  // st_name (use dynstr)
+            dynsym.push_back(static_cast<uint8_t>((bind << 4) | type));
+            dynsym.push_back(0);
+            push16(dynsym, shn);
+            push64(dynsym, base + sym.offset);
+            push64(dynsym, sym.size);
+        }
     }
 
     std::string cstr = "DASM x86-64 assembler (DemiEngine v1.0)";
@@ -245,17 +267,19 @@ std::vector<uint8_t> make_elf64_executable(
     struct FSec { std::vector<uint8_t> data; uint64_t off, sz, vaddr; };
     FSec ftx{text_sec, 0, text_sec.size(), text_vaddr};
     FSec fdt{data_sec, 0, data_sec.size(), data_vaddr};
-    FSec fro{rodata_sec, 0, rodata_sec.size(), text_vaddr};
+    FSec fro{rodata_sec, 0, rodata_sec.size(), rodata_vaddr};
     FSec fcm{cdata, 0, cdata.size(), 0};
     FSec fsm{new_symtab, 0, new_symtab.size(), 0};
     FSec fst{new_strtab, 0, new_strtab.size(), 0};
     FSec fsh{shstrtab, 0, shstrtab.size(), 0};
+    FSec fdynsym{dynsym, 0, dynsym.size(), 0};
+    FSec fdynstr{dynstr, 0, dynstr.size(), 0};
     FSec fdl, fdi, fda, fds;  // DWARF sections
 
     uint64_t foff = exe_foff;
     ftx.off = foff; foff += ftx.sz;
+    fro.off = align_up(foff, 8); foff = fro.off + fro.sz;  // rodata aligned after text
     fdt.off = foff; foff += fdt.sz;
-    fro.off = foff; foff += fro.sz;
     fcm.off = foff; foff += fcm.sz;
     if (line_entries && !line_entries->empty()) {
         DWARFSections dwarf = generate_dwarf(source_file, text_vaddr, *line_entries, ".");
@@ -271,6 +295,8 @@ std::vector<uint8_t> make_elf64_executable(
     fsm.off = foff; foff += fsm.sz;
     fst.off = foff; foff += fst.sz;
     fsh.off = foff; foff += fsh.sz;
+    fdynsym.off = foff; foff += fdynsym.sz;
+    fdynstr.off = foff; foff += fdynstr.sz;
 
     std::vector<uint8_t> elf;
     if (shared) { elf.resize(EHDR + 3 * PHDR, 0); phnum = 3; }  // 3 PHDRs for .so
@@ -307,6 +333,8 @@ std::vector<uint8_t> make_elf64_executable(
     fsm.off = foff; foff += fsm.sz;
     fst.off = foff; foff += fst.sz;
     fsh.off = foff; foff += fsh.sz;
+    fdynsym.off = foff; foff += fdynsym.sz;
+    fdynstr.off = foff; foff += fdynstr.sz;
 
     uint64_t load1_fsize = fdt.sz;
     uint64_t load1_msize = align_up(load1_fsize + bss_size, PAGE);
@@ -344,20 +372,44 @@ std::vector<uint8_t> make_elf64_executable(
     uint64_t shstr_exe_off = fsh.off;
     write_at(elf, fsh.off, fsh.data);
 
+    if (shared) {
+        write_at(elf, fdynsym.off, fdynsym.data);
+        write_at(elf, fdynstr.off, fdynstr.data);
+    }
+
     // Dynamic section (.dynamic) for shared libraries
     uint64_t dyn_off = 0;
+    uint64_t dynsym_vaddr = 0, dynstr_vaddr = 0;
     if (shared) {
-        std::vector<uint8_t> dyn_data(16, 0); // DT_NULL (tag=0, val=0)
+        // Compute virtual addresses for dynamic sections
+        dynsym_vaddr = data_vaddr + (fdynsym.off - data_off_file);
+        dynstr_vaddr = data_vaddr + (fdynstr.off - data_off_file);
+        // Build .dynamic: DT_SYMTAB, DT_STRTAB, DT_STRSZ, DT_SYMENT, DT_NULL
+        std::vector<uint8_t> dyn_data;
+        auto dpush = [&](int64_t tag, uint64_t val) {
+            for(int i=0;i<8;i++) dyn_data.push_back((tag>>(i*8))&0xFF);
+            for(int i=0;i<8;i++) dyn_data.push_back((val>>(i*8))&0xFF);
+        };
+        dpush(6, 0);   // DT_SYMTAB (placeholder, fixed below)
+        dpush(5, 0);   // DT_STRTAB (placeholder, fixed below)
+        dpush(10, dynstr.size()); // DT_STRSZ
+        dpush(11, 24); // DT_SYMENT (sizeof(Elf64_Sym) = 24)
+        dpush(0, 0);   // DT_NULL
+        
         dyn_off = elf.size();
-        elf.resize(dyn_off + 16, 0);
+        elf.insert(elf.end(), dyn_data.begin(), dyn_data.end());
+        
+        // Fix DT_SYMTAB and DT_STRTAB with virtual addresses
+        w64(elf, dyn_off + 8, dynsym_vaddr);
+        w64(elf, dyn_off + 24, dynstr_vaddr);
         
         // Add PT_DYNAMIC program header
         w32(elf, EHDR + 2*PHDR, 2);           // PT_DYNAMIC
         w32(elf, EHDR + 2*PHDR + 4, 6);       // PF_R | PF_W
         w64(elf, EHDR + 2*PHDR + 8, dyn_off); // offset
-        w64(elf, EHDR + 2*PHDR + 16, 0);      // vaddr
+        w64(elf, EHDR + 2*PHDR + 16, data_vaddr + (dyn_off - data_off_file));    // vaddr
         w64(elf, EHDR + 2*PHDR + 24, 0);      // paddr
-        w64(elf, EHDR + 2*PHDR + 32, 16);     // filesz
+        w64(elf, EHDR + 2*PHDR + 32, 80);     // filesz (5 entries × 16 bytes)
         w64(elf, EHDR + 2*PHDR + 40, 16);     // memsz
         w64(elf, EHDR + 2*PHDR + 48, 8);      // align
     }
@@ -376,7 +428,7 @@ std::vector<uint8_t> make_elf64_executable(
 
     push_shdr64(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     push_shdr64(name_offs[1], 1, 6, text_vaddr, ftx.off, ftx.sz, 0, 0, 16, 0);
-    push_shdr64(name_offs[2], 1, 2, text_vaddr, fro.off, fro.sz, 0, 0, 4, 0);
+    push_shdr64(name_offs[2], 1, 2, fro.vaddr, fro.off, fro.sz, 0, 0, 4, 0);
     push_shdr64(name_offs[3], 1, 3, data_vaddr, fdt.off, fdt.sz, 0, 0, 4, 0);
     push_shdr64(name_offs[4], 8, 3, data_vaddr + fdt.sz, 0, bss_size, 0, 0, 4, 0);
     push_shdr64(name_offs[5], 1, 0, 0, fcm.off, fcm.sz, 0, 0, 1, 0);
@@ -395,11 +447,14 @@ std::vector<uint8_t> make_elf64_executable(
 
     // .dynamic section for shared libraries
     if (shared && dynamic_idx > 0) {
-        push_shdr64(name_offs[dynamic_idx], 6, 2, 0, dyn_off, 16, 0, 0, 8, 16); // SHT_DYNAMIC=6, SHF_ALLOC=2
+        uint32_t dynstr_num = static_cast<uint32_t>(next_idx + 5);  // .dynstr section number
+        push_shdr64(name_offs[dynamic_idx], 6, 2, 0, dyn_off, 80, dynstr_num, 0, 8, 16); // .dynamic, link=.dynstr
+        push_shdr64(name_offs[dynamic_idx+1], 11, 2, dynsym_vaddr, fdynsym.off, fdynsym.sz, dynstr_num, 1, 8, 24); // .dynsym, link=.dynstr
+        push_shdr64(name_offs[dynamic_idx+2], 3, 2, dynstr_vaddr, fdynstr.off, fdynstr.sz, 0, 0, 1, 0); // .dynstr
     }
 
     // Fix shnum in ELF header
-    uint16_t shnum_total = static_cast<uint16_t>(next_idx + 3 + (shared ? 1 : 0));
+    uint16_t shnum_total = static_cast<uint16_t>(next_idx + 3 + (shared ? 3 : 0));
     w16(elf, 60, shnum_total);
 
     return elf;
