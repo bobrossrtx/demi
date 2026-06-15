@@ -1633,11 +1633,13 @@ private:
                 }
             }
 
-            // Compile bytecode to native x86-64
+            // Compile bytecode to native code
             CodeGen::DISAToX86Compiler compiler;
+            bool is_64bit = (Config::architecture != Architecture::X86);
             const auto& asm_line_map = assembler.get_line_map();
             auto native_code = compiler.compile_program(bytecode, entry_addr,
-                Config::debug_info && !asm_line_map.empty() ? &asm_line_map : nullptr);
+                Config::debug_info && !asm_line_map.empty() ? &asm_line_map : nullptr,
+                is_64bit);
 
             if (Config::verbose) {
                 std::cout << "Compiled to " << native_code.size() << " bytes of native x86-64 code" << std::endl;
@@ -1649,11 +1651,16 @@ private:
                 print_compile_detail(fmt::format("[CG ] generated code   : {} bytes (0x{:X})", native_code.size(), native_code.size()));
             }
 
-            // Wrap in ELF64 executable
+            // Wrap in ELF executable
             CodeGen::ELFEmitter elf_emitter;
-            auto elf_data = elf_emitter.generate_executable(native_code, "_start",
-                Config::debug_info, Config::assembly_file,
-                Config::debug_info ? &compiler.get_line_entries() : nullptr);
+            std::vector<uint8_t> elf_data;
+            if (is_64bit) {
+                elf_data = elf_emitter.generate_executable(native_code, "_start",
+                    Config::debug_info, Config::assembly_file,
+                    Config::debug_info ? &compiler.get_line_entries() : nullptr);
+            } else {
+                elf_data = elf_emitter.generate_executable_32(native_code);
+            }
 
             if (should_print_compile_details()) {
                 long long size_delta = static_cast<long long>(elf_data.size()) - static_cast<long long>(native_code.size());

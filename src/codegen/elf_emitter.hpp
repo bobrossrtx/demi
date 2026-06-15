@@ -27,6 +27,11 @@ public:
     bool write_to_file(const std::vector<uint8_t>& elf_data,
                        const std::string& output_path);
 
+    // Generate ELF32 executable (for 32-bit compiled code)
+    std::vector<uint8_t> generate_executable_32(
+        const std::vector<uint8_t>& compiled_code,
+        const std::string& entry_name = "_start");
+
 private:
     // Build the _start runtime stub that sets up VM state and calls compiled code
     // Returns the stub machine code bytes

@@ -259,14 +259,16 @@ void ELFEmitter::add_debug_sections(std::vector<uint8_t>& elf,
     const uint8_t shstr_data[] = {
         0, '.','t','e','x','t',0,
         '.','s','h','s','t','r','t','a','b',0,
+        '.','s','y','m','t','a','b',0,
+        '.','s','t','r','t','a','b',0,
         '.','d','e','b','u','g','_','i','n','f','o',0,
         '.','d','e','b','u','g','_','l','i','n','e',0,
         '.','d','e','b','u','g','_','a','b','b','r','e','v',0,
         '.','d','e','b','u','g','_','s','t','r',0,
     };
     std::string shstr(reinterpret_cast<const char*>(shstr_data), sizeof(shstr_data));
-    uint32_t name_null=0, name_text=1, name_shstrtab=7, name_debug_info=17;
-    uint32_t name_debug_line=29, name_debug_abbrev=41, name_debug_str=55;
+    uint32_t name_null=0, name_text=1, name_shstrtab=7, name_symtab=18, name_strtab=26;
+    uint32_t name_debug_info=34, name_debug_line=46, name_debug_abbrev=58, name_debug_str=72;
 
     uint64_t text_size = stub_size + code_size;
     uint64_t text_offset = code_start;
@@ -302,9 +304,30 @@ void ELFEmitter::add_debug_sections(std::vector<uint8_t>& elf,
     uint64_t debug_abbrev_off = write_dwarf(debug_abbrev_data);
     uint64_t debug_str_off = write_dwarf(debug_str_data);
 
-    // Section headers
+    // Build minimal .strtab + .symtab so GDB can resolve "_start" by name
+    std::string sym_name = "_start";
+    std::vector<uint8_t> strtab = {0};
+    strtab.insert(strtab.end(), sym_name.begin(), sym_name.end());
+    strtab.push_back(0);
+
+    std::vector<uint8_t> symtab;
+    auto push32s = [&](uint32_t v) { for(int i=0;i<4;i++) symtab.push_back((v>>(i*8))&0xFF); };
+    auto push64s = [&](uint64_t v) { for(int i=0;i<8;i++) symtab.push_back((v>>(i*8))&0xFF); };
+    for(int i=0;i<24;i++) symtab.push_back(0);  // NULL entry
+    push32s(1);                                   // st_name = 1 ("_start")
+    symtab.push_back(0x12);                      // STB_GLOBAL | STT_FUNC
+    symtab.push_back(0);
+    symtab.push_back(1); symtab.push_back(0);    // st_shndx = 1
+    push64s(BASE_ADDR + code_start + stub_size); // st_value (compiled code, past stub)
+    push64s(text_size - stub_size);              // st_size (compiled code only)
+
+    uint64_t symtab_off = elf.size(); elf.insert(elf.end(), symtab.begin(), symtab.end());
+    uint64_t strtab_off = elf.size(); elf.insert(elf.end(), strtab.begin(), strtab.end());
+
+    uint8_t shnum = 9;  // NULL + .text + .shstrtab + .symtab + .strtab + 4 DWARF
+
+    // Section headers — rewrite: remove old shnum declaration
     uint64_t shdr_start = elf.size();
-    uint8_t shnum = 7;
 
     le64(&elf[0x28], shdr_start);
     le16(&elf[0x3C], shnum);
@@ -319,6 +342,14 @@ void ELFEmitter::add_debug_sections(std::vector<uint8_t>& elf,
 
     push32(name_shstrtab); push32(3); push64(0);
     push64(0); push64(shstr_offset); push64(shstr.size());
+    push32(0); push32(0); push64(1); push64(0);
+
+    push32(name_symtab); push32(2); push64(0);
+    push64(0); push64(symtab_off); push64(symtab.size());
+    push32(4); push32(1); push64(8); push64(24);
+
+    push32(name_strtab); push32(3); push64(0);
+    push64(0); push64(strtab_off); push64(strtab.size());
     push32(0); push32(0); push64(1); push64(0);
 
     push32(name_debug_info); push32(1); push64(0);
@@ -358,6 +389,76 @@ bool ELFEmitter::write_to_file(const std::vector<uint8_t>& elf_data,
     }
 
     return true;
+}
+
+// ============================================================
+// ELF32 executable generator
+// ============================================================
+std::vector<uint8_t> ELFEmitter::generate_executable_32(
+    const std::vector<uint8_t>& compiled_code,
+    const std::string& entry_name)
+{
+    // 32-bit stub: allocate regfile + memory, call compiled code, exit
+    // Uses int 0x80 for syscalls (32-bit ABI)
+    std::vector<uint8_t> stub = {
+        0x55,                               // push ebp
+        0x89, 0xE5,                         // mov ebp, esp
+        0x83, 0xEC, 0x20,                   // sub esp, 32 (scratch space)
+        // sys_brk to allocate 64KB memory
+        0xB8, 0x2D, 0x00, 0x00, 0x00,       // mov eax, 45 (brk)
+        0x31, 0xDB,                         // xor ebx, ebx
+        0xCD, 0x80,                         // int 0x80
+        0x89, 0xC6,                         // mov esi, eax (memory base)
+        0x81, 0xC3, 0x00, 0x00, 0x01, 0x00, // add ebx, 65536
+        0xB8, 0x2D, 0x00, 0x00, 0x00,       // mov eax, 45
+        0xCD, 0x80,                         // int 0x80
+        // Allocate register file (1104 bytes)
+        0x89, 0xF7,                         // mov edi, esi
+        0x81, 0xC7, 0x50, 0x04, 0x00, 0x00, // add edi, 1104
+        // Call compiled code
+        0xE8, 0x00, 0x00, 0x00, 0x00,       // call rel32 (patched below)
+        // Exit
+        0xB8, 0x01, 0x00, 0x00, 0x00,       // mov eax, 1 (exit)
+        0x31, 0xDB,                         // xor ebx, ebx
+        0xCD, 0x80,                         // int 0x80
+    };
+    
+    // Patch the call instruction to point to compiled_code
+    size_t call_offset = 36; // byte offset of call operand in stub
+    int32_t call_delta = static_cast<int32_t>(stub.size() - (call_offset + 4));
+    stub[call_offset] = call_delta & 0xFF;
+    stub[call_offset+1] = (call_delta >> 8) & 0xFF;
+    stub[call_offset+2] = (call_delta >> 16) & 0xFF;
+    stub[call_offset+3] = (call_delta >> 24) & 0xFF;
+    
+    const uint32_t BASE = 0x08048000;
+    uint32_t entry = BASE + 0x54; // ELF header + program header
+    
+    std::vector<uint8_t> elf;
+    
+    // ELF32 header (52 bytes)
+    elf.push_back(0x7F); elf.push_back('E'); elf.push_back('L'); elf.push_back('F');
+    elf.push_back(1); elf.push_back(1); elf.push_back(1); elf.push_back(0); // 32-bit, LE, v1, sysv
+    for(int i=0;i<8;i++) elf.push_back(0); // padding
+    auto w16 = [&](uint16_t v){elf.push_back(v&0xFF);elf.push_back(v>>8);};
+    auto w32 = [&](uint32_t v){for(int i=0;i<4;i++)elf.push_back((v>>(i*8))&0xFF);};
+    w16(2); w16(3); w32(1); // ET_EXEC, EM_386, version
+    w32(entry); // entry
+    w32(52); w32(0); // phoff=52, shoff=0
+    w32(0); w16(52); w16(32); w16(1); w16(0); w16(0);
+    
+    // Program header (32 bytes)
+    w32(1); w32(0); // PT_LOAD, offset=0
+    w32(BASE); w32(BASE); // vaddr, paddr
+    uint32_t total = 52 + 32 + stub.size() + compiled_code.size();
+    w32(total); w32(total); // filesz, memsz
+    w32(7); w32(0x1000); // flags=RWX, align
+    
+    // Stub + compiled code
+    elf.insert(elf.end(), stub.begin(), stub.end());
+    elf.insert(elf.end(), compiled_code.begin(), compiled_code.end());
+    
+    return elf;
 }
 
 } // namespace CodeGen

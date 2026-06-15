@@ -159,9 +159,11 @@ struct VirtualRegState {
 
 std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_t>& disa_bytecode,
                                                          uint32_t entry_point,
-                                                         const std::vector<std::pair<size_t, uint32_t>>* line_map) {
+                                                         const std::vector<std::pair<size_t, uint32_t>>* line_map,
+                                                         bool is_64bit) {
     current_program = &disa_bytecode;
     encoder.clear();
+    encoder.set_64bit(is_64bit);
     reg_alloc.reset_for_new_function();
     jump_targets.clear();
     function_labels.clear();

@@ -4,11 +4,12 @@
 namespace CodeGen {
 
 void X86Encoder::emit_rex(bool w, bool r, bool x, bool b) {
+    if (!is_64bit_) return;  // 32-bit mode: no REX prefixes
     uint8_t rex = 0x40;
-    if (w) rex |= 0x08;  // 64-bit operand
-    if (r) rex |= 0x04;  // Extension of ModR/M reg field
-    if (x) rex |= 0x02;  // Extension of SIB index field  
-    if (b) rex |= 0x01;  // Extension of ModR/M r/m field
+    if (w) rex |= 0x08;
+    if (r) rex |= 0x04;
+    if (x) rex |= 0x02;
+    if (b) rex |= 0x01;
     code_buffer.push_back(rex);
 }
 

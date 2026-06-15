@@ -51,7 +51,8 @@ public:
     // bytecode_line_map: optional mapping of bytecode offsets to source lines (for DWARF)
     std::vector<uint8_t> compile_program(const std::vector<uint8_t>& disa_bytecode,
                                          uint32_t entry_point = 0,
-                                         const std::vector<std::pair<size_t, uint32_t>>* bytecode_line_map = nullptr);
+                                         const std::vector<std::pair<size_t, uint32_t>>* bytecode_line_map = nullptr,
+                                         bool is_64bit = true);
 
     // Get line entries generated during compilation (for DWARF .debug_line)
     const std::vector<std::pair<uint64_t, uint32_t>>& get_line_entries() const { return dwarf_line_entries; }

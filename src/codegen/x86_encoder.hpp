@@ -29,6 +29,10 @@ private:
 public:
     X86Encoder() = default;
 
+    // Set 64-bit mode (default true). When false, REX prefixes suppressed for 32-bit.
+    void set_64bit(bool v) { is_64bit_ = v; }
+    bool is_64bit() const { return is_64bit_; }
+
     // Basic instruction emission
     void emit_mov_reg_reg(X86Register dst, X86Register src);
     void emit_mov_reg_imm64(X86Register dst, uint64_t imm);
@@ -149,6 +153,9 @@ public:
     void emit_jno_label(Label& label);
     void emit_js_label(Label& label);
     void emit_jns_label(Label& label);
+
+private:
+    bool is_64bit_ = true;
 };
 
 } // namespace CodeGen
