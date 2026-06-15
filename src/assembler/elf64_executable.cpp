@@ -337,7 +337,7 @@ std::vector<uint8_t> make_elf64_executable(
     fdynstr.off = foff; foff += fdynstr.sz;
 
     uint64_t load1_fsize = fdt.sz + fcm.sz + fsm.sz + fst.sz + fsh.sz;
-    if (shared) load1_fsize += fdynsym.sz + fdynstr.sz + 80;  // .dynamic(80) + .dynsym + .dynstr
+    if (shared) load1_fsize += fdynsym.sz + fdynstr.sz + 20 + 96;  // .hash(20) + .dynsym + .dynstr + .dynamic(96)
     uint64_t load1_msize = align_up(load1_fsize + bss_size, PAGE);
     if (!shared) {
         phnum = 2;
@@ -387,6 +387,16 @@ std::vector<uint8_t> make_elf64_executable(
         dynsym_vaddr = data_vaddr + (fdynsym.off - data_off_file);
         dynstr_vaddr = data_vaddr + (fdynstr.off - data_off_file);
         
+        // Build ELF hash table (2 symbols: NULL=0, greet=1)
+        std::vector<uint8_t> hashtab;
+        auto hp32 = [&](uint32_t v){ for(int i=0;i<4;i++) hashtab.push_back((v>>(i*8))&0xFF); };
+        hp32(1); hp32(2);  // nbucket=1, nchain=2
+        hp32(1);           // bucket[0] = 1 (index of greet in chain)
+        hp32(0); hp32(0);  // chain[0]=0, chain[1]=0
+        uint64_t hash_off = elf.size();
+        elf.insert(elf.end(), hashtab.begin(), hashtab.end());
+        uint64_t hash_vaddr = data_vaddr + (hash_off - data_off_file);
+        
         // Build .dynamic
         std::vector<uint8_t> dyn_data;
         auto dpush = [&](int64_t tag, uint64_t val) {
@@ -403,9 +413,10 @@ std::vector<uint8_t> make_elf64_executable(
         dyn_off = elf.size();
         elf.insert(elf.end(), dyn_data.begin(), dyn_data.end());
         
-        // Fix DT_SYMTAB and DT_STRTAB with virtual addresses
+        // Fix DT_SYMTAB, DT_STRTAB, and DT_HASH with virtual addresses
         w64(elf, dyn_off + 8, dynsym_vaddr);
         w64(elf, dyn_off + 24, dynstr_vaddr);
+        w64(elf, dyn_off + 72, hash_vaddr);   // DT_HASH value
         
         // Add PT_DYNAMIC program header
         w32(elf, EHDR + 2*PHDR, 2);           // PT_DYNAMIC
@@ -413,8 +424,8 @@ std::vector<uint8_t> make_elf64_executable(
         w64(elf, EHDR + 2*PHDR + 8, dyn_off); // offset
         w64(elf, EHDR + 2*PHDR + 16, data_vaddr + (dyn_off - data_off_file));    // vaddr
         w64(elf, EHDR + 2*PHDR + 24, 0);      // paddr
-        w64(elf, EHDR + 2*PHDR + 32, 80);     // filesz (5 entries)
-        w64(elf, EHDR + 2*PHDR + 40, 80);     // memsz
+        w64(elf, EHDR + 2*PHDR + 32, 96);     // filesz (6 entries)
+        w64(elf, EHDR + 2*PHDR + 40, 96);     // memsz
         w64(elf, EHDR + 2*PHDR + 48, 8);      // align
     }
 
@@ -453,7 +464,7 @@ std::vector<uint8_t> make_elf64_executable(
     if (shared && dynamic_idx > 0) {
         uint32_t dynstr_num = static_cast<uint32_t>(next_idx + 5);  // .dynstr section number
         uint64_t dyn_vaddr = data_vaddr + (dyn_off - data_off_file);
-        push_shdr64(name_offs[dynamic_idx], 6, 2, dyn_vaddr, dyn_off, 80, 0, 0, 8, 16); // .dynamic
+        push_shdr64(name_offs[dynamic_idx], 6, 2, dyn_vaddr, dyn_off, 96, 0, 0, 8, 16); // .dynamic (6 entries)
         push_shdr64(name_offs[dynamic_idx+1], 11, 2, dynsym_vaddr, fdynsym.off, fdynsym.sz, dynstr_num, 1, 8, 24); // .dynsym, link=.dynstr
         push_shdr64(name_offs[dynamic_idx+2], 3, 2, dynstr_vaddr, fdynstr.off, fdynstr.sz, 0, 0, 1, 0); // .dynstr
     }
