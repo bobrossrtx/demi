@@ -2,19 +2,20 @@
 set -e
 DEMI="../../../../bin/demi-engine-debug"
 TARGET="--assembly-target x86-elf64"
-echo ">>> Building DASM import example <<<"
-$DEMI -A import-test.asm $TARGET -ao import-test.o
+echo ">>> DASM → DASM .so import <<<"
 
-cat > test_driver.c << 'EOF'
-#include <stdio.h>
-extern int greet(void);
-int main() { printf("greet() from DASM .so returned %d\n", greet()); return 0; }
-EOF
-gcc -no-pie -o test_driver test_driver.c -L../return-42 -l:libreturn42.so -Wl,-rpath,"$PWD/../return-42"
-echo "=== C driver ==="
-./test_driver
+echo "Step 1: Build shared library"
+$DEMI -A libimport.asm $TARGET -o libimport.so --shared
+echo "  Created: libimport.so ($(file libimport.so | cut -d: -f2))"
 
-gcc -no-pie -o import-test import-test.o -L../return-42 -l:libreturn42.so -Wl,-rpath,"$PWD/../return-42"
-echo "=== DASM import ==="
-./import-test
-echo "(import-test exited cleanly — greet() was called from DASM .so)"
+echo "Step 2: Assemble main program"
+$DEMI -A prog.asm $TARGET -ao prog.o
+echo "  Created: prog.o"
+
+echo "Step 3: Link against shared library"
+gcc -no-pie -o prog prog.o -L. -l:libimport.so -Wl,-rpath,"$PWD"
+echo "  Created: prog"
+
+echo "Step 4: Run"
+./prog
+echo "  (prog exited cleanly — DASM→.so import works!)"

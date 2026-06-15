@@ -406,6 +406,12 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
             }
         }
 
+        // Record actual symbol offset (function entry = prologue start)
+        if (function_entries.count(instruction_index)) {
+            auto& name = function_entries[static_cast<uint64_t>(instruction_index)];
+            artifact.symbol_offsets[name] = text_bytes.size() - prologue_size;
+        }
+
         // Emit epilogue (LEAVE) before RET in function bodies
         if (in_function && instruction.mnemonic == "RET") {
             if (is_64bit_mode()) text_bytes.push_back(0x48); // REX.W for 64-bit LEAVE
@@ -451,8 +457,19 @@ BackendArtifact X86Backend::emit_executable(const IRProgram& program) {
 
     std::vector<std::string> errs;
     std::vector<uint8_t> exe;
+
+    // Create corrected program with actual byte offsets from emit()
+    IRProgram corrected = program;
+    for (auto& sym : corrected.symbols) {
+        if (sym.is_function && sym.defined && sym.section == IRSectionKind::Text) {
+            auto it = reloc.symbol_offsets.find(sym.name);
+            if (it != reloc.symbol_offsets.end())
+                sym.offset = it->second;
+        }
+    }
+
     if (is_64bit_mode()) {
-        exe = make_elf64_executable(reloc.bytes, program, errs, &line_entries, "", Config::shared_library);
+        exe = make_elf64_executable(reloc.bytes, corrected, errs, &line_entries, "", Config::shared_library);
     } else {
         exe = make_elf32_executable(reloc.bytes, program, errs);
     }
