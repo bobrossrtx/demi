@@ -142,6 +142,9 @@ std::vector<uint8_t> make_elf64_executable(
             uint64_t P = text_vaddr + r_offset;
             int64_t val = static_cast<int64_t>(S) + r_addend - static_cast<int64_t>(P);
             w32(text_sec, r_offset, static_cast<uint32_t>(val));
+        } else if (rel_type == 10 || rel_type == 11) { // R_X86_64_32 / R_X86_64_32S
+            int64_t val = static_cast<int64_t>(S) + r_addend;
+            w32(text_sec, r_offset, static_cast<uint32_t>(val));
         }
     }
 

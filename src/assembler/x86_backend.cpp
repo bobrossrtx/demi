@@ -1107,7 +1107,7 @@ EncodedInstructionResult X86Backend::encode_instruction(
             relocation.section = IRSectionKind::Text;
             relocation.offset = instruction_offset + 1;
             relocation.symbol = symbol_name;
-            relocation.kind = IRRelocationKind::Absolute32;
+            relocation.kind = is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32;
             relocation.addend = 0;
             result.relocations.push_back(std::move(relocation));
             return result;
@@ -1150,7 +1150,8 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32 : IRRelocationKind::Absolute32;
+                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32
+                    : (is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32);
                 relocation.addend = encoded_mem.relocation_addend;
                 result.relocations.push_back(std::move(relocation));
             }
@@ -1180,7 +1181,8 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32 : IRRelocationKind::Absolute32;
+                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32
+                    : (is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32);
                 relocation.addend = encoded_mem.relocation_addend;
                 result.relocations.push_back(std::move(relocation));
             }
@@ -1628,7 +1630,8 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32 : IRRelocationKind::Absolute32;
+                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32
+                    : (is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32);
                 relocation.addend = encoded_mem.relocation_addend;
                 result.relocations.push_back(std::move(relocation));
             }

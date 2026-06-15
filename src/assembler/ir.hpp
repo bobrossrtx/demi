@@ -31,6 +31,7 @@ enum class IRSymbolBinding {
 
 enum class IRRelocationKind {
     Absolute32,
+    Absolute32S,   // R_X86_64_32S — sign-extended 32-bit, preferred for x86-64
     Absolute64,
     PcRelative32,
     PcRelative8,

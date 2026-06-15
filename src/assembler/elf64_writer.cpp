@@ -40,6 +40,7 @@ constexpr uint8_t STT_SECTION = 3;
 constexpr uint32_t R_X86_64_64 = 1;
 constexpr uint32_t R_X86_64_PC32 = 2;
 constexpr uint32_t R_X86_64_32 = 10;
+constexpr uint32_t R_X86_64_32S = 11;
 
 void write16(std::vector<uint8_t>& out, uint16_t value) {
     out.push_back(static_cast<uint8_t>(value & 0xFF));
@@ -307,6 +308,9 @@ std::vector<uint8_t> ELF64ObjectWriter::write_object(
                 break;
             case IRRelocationKind::Absolute32:
                 relocation_type = R_X86_64_32;
+                break;
+            case IRRelocationKind::Absolute32S:
+                relocation_type = R_X86_64_32S;
                 break;
             default:
                 errors.push_back("Unsupported ELF64 relocation kind for symbol: " + relocation.symbol);
