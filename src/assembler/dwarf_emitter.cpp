@@ -90,7 +90,7 @@ static std::vector<uint8_t> gen_debug_line(
 
     // Set initial file
     line_prog.push_back(0); // extended opcode
-    emit_uleb128(line_prog, 1 + 1); // length
+    emit_uleb128(line_prog, 1 + 8); // length: 1 byte opcode + 8 byte address
     line_prog.push_back(2); // DW_LNE_set_address
     w64(line_prog, text_vaddr);
 
