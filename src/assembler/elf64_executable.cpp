@@ -99,7 +99,7 @@ std::vector<uint8_t> make_elf64_executable(
     while (!text_sec.empty() && text_sec.back() == 0xCC) text_sec.pop_back();
 
     const uint64_t PAGE = 0x1000;
-    const uint64_t BASE = 0x400000;
+    const uint64_t BASE = shared ? 0x0 : 0x400000;  // shared libs at 0 like gcc
     uint64_t text_vaddr = BASE;
     uint64_t data_vaddr = BASE + PAGE;
     uint64_t rodata_vaddr = text_vaddr + align_up(text_sec.size(), 8);
@@ -316,7 +316,7 @@ std::vector<uint8_t> make_elf64_executable(
     w16(elf, 58, 64); w16(elf, 60, 10); w16(elf, 62, 9); // shstrndx=9
 
     // Program header: LOAD .text + .rodata (R|X)
-    uint64_t load0_fsize = ftx.sz + fro.sz;
+    uint64_t load0_fsize = (fro.off + fro.sz) - ftx.off;  // text + alignment + rodata
     uint64_t load0_msize = align_up(load0_fsize, PAGE);
     w32(elf, EHDR, 1); w32(elf, EHDR+4, 5);
     w64(elf, EHDR+8, exe_foff); w64(elf, EHDR+16, text_vaddr);
@@ -358,6 +358,7 @@ std::vector<uint8_t> make_elf64_executable(
     };
     write_at(elf, ftx.off, ftx.data);
     write_at(elf, fdt.off, fdt.data);
+    write_at(elf, fro.off, fro.data);   // .rodata was missing!
     write_at(elf, fcm.off, fcm.data);
     if (line_entries && !line_entries->empty()) {
         write_at(elf, fdl.off, fdl.data);
@@ -379,12 +380,18 @@ std::vector<uint8_t> make_elf64_executable(
 
     // Dynamic section (.dynamic) for shared libraries
     uint64_t dyn_off = 0;
-    uint64_t dynsym_vaddr = 0, dynstr_vaddr = 0;
+    uint64_t dynsym_vaddr = 0, dynstr_vaddr = 0, rela_vaddr = 0;
+    uint64_t rela_off = 0;
     if (shared) {
-        // Compute virtual addresses for dynamic sections
         dynsym_vaddr = data_vaddr + (fdynsym.off - data_off_file);
         dynstr_vaddr = data_vaddr + (fdynstr.off - data_off_file);
-        // Build .dynamic: DT_SYMTAB, DT_STRTAB, DT_STRSZ, DT_SYMENT, DT_NULL
+        
+        // Create empty .rela.dyn
+        std::vector<uint8_t> rela_dyn(24, 0); // one empty R_X86_64_NONE entry
+        rela_off = elf.size();
+        elf.insert(elf.end(), rela_dyn.begin(), rela_dyn.end());
+        rela_vaddr = data_vaddr + (rela_off - data_off_file);
+        // Build .dynamic
         std::vector<uint8_t> dyn_data;
         auto dpush = [&](int64_t tag, uint64_t val) {
             for(int i=0;i<8;i++) dyn_data.push_back((tag>>(i*8))&0xFF);
@@ -409,8 +416,8 @@ std::vector<uint8_t> make_elf64_executable(
         w64(elf, EHDR + 2*PHDR + 8, dyn_off); // offset
         w64(elf, EHDR + 2*PHDR + 16, data_vaddr + (dyn_off - data_off_file));    // vaddr
         w64(elf, EHDR + 2*PHDR + 24, 0);      // paddr
-        w64(elf, EHDR + 2*PHDR + 32, 80);     // filesz (5 entries × 16 bytes)
-        w64(elf, EHDR + 2*PHDR + 40, 16);     // memsz
+        w64(elf, EHDR + 2*PHDR + 32, 80);     // filesz (5 entries)
+        w64(elf, EHDR + 2*PHDR + 40, 80);     // memsz
         w64(elf, EHDR + 2*PHDR + 48, 8);      // align
     }
 
@@ -448,7 +455,7 @@ std::vector<uint8_t> make_elf64_executable(
     // .dynamic section for shared libraries
     if (shared && dynamic_idx > 0) {
         uint32_t dynstr_num = static_cast<uint32_t>(next_idx + 5);  // .dynstr section number
-        push_shdr64(name_offs[dynamic_idx], 6, 2, 0, dyn_off, 80, dynstr_num, 0, 8, 16); // .dynamic, link=.dynstr
+        push_shdr64(name_offs[dynamic_idx], 6, 2, 0, dyn_off, 80, dynstr_num, 0, 8, 16); // .dynamic
         push_shdr64(name_offs[dynamic_idx+1], 11, 2, dynsym_vaddr, fdynsym.off, fdynsym.sz, dynstr_num, 1, 8, 24); // .dynsym, link=.dynstr
         push_shdr64(name_offs[dynamic_idx+2], 3, 2, dynstr_vaddr, fdynstr.off, fdynstr.sz, 0, 0, 1, 0); // .dynstr
     }
