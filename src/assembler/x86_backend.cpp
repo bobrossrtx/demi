@@ -350,13 +350,23 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
     }
 
     text_bytes.clear();
+
+    // Save original IR symbol offsets before adjust_program replaces them
+    std::unordered_map<std::string, uint64_t> orig_symbol_offsets;
+    for (auto& sym : program.symbols)
+        orig_symbol_offsets[sym.name] = sym.offset;
+
     auto adjusted_program = adjust_program_for_encoded_text(program, text_offset_map);
 
-    // Fix function symbol offsets: they point to instruction start,
-    // but should point to prologue start
+    // Fix function symbol offsets using original IR indices
     for (auto& symbol : adjusted_program.symbols) {
         if (symbol.is_function && symbol.defined && symbol.section == IRSectionKind::Text) {
-            symbol.offset = (symbol.offset >= prologue_size) ? symbol.offset - prologue_size : 0;
+            auto orig = orig_symbol_offsets.find(symbol.name);
+            if (orig != orig_symbol_offsets.end()) {
+                auto it = text_offset_map.find(orig->second);  // use original IR index
+                if (it != text_offset_map.end())
+                    symbol.offset = it->second - prologue_size;  // point to prologue start
+            }
         }
     }
 
@@ -364,9 +374,6 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
     for (const auto& symbol : adjusted_program.symbols) {
         if (symbol.defined && symbol.section == IRSectionKind::Text) {
             uint64_t offset = symbol.offset;
-            if (symbol.is_function) {
-                offset = (offset >= prologue_size) ? offset - prologue_size : 0;
-            }
             text_symbol_offsets[symbol.name] = offset;
         }
     }
