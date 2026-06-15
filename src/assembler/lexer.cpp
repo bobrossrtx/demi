@@ -69,6 +69,16 @@ void Lexer::init_tables() {
     keywords[".maxcalldepth"] = TokenType::MAXCALLDEPTH;
     keywords[".timeout"] = TokenType::TIMEOUT;
     keywords[".skip"] = TokenType::SKIP;
+
+    // Level 4 directives
+    keywords[".space"] = TokenType::DIRECTIVE;
+    keywords[".fill"] = TokenType::DIRECTIVE;
+    keywords[".p2align"] = TokenType::DIRECTIVE;
+    keywords[".previous"] = TokenType::DIRECTIVE;
+    keywords[".struct"] = TokenType::DIRECTIVE;
+    keywords[".endstruct"] = TokenType::DIRECTIVE;
+    keywords[".irp"] = TokenType::DIRECTIVE;
+    keywords[".irpc"] = TokenType::DIRECTIVE;
     
     // Benchmark directives
     keywords[".benchmark"] = TokenType::BENCHMARK;

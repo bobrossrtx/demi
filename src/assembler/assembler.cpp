@@ -754,6 +754,20 @@ void Assembler::AssemblerEngine::process_directive(const Assembler::Directive& d
     Logging::DebugHandler::instance().report(Logging::DebugCategory::ASM_DIRECTIVE, "Processing .org directive", Logging::DebugLevel::DETAIL);
         handle_org_directive(directive.arguments);
     DEBUG_INFO(Logging::DebugCategory::ASM_DIRECTIVE, "After .org directive, current_address: 0x{:04X}", current_address);
+    } else if (directive.name == ".skip" || directive.name == ".space") {
+        handle_skip_directive(directive.arguments);
+    } else if (directive.name == ".fill") {
+        handle_fill_directive(directive.arguments);
+    } else if (directive.name == ".p2align") {
+        handle_p2align_directive(directive.arguments);
+    } else if (directive.name == ".previous") {
+        handle_previous_directive(directive.arguments);
+    } else if (directive.name == ".struct") {
+        handle_struct_directive(directive.arguments);
+    } else if (directive.name == ".endstruct") {
+        handle_endstruct_directive(directive.arguments);
+    } else if (directive.name == ".irp" || directive.name == ".irpc") {
+        // Handled by preprocessor — nothing to do at assembler level
     } else {
         add_error("Unknown directive: " + directive.name, directive.line, directive.column);
     }
@@ -2178,6 +2192,7 @@ void Assembler::AssemblerEngine::handle_section_directive(const std::vector<std:
         return;
     }
     
+    previous_section = current_section;
     current_section = section_name;
 }
 
@@ -2298,6 +2313,64 @@ Architecture Assembler::AssemblerEngine::detect_architecture(const Program& prog
     
     // Default to X86 if no 64-bit features detected
     return Architecture::X86;
+}
+
+// --- Level 4 Directive Implementations ---
+
+void AssemblerEngine::handle_skip_directive(const std::vector<std::unique_ptr<Expression>>& args) {
+    if (args.empty()) { add_error(".skip requires at least 1 argument (size)"); return; }
+    bool is_sym; std::string sym;
+    int64_t count = evaluate_expression(*args[0], is_sym, sym);
+    if (is_sym) { add_error(".skip count cannot be a forward reference"); return; }
+    if (count < 0) { add_error(".skip count must be non-negative"); return; }
+    uint8_t fill_val = 0;
+    if (args.size() >= 2) {
+        fill_val = static_cast<uint8_t>(evaluate_expression(*args[1], is_sym, sym) & 0xFF);
+    }
+    for (int64_t i = 0; i < count; i++) emit_byte(fill_val);
+}
+
+void AssemblerEngine::handle_fill_directive(const std::vector<std::unique_ptr<Expression>>& args) {
+    if (args.size() < 2) { add_error(".fill requires at least 2 arguments (count, size)"); return; }
+    bool is_sym; std::string sym;
+    int64_t count = evaluate_expression(*args[0], is_sym, sym);
+    int64_t size = evaluate_expression(*args[1], is_sym, sym);
+    if (is_sym) { add_error(".fill arguments cannot use forward references"); return; }
+    if (count < 0) { add_error(".fill count must be non-negative"); return; }
+    if (size < 0 || size > 8) { add_error(".fill size must be 0-8"); return; }
+    int64_t fill_val = 0;
+    if (args.size() >= 3) fill_val = evaluate_expression(*args[2], is_sym, sym);
+    for (int64_t i = 0; i < count; i++) {
+        for (int64_t j = 0; j < size; j++)
+            emit_byte(static_cast<uint8_t>((fill_val >> (j * 8)) & 0xFF));
+    }
+}
+
+void AssemblerEngine::handle_p2align_directive(const std::vector<std::unique_ptr<Expression>>& args) {
+    if (args.empty()) { add_error(".p2align requires at least 1 argument (power)"); return; }
+    bool is_sym; std::string sym;
+    int64_t power = evaluate_expression(*args[0], is_sym, sym);
+    if (is_sym) { add_error(".p2align power cannot be a forward reference"); return; }
+    if (power < 0 || power > 31) { add_error(".p2align power must be 0-31"); return; }
+    uint8_t fill = 0;
+    if (args.size() >= 2) fill = static_cast<uint8_t>(evaluate_expression(*args[1], is_sym, sym) & 0xFF);
+    uint64_t align = 1ULL << power;
+    uint64_t mask = align - 1;
+    while ((current_address & mask) != 0) emit_byte(fill);
+}
+
+void AssemblerEngine::handle_previous_directive(const std::vector<std::unique_ptr<Expression>>&) {
+    if (previous_section.empty()) { add_error(".previous with no previous section"); return; }
+    std::swap(current_section, previous_section);
+}
+
+void AssemblerEngine::handle_struct_directive(const std::vector<std::unique_ptr<Expression>>&) {
+    in_struct = true;
+    struct_offset = 0;
+}
+
+void AssemblerEngine::handle_endstruct_directive(const std::vector<std::unique_ptr<Expression>>&) {
+    in_struct = false;
 }
 
 } // namespace Assembler

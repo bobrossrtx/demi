@@ -83,7 +83,70 @@ std::string Preprocessor::preprocess(const std::string& source, const std::strin
         }
         
         if (trimmed_line == ".endr") {
-            add_error("Stray .endr without .rept at line " + std::to_string(current_line));
+            add_error("Stray .endr without .rept/.irp at line " + std::to_string(current_line));
+            continue;
+        }
+
+        // Handle .irp / .irpc blocks (parameterized repeat)
+        if (trimmed_line.substr(0, 4) == ".irp" || trimmed_line.substr(0, 5) == ".irpc") {
+            bool is_irpc = (trimmed_line.size() >= 5 && trimmed_line.substr(0, 5) == ".irpc");
+            if (!should_include_line()) {
+                while (std::getline(stream, line)) {
+                    current_line++;
+                    if (trim(line) == ".endr") break;
+                }
+                continue;
+            }
+
+            // Parse: .irp param, val1, val2, ...  or  .irpc param, "string"
+            std::string rest = trim(trimmed_line.substr(is_irpc ? 5 : 4));
+            size_t comma = rest.find(',');
+            if (comma == std::string::npos) { add_error("Invalid .irp/.irpc syntax"); continue; }
+            std::string param = trim(rest.substr(0, comma));
+            std::string values_str = trim(rest.substr(comma + 1));
+
+            // Collect body until .endr
+            std::vector<std::string> body;
+            while (std::getline(stream, line)) {
+                current_line++;
+                std::string tl = trim(line);
+                if (tl == ".endr") break;
+                body.push_back(line);
+            }
+
+            // Generate values
+            std::vector<std::string> values;
+            if (is_irpc) {
+                // .irpc: iterate over characters in the string
+                // Remove quotes if present
+                if (values_str.size() >= 2 && values_str[0] == '"' && values_str.back() == '"')
+                    values_str = values_str.substr(1, values_str.size() - 2);
+                for (char c : values_str) {
+                    values.push_back(std::string(1, c));
+                }
+            } else {
+                // .irp: comma-separated values
+                std::istringstream vs(values_str);
+                std::string val;
+                while (std::getline(vs, val, ',')) {
+                    val = trim(val);
+                    if (!val.empty()) values.push_back(val);
+                }
+            }
+
+            // Expand the body for each value
+            for (const auto& val : values) {
+                for (const auto& bline : body) {
+                    std::string expanded = bline;
+                    std::string pattern = "\\" + param;
+                    size_t pos = 0;
+                    while ((pos = expanded.find(pattern, pos)) != std::string::npos) {
+                        expanded.replace(pos, pattern.length(), val);
+                        pos += val.length();
+                    }
+                    result += expanded + "\n";
+                }
+            }
             continue;
         }
         

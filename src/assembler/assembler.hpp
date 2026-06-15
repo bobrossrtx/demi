@@ -64,6 +64,9 @@ private:
     std::string last_label_name; // Track most recent label for DB assignment
     size_t memory_size = 0; // Memory size set by .memory directive (0 = use default)
     std::string current_section = ".text"; // Current section name
+    std::string previous_section;          // For .previous directive
+    bool in_struct = false;               // Inside .struct/.endstruct block
+    uint32_t struct_offset = 0;           // Current offset within struct
     
     // Section base addresses for memory layout
     uint32_t data_section_base = 0x100;  // .data starts at 0x100 (fixed)
@@ -160,6 +163,14 @@ private:
     void handle_org_directive(const std::vector<std::unique_ptr<Expression>>& args);
     void handle_equ_directive(const std::vector<std::unique_ptr<Expression>>& args);
     void handle_memory_directive(const std::vector<std::unique_ptr<Expression>>& args);
+
+    // Level 4 directive handlers
+    void handle_skip_directive(const std::vector<std::unique_ptr<Expression>>& args);
+    void handle_fill_directive(const std::vector<std::unique_ptr<Expression>>& args);
+    void handle_p2align_directive(const std::vector<std::unique_ptr<Expression>>& args);
+    void handle_previous_directive(const std::vector<std::unique_ptr<Expression>>& args);
+    void handle_struct_directive(const std::vector<std::unique_ptr<Expression>>& args);
+    void handle_endstruct_directive(const std::vector<std::unique_ptr<Expression>>& args);
 
     // Structure directive handling
     void handle_section_directive(const std::vector<std::unique_ptr<Expression>>& args);
