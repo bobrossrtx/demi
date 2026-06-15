@@ -1508,6 +1508,32 @@ int64_t Assembler::AssemblerEngine::evaluate_expression(const Assembler::Express
             return get_register_number(reg.name);
         }
 
+        case Assembler::ASTNodeType::EXPRESSION: {
+            // Binary expression: label + 4, etc.
+            const auto& binary = static_cast<const Assembler::BinaryExpression&>(expr);
+            bool left_sym, right_sym;
+            std::string left_name, right_name;
+            int64_t left_val = evaluate_expression(*binary.left, left_sym, left_name);
+            int64_t right_val = evaluate_expression(*binary.right, right_sym, right_name);
+
+            // If either side is a symbol, pass through the symbol info
+            if (left_sym) {
+                is_symbol_ref = true;
+                symbol_name = left_name;
+            } else if (right_sym) {
+                is_symbol_ref = true;
+                symbol_name = right_name;
+            }
+
+            switch (binary.op) {
+                case '+': return left_val + right_val;
+                case '-': return left_val - right_val;
+                case '*': return left_val * right_val;
+                case '/': return right_val != 0 ? left_val / right_val : 0;
+                default: add_error("Unknown binary operator"); return 0;
+            }
+        }
+
         default:
             add_error("Cannot evaluate expression");
             return 0;

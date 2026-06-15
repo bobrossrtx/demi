@@ -92,6 +92,17 @@ public:
         : Expression(ASTNodeType::IDENTIFIER, ln, col), name(id_name) {}
 };
 
+// Binary expression for operand arithmetic: label + 4, (2 * 8), etc.
+class BinaryExpression : public Expression {
+public:
+    std::unique_ptr<Expression> left;
+    std::unique_ptr<Expression> right;
+    char op;  // '+', '-', '*', '/'
+
+    BinaryExpression(std::unique_ptr<Expression> l, char o, std::unique_ptr<Expression> r, size_t ln = 0, size_t col = 0)
+        : Expression(ASTNodeType::EXPRESSION, ln, col), left(std::move(l)), op(o), right(std::move(r)) {}
+};
+
 class StringLiteralExpression : public Expression {
 public:
     std::string value;

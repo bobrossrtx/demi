@@ -366,7 +366,20 @@ std::unique_ptr<Expression> Parser::parse_expression() {
         return parse_memory_reference();
     }
     
-    return parse_primary_expression();
+    auto left = parse_primary_expression();
+    if (!left) return nullptr;
+
+    // Handle binary operators: +, -
+    while (current_token().type == TokenType::PLUS || current_token().type == TokenType::MINUS) {
+        char op = (current_token().type == TokenType::PLUS) ? '+' : '-';
+        advance();
+        auto right = parse_primary_expression();
+        if (!right) return left;
+        left = std::make_unique<BinaryExpression>(std::move(left), op, std::move(right),
+                                                   left->line, left->column);
+    }
+
+    return left;
 }
 
 std::unique_ptr<Expression> Parser::parse_primary_expression() {
