@@ -337,7 +337,10 @@ std::vector<uint8_t> make_elf64_executable(
     fdynstr.off = foff; foff += fdynstr.sz;
 
     uint64_t load1_fsize = fdt.sz + fcm.sz + fsm.sz + fst.sz + fsh.sz;
-    if (shared) load1_fsize += fdynsym.sz + fdynstr.sz + 20 + 96;  // .hash(20) + .dynsym + .dynstr + .dynamic(96)
+    if (shared) {
+        uint32_t hash_sz = 8 + 4 + 4 * static_cast<uint32_t>(dynsym.size() / 24);  // nbucket+nchain + bucket[1] + nchain chains
+        load1_fsize += fdynsym.sz + fdynstr.sz + hash_sz + 96;  // .hash + .dynsym + .dynstr + .dynamic
+    }
     uint64_t load1_msize = align_up(load1_fsize + bss_size, PAGE);
     if (!shared) {
         phnum = 2;
@@ -387,12 +390,15 @@ std::vector<uint8_t> make_elf64_executable(
         dynsym_vaddr = data_vaddr + (fdynsym.off - data_off_file);
         dynstr_vaddr = data_vaddr + (fdynstr.off - data_off_file);
         
-        // Build ELF hash table (2 symbols: NULL=0, greet=1)
+        // Build ELF hash table (dynamic size based on symbol count)
+        uint32_t nsym = static_cast<uint32_t>(dynsym.size() / 24);  // symbol count
         std::vector<uint8_t> hashtab;
         auto hp32 = [&](uint32_t v){ for(int i=0;i<4;i++) hashtab.push_back((v>>(i*8))&0xFF); };
-        hp32(1); hp32(2);  // nbucket=1, nchain=2
-        hp32(1);           // bucket[0] = 1 (index of greet in chain)
-        hp32(0); hp32(0);  // chain[0]=0, chain[1]=0
+        hp32(1); hp32(nsym);  // nbucket=1, nchain=nsym
+        hp32(1);              // bucket[0] = 1 (first non-null symbol)
+        hp32(0);              // chain[0] = 0 (NULL symbol)
+        for (uint32_t i = 1; i < nsym; i++)
+            hp32(i + 1 < nsym ? i + 1 : 0);  // chain[i] = next or 0
         uint64_t hash_off = elf.size();
         elf.insert(elf.end(), hashtab.begin(), hashtab.end());
         uint64_t hash_vaddr = data_vaddr + (hash_off - data_off_file);
