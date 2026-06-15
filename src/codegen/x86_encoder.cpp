@@ -49,8 +49,9 @@ void X86Encoder::emit_mov_reg_imm64(X86Register dst, uint64_t imm) {
     // MOV opcode + register encoding
     code_buffer.push_back(0xB8 + (static_cast<uint8_t>(dst) & 0x7));
     
-    // 64-bit immediate (little endian)
-    for (int i = 0; i < 8; i++) {
+    // Immediate: 4 bytes for 32-bit, 8 bytes for 64-bit
+    int imm_bytes = is_64bit_ ? 8 : 4;
+    for (int i = 0; i < imm_bytes; i++) {
         code_buffer.push_back((imm >> (i * 8)) & 0xFF);
     }
 }

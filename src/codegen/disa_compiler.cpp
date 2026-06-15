@@ -555,26 +555,30 @@ void DISAToX86Compiler::emit_function_prologue() {
     encoder.emit_mov_reg_reg(X86Register::RBP, X86Register::RSP);
 
     if (function_has_calls) {
-        // Full save: all allocatable registers (caller state must survive CALL)
+        // Full save: all allocatable registers
         encoder.emit_push_reg(X86Register::RAX);
         encoder.emit_push_reg(X86Register::RCX);
         encoder.emit_push_reg(X86Register::RDX);
         encoder.emit_push_reg(X86Register::RBX);
-        encoder.emit_push_reg(X86Register::R8);
-        encoder.emit_push_reg(X86Register::R9);
-        encoder.emit_push_reg(X86Register::R10);
-        encoder.emit_push_reg(X86Register::R11);
-        encoder.emit_push_reg(X86Register::R12);
-        encoder.emit_push_reg(X86Register::R13);
-        encoder.emit_push_reg(X86Register::R14);
-        encoder.emit_push_reg(X86Register::R15);
+        if (encoder.is_64bit()) {
+            encoder.emit_push_reg(X86Register::R8);
+            encoder.emit_push_reg(X86Register::R9);
+            encoder.emit_push_reg(X86Register::R10);
+            encoder.emit_push_reg(X86Register::R11);
+            encoder.emit_push_reg(X86Register::R12);
+            encoder.emit_push_reg(X86Register::R13);
+            encoder.emit_push_reg(X86Register::R14);
+            encoder.emit_push_reg(X86Register::R15);
+        }
     } else {
         // Minimal save: only callee-saved
         encoder.emit_push_reg(X86Register::RBX);
-        encoder.emit_push_reg(X86Register::R12);
-        encoder.emit_push_reg(X86Register::R13);
-        encoder.emit_push_reg(X86Register::R14);
-        encoder.emit_push_reg(X86Register::R15);
+        if (encoder.is_64bit()) {
+            encoder.emit_push_reg(X86Register::R12);
+            encoder.emit_push_reg(X86Register::R13);
+            encoder.emit_push_reg(X86Register::R14);
+            encoder.emit_push_reg(X86Register::R15);
+        }
     }
 
     encoder.emit_sub_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
@@ -586,23 +590,27 @@ void DISAToX86Compiler::emit_function_epilogue() {
     encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
     
     if (function_has_calls) {
-        encoder.emit_pop_reg(X86Register::R15);
-        encoder.emit_pop_reg(X86Register::R14);
-        encoder.emit_pop_reg(X86Register::R13);
-        encoder.emit_pop_reg(X86Register::R12);
-        encoder.emit_pop_reg(X86Register::R11);
-        encoder.emit_pop_reg(X86Register::R10);
-        encoder.emit_pop_reg(X86Register::R9);
-        encoder.emit_pop_reg(X86Register::R8);
+        if (encoder.is_64bit()) {
+            encoder.emit_pop_reg(X86Register::R15);
+            encoder.emit_pop_reg(X86Register::R14);
+            encoder.emit_pop_reg(X86Register::R13);
+            encoder.emit_pop_reg(X86Register::R12);
+            encoder.emit_pop_reg(X86Register::R11);
+            encoder.emit_pop_reg(X86Register::R10);
+            encoder.emit_pop_reg(X86Register::R9);
+            encoder.emit_pop_reg(X86Register::R8);
+        }
         encoder.emit_pop_reg(X86Register::RBX);
         encoder.emit_pop_reg(X86Register::RDX);
         encoder.emit_pop_reg(X86Register::RCX);
         encoder.emit_pop_reg(X86Register::RAX);
     } else {
-        encoder.emit_pop_reg(X86Register::R15);
-        encoder.emit_pop_reg(X86Register::R14);
-        encoder.emit_pop_reg(X86Register::R13);
-        encoder.emit_pop_reg(X86Register::R12);
+        if (encoder.is_64bit()) {
+            encoder.emit_pop_reg(X86Register::R15);
+            encoder.emit_pop_reg(X86Register::R14);
+            encoder.emit_pop_reg(X86Register::R13);
+            encoder.emit_pop_reg(X86Register::R12);
+        }
         encoder.emit_pop_reg(X86Register::RBX);
     }
     encoder.emit_pop_reg(X86Register::RBP);
@@ -779,6 +787,12 @@ void DISAToX86Compiler::translate_out(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 1);
     encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write=1 (x64) or 4 (x86)
+    // 32-bit int 0x80 ABI: EBX=fd, ECX=buf, EDX=len
+    // Our 64-bit setup: RDI=fd, RSI=buf, RDX=len — swap for 32-bit
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // fd
+        encoder.emit_mov_reg_reg(X86Register::RCX, X86Register::RSI);  // buf
+    }
     encoder.emit_syscall();
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     encoder.emit_pop_reg(X86Register::RSI);
@@ -858,6 +872,10 @@ void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::R8);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86)
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // fd
+        encoder.emit_mov_reg_reg(X86Register::RCX, X86Register::RSI);  // buf
+    }
     encoder.emit_syscall();
     
     // Restore RSI and RDI

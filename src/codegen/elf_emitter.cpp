@@ -398,12 +398,11 @@ std::vector<uint8_t> ELFEmitter::generate_executable_32(
     const std::vector<uint8_t>& compiled_code,
     const std::string& entry_name)
 {
-    // 32-bit stub: allocate regfile + memory, call compiled code, exit
+    // 32-bit stub: allocate regfile + memory, then fall through to compiled code
     // Uses int 0x80 for syscalls (32-bit ABI)
     std::vector<uint8_t> stub = {
         0x55,                               // push ebp
         0x89, 0xE5,                         // mov ebp, esp
-        0x83, 0xEC, 0x20,                   // sub esp, 32 (scratch space)
         // sys_brk to allocate 64KB memory
         0xB8, 0x2D, 0x00, 0x00, 0x00,       // mov eax, 45 (brk)
         0x31, 0xDB,                         // xor ebx, ebx
@@ -412,24 +411,11 @@ std::vector<uint8_t> ELFEmitter::generate_executable_32(
         0x81, 0xC3, 0x00, 0x00, 0x01, 0x00, // add ebx, 65536
         0xB8, 0x2D, 0x00, 0x00, 0x00,       // mov eax, 45
         0xCD, 0x80,                         // int 0x80
-        // Allocate register file (1104 bytes)
+        // Allocate register file: edi = esi + 1104
         0x89, 0xF7,                         // mov edi, esi
         0x81, 0xC7, 0x50, 0x04, 0x00, 0x00, // add edi, 1104
-        // Call compiled code
-        0xE8, 0x00, 0x00, 0x00, 0x00,       // call rel32 (patched below)
-        // Exit
-        0xB8, 0x01, 0x00, 0x00, 0x00,       // mov eax, 1 (exit)
-        0x31, 0xDB,                         // xor ebx, ebx
-        0xCD, 0x80,                         // int 0x80
+        // Fall through to compiled code
     };
-    
-    // Patch the call instruction to point to compiled_code
-    size_t call_offset = 36; // byte offset of call operand in stub
-    int32_t call_delta = static_cast<int32_t>(stub.size() - (call_offset + 4));
-    stub[call_offset] = call_delta & 0xFF;
-    stub[call_offset+1] = (call_delta >> 8) & 0xFF;
-    stub[call_offset+2] = (call_delta >> 16) & 0xFF;
-    stub[call_offset+3] = (call_delta >> 24) & 0xFF;
     
     const uint32_t BASE = 0x08048000;
     uint32_t entry = BASE + 0x54; // ELF header (52) + program header (32)
