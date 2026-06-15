@@ -327,7 +327,7 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
     bool in_function = false;
 
     const size_t prologue_size = is_64bit_mode() ? 4 : 3;  // PUSH EBP + MOV EBP,ESP (or RBP variant)
-    const size_t epilogue_size = 1;  // LEAVE
+    const size_t epilogue_size = is_64bit_mode() ? 2 : 1;  // LEAVE (REX.W + 0xC9 in 64-bit)
 
     for (size_t instruction_index = 0; instruction_index < program.instructions.size(); ++instruction_index) {
         size_t base_size = 0;
@@ -397,6 +397,7 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
 
         // Emit epilogue (LEAVE) before RET in function bodies
         if (in_function && instruction.mnemonic == "RET") {
+            if (is_64bit_mode()) text_bytes.push_back(0x48); // REX.W for 64-bit LEAVE
             text_bytes.push_back(0xC9); // LEAVE
         }
 

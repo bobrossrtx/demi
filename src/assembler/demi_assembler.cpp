@@ -119,6 +119,11 @@ std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source,
         return {};
     }
 
+    // Print backend warnings
+    for (const auto& w : artifact.warnings) {
+        std::cerr << w << std::endl;
+    }
+
     entry_address = 0;
     memory_size = 0;
     return artifact.bytes;
