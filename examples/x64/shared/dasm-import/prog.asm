@@ -1,17 +1,16 @@
-; prog.asm — DASM program importing libimport.so
-; Prints before/after calling shared library compute()
-
+; prog.asm — DASM importing shared library
 .section rodata
 before_msg:
-    DB 66, 101, 102, 111, 114, 101, 32, 108   ; "Before l"
-    DB 105, 98, 32, 99, 97, 108, 108, 46      ; "ib call."
-    DB 46, 46, 10, 0                           ; "..\n\0"
+    DB 66, 101, 102, 111, 114, 101, 32, 108
+    DB 105, 98, 32, 99, 97, 108, 108, 46
+    DB 46, 46, 10, 0
 after_msg:
-    DB 108, 105, 98, 32, 99, 97, 108, 108      ; "lib call"
-    DB 32, 100, 111, 110, 101, 33, 10, 0       ; " done!\n\0"
+    DB 108, 105, 98, 32, 99, 97, 108, 108
+    DB 32, 100, 111, 110, 101, 33, 10, 0
 
 .section .text
 .global main
+.extern say_hello
 .extern compute
 
 main:
@@ -19,10 +18,13 @@ main:
     mov eax, 1
     mov edi, 1
     mov rsi, before_msg
-    mov edx, 19              ; "Before lib call...\n" (19 chars)
+    mov edx, 19
     syscall
 
-    ; Call compute(10, 20) from shared library
+    ; Call say_hello() from shared library — prints from .so
+    call say_hello
+
+    ; Call compute(10, 20)
     mov edi, 10
     mov esi, 20
     call compute
@@ -31,7 +33,7 @@ main:
     mov eax, 1
     mov edi, 1
     mov rsi, after_msg
-    mov edx, 15              ; "lib call done!\n" (15 chars)
+    mov edx, 15
     syscall
 
     mov eax, 0
