@@ -2,9 +2,9 @@
 
 .section rodata
 before_msg:
-    .string "Before lib call...", 10
+    DB "Before lib call...", 10, 0
 after_msg:
-    .string "lib call done!", 10
+    DB "lib call done!", 10, 0
 
 .section .text
 .global main
