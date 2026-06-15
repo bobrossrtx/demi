@@ -64,7 +64,11 @@ std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source,
 
     if (parser.has_errors()) {
         collect_errors(parser.get_errors());
-        return {};
+        // Continue to assembler to collect more errors (error recovery)
+    }
+
+    if (!program) {
+        return {};  // Fatal parser error, cannot continue
     }
 
     if (target_ == AssemblyTarget::DemiBytecode) {

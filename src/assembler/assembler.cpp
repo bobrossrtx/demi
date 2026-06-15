@@ -457,17 +457,19 @@ std::vector<uint8_t> AssemblerEngine::assemble(const Program& program) {
 
     // Do not reset current_address; let directives set it as needed
 
-    // Two-pass assembly
-    db_next_addr = 0x100; // Only reset once here
+    // Two-pass assembly with error recovery: collect all errors before stopping
+    db_next_addr = 0x100;
     first_pass(program);
-    if (has_errors()) return {};
-
-    // Do NOT reset db_next_addr in second_pass or first_pass
     second_pass(program);
-    if (has_errors()) return {};
+    if (!has_errors()) {
+        resolve_forward_references();
+    }
 
-    resolve_forward_references();
-    if (has_errors()) return {};
+    // Report error count and return empty bytecode on any error
+    if (has_errors()) {
+        std::cerr << "Assembly failed with " << errors.size() << " error(s)" << std::endl;
+        return {};
+    }
 
     return bytecode;
 }
