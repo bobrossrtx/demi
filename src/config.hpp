@@ -90,6 +90,7 @@ public:
     inline static bool listing = false;            // Generate .lst listing file
     inline static bool warn_all = true;            // Enable assembler warnings
     inline static bool warn_error = false;         // Treat warnings as errors
+    inline static bool shared_library = false;     // Generate shared library (.so) instead of executable
     inline static bool arch_warn_silenced = false;
     inline static bool arch_warn_printed = false;
 

@@ -441,7 +441,7 @@ BackendArtifact X86Backend::emit_executable(const IRProgram& program) {
     std::vector<std::string> errs;
     std::vector<uint8_t> exe;
     if (is_64bit_mode()) {
-        exe = make_elf64_executable(reloc.bytes, program, errs, &line_entries);
+        exe = make_elf64_executable(reloc.bytes, program, errs, &line_entries, "", Config::shared_library);
     } else {
         exe = make_elf32_executable(reloc.bytes, program, errs);
     }

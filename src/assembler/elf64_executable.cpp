@@ -33,11 +33,14 @@ static uint16_t r16(const std::vector<uint8_t>& v, size_t off) {
 static uint64_t align_up(uint64_t addr, uint64_t a) { return (addr + a - 1) & ~(a - 1); }
 
 std::vector<uint8_t> make_elf64_executable(
-    const std::vector<uint8_t>& rel,
+    const std::vector<uint8_t>& relocatable,
     const IRProgram& program,
     std::vector<std::string>& errors,
     const std::vector<LineEntry>* line_entries,
-    const std::string& source_file) {
+    const std::string& source_file,
+    bool shared)
+{
+    const auto& rel = relocatable;  // alias for existing code
 
     if (rel.size() < 64) { errors.push_back("ELF too small"); return {}; }
     if (std::memcmp(rel.data(), "\x7f""ELF", 4) != 0) { errors.push_back("not ELF"); return {}; }
@@ -270,7 +273,7 @@ std::vector<uint8_t> make_elf64_executable(
     // ELF64 header
     std::memcpy(elf.data(), "\x7f""ELF", 4);
     elf[4] = 2; elf[5] = 1; elf[6] = 1;  // 64-bit, LE, v1
-    w16(elf, 16, 2); // ET_EXEC
+    w16(elf, 16, shared ? 3 : 2); // ET_DYN (3) or ET_EXEC (2)
     w16(elf, 18, 62); // EM_X86_64
     w32(elf, 20, 1); // version
     w64(elf, 24, entry);
@@ -367,6 +370,35 @@ std::vector<uint8_t> make_elf64_executable(
     // Fix shnum in ELF header
     uint16_t shnum_total = static_cast<uint16_t>(next_idx + 3);
     w16(elf, 60, shnum_total);
+
+    // Shared library: add .dynamic section with DT_NULL
+    if (shared) {
+        // Section name in shstrtab
+        uint32_t dyn_name_off = static_cast<uint32_t>(shstrtab.size());
+        shstrtab.insert(shstrtab.end(), {'.','d','y','n','a','m','i','c', 0});
+        
+        // .dynamic section: just DT_NULL (tag=0, val=0 = 16 bytes)
+        std::vector<uint8_t> dynamic(16, 0);
+        uint64_t dyn_off = elf.size();
+        elf.insert(elf.end(), dynamic.begin(), dynamic.end());
+        
+        // Rewrite shstrtab at end
+        uint64_t shstr_off = elf.size();
+        elf.insert(elf.end(), shstrtab.begin(), shstrtab.end());
+        
+        // Add .dynamic section header
+        auto push = [&](uint32_t v){for(int i=0;i<4;i++)elf.push_back((v>>(i*8))&0xFF);};
+        auto push64 = [&](uint64_t v){for(int i=0;i<8;i++)elf.push_back((v>>(i*8))&0xFF);};
+        push(dyn_name_off); push(1); push64(2); // SHT_DYNAMIC=6, SHF_ALLOC=2
+        push64(0); push64(dyn_off); push64(dynamic.size());
+        push(0); push(0); push64(8); push64(16);
+        
+        // Update shnum, shoff, shstrndx
+        shnum_total++;
+        w16(elf, 60, shnum_total);
+        w64(elf, 40, shstr_off);  // shoff
+        w16(elf, 62, static_cast<uint16_t>(shnum_total - 1));  // shstrndx = .shstrtab
+    }
 
     return elf;
 }

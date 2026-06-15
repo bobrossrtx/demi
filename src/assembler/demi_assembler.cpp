@@ -119,6 +119,17 @@ std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source,
         return {};
     }
 
+    // For shared library / executable output, convert .o to final binary
+    if (Config::shared_library || Config::compile_only) {
+        std::vector<uint8_t> final_binary;
+        if (auto* x86be = dynamic_cast<X86Backend*>(backend.get())) {
+            final_binary = x86be->emit_executable(ir_program).bytes;
+        }
+        if (!final_binary.empty()) {
+            artifact.bytes = std::move(final_binary);
+        }
+    }
+
     // Print backend warnings
     for (const auto& w : artifact.warnings) {
         std::cerr << w << std::endl;

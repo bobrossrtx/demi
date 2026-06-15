@@ -12,6 +12,7 @@ std::vector<uint8_t> make_elf64_executable(
     const IRProgram& program,
     std::vector<std::string>& errors,
     const std::vector<LineEntry>* line_entries = nullptr,
-    const std::string& source_file = "");
+    const std::string& source_file = "",
+    bool shared = false);
 
 } // namespace Assembler

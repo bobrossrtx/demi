@@ -952,6 +952,9 @@ public:
         parser.add_bool_arg("warn_error", "--Werror", "", "Treat warnings as errors", "Execution",
             [this](bool value) { Config::warn_error = value; });
 
+        parser.add_bool_arg("shared", "--shared", "", "Generate shared library (.so) instead of executable", "Execution",
+            [this](bool value) { Config::shared_library = value; });
+
         // Memory dump argument
         parser.add_bool_arg("memdump", "--memdump", "-m", "Print memory dump after execution", "Debugging", [this](bool value) { Config::memdump = value; });
 
