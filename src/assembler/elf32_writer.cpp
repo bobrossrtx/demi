@@ -29,6 +29,8 @@ constexpr uint32_t SHT_NOTE = 7;
 constexpr uint32_t SHF_WRITE = 0x1;
 constexpr uint32_t SHF_ALLOC = 0x2;
 constexpr uint32_t SHF_EXECINSTR = 0x4;
+constexpr uint32_t SHF_MERGE = 0x10;
+constexpr uint32_t SHF_STRINGS = 0x20;
 constexpr uint8_t STB_LOCAL = 0;
 constexpr uint8_t STB_GLOBAL = 1;
 constexpr uint8_t STT_NOTYPE = 0;
@@ -206,7 +208,7 @@ std::vector<uint8_t> ELF32ObjectWriter::write_object(
     sections.push_back({".data", 0, SHT_PROGBITS, SHF_ALLOC | SHF_WRITE, 0, 0, 0, 0, 4, 0, emit_section_payload(program, IRSectionKind::Data)});
     sections.back().size = static_cast<uint32_t>(sections.back().data.size());
     const uint32_t rodata_index = static_cast<uint32_t>(sections.size());
-    sections.push_back({".rodata", 0, SHT_PROGBITS, SHF_ALLOC, 0, 0, 0, 0, 1, 0, emit_section_payload(program, IRSectionKind::Rodata)});
+    sections.push_back({".rodata", 0, SHT_PROGBITS, SHF_ALLOC | SHF_MERGE | SHF_STRINGS, 0, 0, 0, 0, 1, 1, emit_section_payload(program, IRSectionKind::Rodata)});
     sections.back().size = static_cast<uint32_t>(sections.back().data.size());
     const uint32_t bss_index = static_cast<uint32_t>(sections.size());
     sections.push_back({".bss", 0, SHT_NOBITS, SHF_ALLOC | SHF_WRITE, 0, static_cast<uint32_t>(compute_bss_size(program)), 0, 0, 4, 0, {}});
