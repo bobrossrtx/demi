@@ -542,6 +542,11 @@ void X86Encoder::emit_repne_scasb() {
 
 // System interface
 void X86Encoder::emit_syscall() {
+    if (!is_64bit_) {
+        code_buffer.push_back(0xCD);  // int 0x80
+        code_buffer.push_back(0x80);
+        return;
+    }
     code_buffer.push_back(0x0F);
     code_buffer.push_back(0x05);
 }

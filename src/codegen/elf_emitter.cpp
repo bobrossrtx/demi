@@ -432,27 +432,53 @@ std::vector<uint8_t> ELFEmitter::generate_executable_32(
     stub[call_offset+3] = (call_delta >> 24) & 0xFF;
     
     const uint32_t BASE = 0x08048000;
-    uint32_t entry = BASE + 0x54; // ELF header + program header
+    uint32_t entry = BASE + 0x54; // ELF header (52) + program header (32)
     
     std::vector<uint8_t> elf;
+    elf.resize(52);  // ELF32 header
+    uint8_t* e = elf.data();
     
-    // ELF32 header (52 bytes)
-    elf.push_back(0x7F); elf.push_back('E'); elf.push_back('L'); elf.push_back('F');
-    elf.push_back(1); elf.push_back(1); elf.push_back(1); elf.push_back(0); // 32-bit, LE, v1, sysv
-    for(int i=0;i<8;i++) elf.push_back(0); // padding
-    auto w16 = [&](uint16_t v){elf.push_back(v&0xFF);elf.push_back(v>>8);};
-    auto w32 = [&](uint32_t v){for(int i=0;i<4;i++)elf.push_back((v>>(i*8))&0xFF);};
-    w16(2); w16(3); w32(1); // ET_EXEC, EM_386, version
-    w32(entry); // entry
-    w32(52); w32(0); // phoff=52, shoff=0
-    w32(0); w16(52); w16(32); w16(1); w16(0); w16(0);
+    // e_ident
+    e[0]=0x7F; e[1]='E'; e[2]='L'; e[3]='F';
+    e[4]=1; e[5]=1; e[6]=1; e[7]=0;  // 32-bit, LE, v1
     
-    // Program header (32 bytes)
-    w32(1); w32(0); // PT_LOAD, offset=0
-    w32(BASE); w32(BASE); // vaddr, paddr
-    uint32_t total = 52 + 32 + stub.size() + compiled_code.size();
-    w32(total); w32(total); // filesz, memsz
-    w32(7); w32(0x1000); // flags=RWX, align
+    // e_type=ET_EXEC, e_machine=EM_386
+    e[0x10]=2; e[0x11]=0; e[0x12]=3; e[0x13]=0;
+    
+    // e_version
+    e[0x14]=1; e[0x15]=0; e[0x16]=0; e[0x17]=0;
+    
+    // e_entry
+    auto w32_elf = [&](size_t off, uint32_t v){e[off]=v&0xFF;e[off+1]=(v>>8)&0xFF;e[off+2]=(v>>16)&0xFF;e[off+3]=(v>>24)&0xFF;};
+    w32_elf(0x18, entry);
+    
+    // e_phoff=52, e_shoff=0
+    w32_elf(0x1C, 52); w32_elf(0x20, 0);
+    
+    // e_flags=0
+    w32_elf(0x24, 0);
+    
+    // e_ehsize=52, e_phentsize=32, e_phnum=1, e_shentsize=0, e_shnum=0, e_shstrndx=0
+    e[0x28]=52; e[0x29]=0;
+    e[0x2A]=32; e[0x2B]=0;
+    e[0x2C]=1;  e[0x2D]=0;
+    e[0x2E]=0;  e[0x2F]=0;
+    e[0x30]=0;  e[0x31]=0;
+    e[0x32]=0;  e[0x33]=0;
+    
+    // Program header
+    elf.resize(84);
+    uint8_t* p = elf.data() + 52;
+    auto w32_ph = [&](size_t off, uint32_t v){p[off]=v&0xFF;p[off+1]=(v>>8)&0xFF;p[off+2]=(v>>16)&0xFF;p[off+3]=(v>>24)&0xFF;};
+    // p_type=PT_LOAD, p_offset=0
+    w32_ph(0, 1); w32_ph(4, 0);
+    // p_vaddr=BASE, p_paddr=BASE
+    w32_ph(8, BASE); w32_ph(12, BASE);
+    // p_filesz, p_memsz
+    uint32_t total = 84 + stub.size() + compiled_code.size();
+    w32_ph(16, total); w32_ph(20, total);
+    // p_flags=RWX(7), p_align=0x1000
+    w32_ph(24, 7); w32_ph(28, 0x1000);
     
     // Stub + compiled code
     elf.insert(elf.end(), stub.begin(), stub.end());

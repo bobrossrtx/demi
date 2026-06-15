@@ -778,7 +778,7 @@ void DISAToX86Compiler::translate_out(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 1);
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write=1 (x64) or 4 (x86)
     encoder.emit_syscall();
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     encoder.emit_pop_reg(X86Register::RSI);
@@ -802,7 +802,7 @@ void DISAToX86Compiler::translate_outw(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 2);
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86)
     encoder.emit_syscall();
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     encoder.emit_pop_reg(X86Register::RSI);
@@ -819,7 +819,7 @@ void DISAToX86Compiler::translate_outl(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 4);
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86)
     encoder.emit_syscall();
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     encoder.emit_pop_reg(X86Register::RSI);
@@ -857,7 +857,7 @@ void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     // write(1, R8, len)
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::R8);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 1);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86)
     encoder.emit_syscall();
     
     // Restore RSI and RDI
@@ -1241,7 +1241,7 @@ void DISAToX86Compiler::translate_nop() {
 
 void DISAToX86Compiler::translate_halt() {
     encoder.emit_mov_reg_imm32(X86Register::RDI, 0);
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 60);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 60 : 1); // exit
     encoder.emit_syscall();
     encoder.emit_raw_byte(0xEB);
     encoder.emit_raw_byte(0xFE);
@@ -1781,6 +1781,21 @@ uint64_t DISAToX86Compiler::read_imm64_ptr(const uint8_t* ptr) const {
 // Maps the x86 32-bit INT 0x80 ABI used by the examples onto Linux x86-64
 // syscalls while preserving Demi's VM register/memory model.
 void DISAToX86Compiler::translate_int80() {
+    // In 32-bit mode, INT 0x80 IS the native ABI — no remapping needed.
+    // Just flush registers and emit the syscall directly.
+    if (!encoder.is_64bit()) {
+        flush_all_registers();
+        clear_cached_registers();
+        // Restore EAX (syscall number), EBX, ECX, EDX from Demi regs
+        restore_virtual_value(0, X86Register::RAX);  // syscall number
+        restore_virtual_value(1, X86Register::RBX);  // arg1
+        restore_virtual_value(2, X86Register::RCX);  // arg2
+        restore_virtual_value(3, X86Register::RDX);  // arg3
+        encoder.emit_syscall();  // emits int 0x80
+        spill_virtual_value(0, X86Register::RAX);  // return value
+        return;
+    }
+
     flush_all_registers();
     clear_cached_registers();
 
@@ -1808,7 +1823,7 @@ void DISAToX86Compiler::translate_int80() {
 
     encoder.bind_label(label_exit);
     restore_virtual_value(3, X86Register::RDI);  // EBX -> exit code
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 60);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 60 : 1); // exit
     encoder.emit_syscall();
 
     encoder.bind_label(label_read);
@@ -1831,7 +1846,7 @@ void DISAToX86Compiler::translate_int80() {
     encoder.emit_mov_reg_mem(X86Register::RSI, X86Register::RSP, 0);
     encoder.emit_add_reg_reg(X86Register::RSI, X86Register::R8);
     restore_virtual_value(2, X86Register::RDX);  // EDX -> count
-    encoder.emit_mov_reg_imm32(X86Register::RAX, 1); // write
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86) // write
     encoder.emit_syscall();
     spill_virtual_value(0, X86Register::RAX);
     encoder.emit_pop_reg(X86Register::RSI);
