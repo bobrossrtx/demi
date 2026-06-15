@@ -1,6 +1,5 @@
 ; libimport.asm — shared library for DASM import demo
-; Build: demi -A libimport.asm --assembly-target x86-elf64 -o libimport.so --shared
-
+; Exports get_message() and compute(a,b)
 .section .text
 .global get_message
 .global compute

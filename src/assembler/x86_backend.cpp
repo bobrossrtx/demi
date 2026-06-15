@@ -555,11 +555,13 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         const auto& dst = instruction.operands[0];
         const auto& src = instruction.operands[1];
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Immediate) {
+            // 64-bit: rex + 0xC7 + modrm + 4 bytes = 7
             return is_64bit_mode() ? 7 : 5;
         }
 
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Symbol) {
-            return is_64bit_mode() ? 7 : 5;
+            // movabs: REX.W + B8+reg + 8 bytes
+            return 10;
         }
 
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Register) {
