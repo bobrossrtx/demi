@@ -181,6 +181,11 @@ std::vector<uint8_t> make_elf64_executable(
     name_offs.push_back(add_name(".symtab"));
     name_offs.push_back(add_name(".strtab"));
     name_offs.push_back(add_name(".shstrtab"));
+    uint32_t dynamic_idx = 0;
+    if (shared) {
+        dynamic_idx = static_cast<uint32_t>(name_offs.size());
+        name_offs.push_back(add_name(".dynamic"));
+    }
 
     // Symbol table (24-byte entries)
     std::vector<uint8_t> new_strtab; new_strtab.push_back(0);
@@ -268,6 +273,7 @@ std::vector<uint8_t> make_elf64_executable(
     fsh.off = foff; foff += fsh.sz;
 
     std::vector<uint8_t> elf;
+    if (shared) { elf.resize(EHDR + 3 * PHDR, 0); phnum = 3; }  // 3 PHDRs for .so
     elf.resize(exe_foff, 0);
 
     // ELF64 header
@@ -304,8 +310,10 @@ std::vector<uint8_t> make_elf64_executable(
 
     uint64_t load1_fsize = fdt.sz;
     uint64_t load1_msize = align_up(load1_fsize + bss_size, PAGE);
-    phnum = 2;
-    w16(elf, 56, phnum);
+    if (!shared) {
+        phnum = 2;
+        w16(elf, 56, phnum);
+    }
 
     w32(elf, EHDR + PHDR, 1); w32(elf, EHDR + PHDR + 4, 6);
     w64(elf, EHDR + PHDR + 8, data_off_file);
@@ -335,6 +343,24 @@ std::vector<uint8_t> make_elf64_executable(
     write_at(elf, fst.off, fst.data);
     uint64_t shstr_exe_off = fsh.off;
     write_at(elf, fsh.off, fsh.data);
+
+    // Dynamic section (.dynamic) for shared libraries
+    uint64_t dyn_off = 0;
+    if (shared) {
+        std::vector<uint8_t> dyn_data(16, 0); // DT_NULL (tag=0, val=0)
+        dyn_off = elf.size();
+        elf.resize(dyn_off + 16, 0);
+        
+        // Add PT_DYNAMIC program header
+        w32(elf, EHDR + 2*PHDR, 2);           // PT_DYNAMIC
+        w32(elf, EHDR + 2*PHDR + 4, 6);       // PF_R | PF_W
+        w64(elf, EHDR + 2*PHDR + 8, dyn_off); // offset
+        w64(elf, EHDR + 2*PHDR + 16, 0);      // vaddr
+        w64(elf, EHDR + 2*PHDR + 24, 0);      // paddr
+        w64(elf, EHDR + 2*PHDR + 32, 16);     // filesz
+        w64(elf, EHDR + 2*PHDR + 40, 16);     // memsz
+        w64(elf, EHDR + 2*PHDR + 48, 8);      // align
+    }
 
     // Section headers
     uint64_t shdr_start = elf.size();
@@ -367,38 +393,14 @@ std::vector<uint8_t> make_elf64_executable(
     push_shdr64(name_offs[next_idx+1], 3, 0, 0, strtab_exe_off, new_strtab.size(), 0, 0, 1, 0);
     push_shdr64(name_offs[next_idx+2], 3, 0, 0, shstr_exe_off, shstrtab.size(), 0, 0, 1, 0);
 
-    // Fix shnum in ELF header
-    uint16_t shnum_total = static_cast<uint16_t>(next_idx + 3);
-    w16(elf, 60, shnum_total);
-
-    // Shared library: add .dynamic section with DT_NULL
-    if (shared) {
-        // Section name in shstrtab
-        uint32_t dyn_name_off = static_cast<uint32_t>(shstrtab.size());
-        shstrtab.insert(shstrtab.end(), {'.','d','y','n','a','m','i','c', 0});
-        
-        // .dynamic section: just DT_NULL (tag=0, val=0 = 16 bytes)
-        std::vector<uint8_t> dynamic(16, 0);
-        uint64_t dyn_off = elf.size();
-        elf.insert(elf.end(), dynamic.begin(), dynamic.end());
-        
-        // Rewrite shstrtab at end
-        uint64_t shstr_off = elf.size();
-        elf.insert(elf.end(), shstrtab.begin(), shstrtab.end());
-        
-        // Add .dynamic section header
-        auto push = [&](uint32_t v){for(int i=0;i<4;i++)elf.push_back((v>>(i*8))&0xFF);};
-        auto push64 = [&](uint64_t v){for(int i=0;i<8;i++)elf.push_back((v>>(i*8))&0xFF);};
-        push(dyn_name_off); push(1); push64(2); // SHT_DYNAMIC=6, SHF_ALLOC=2
-        push64(0); push64(dyn_off); push64(dynamic.size());
-        push(0); push(0); push64(8); push64(16);
-        
-        // Update shnum, shoff, shstrndx
-        shnum_total++;
-        w16(elf, 60, shnum_total);
-        w64(elf, 40, shstr_off);  // shoff
-        w16(elf, 62, static_cast<uint16_t>(shnum_total - 1));  // shstrndx = .shstrtab
+    // .dynamic section for shared libraries
+    if (shared && dynamic_idx > 0) {
+        push_shdr64(name_offs[dynamic_idx], 6, 2, 0, dyn_off, 16, 0, 0, 8, 16); // SHT_DYNAMIC=6, SHF_ALLOC=2
     }
+
+    // Fix shnum in ELF header
+    uint16_t shnum_total = static_cast<uint16_t>(next_idx + 3 + (shared ? 1 : 0));
+    w16(elf, 60, shnum_total);
 
     return elf;
 }
