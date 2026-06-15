@@ -175,8 +175,8 @@ void LoweringContext::lower_directive(const Directive& directive, IRProgram& ir_
                 symbol.name = ident->name;
                 symbol.section = current_section_;
                 symbol.offset = current_offset();
-                symbol.binding = (directive.name == ".function") ? IRSymbolBinding::Global : IRSymbolBinding::Global;
-                symbol.is_function = (directive.name == ".function");
+                symbol.binding = IRSymbolBinding::Global;
+                symbol.is_function = (directive.name == ".function") || (current_section_ == IRSectionKind::Text);
                 ir_program.symbols.push_back(std::move(symbol));
             }
         }

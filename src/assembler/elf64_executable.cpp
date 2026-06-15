@@ -99,7 +99,7 @@ std::vector<uint8_t> make_elf64_executable(
     while (!text_sec.empty() && text_sec.back() == 0xCC) text_sec.pop_back();
 
     const uint64_t PAGE = 0x1000;
-    const uint64_t BASE = shared ? 0x0 : 0x400000;  // shared libs at 0 like gcc
+    const uint64_t BASE = shared ? 0x400000 : 0x400000;  // non-PIC shared lib at fixed base
     uint64_t text_vaddr = BASE;
     uint64_t data_vaddr = BASE + PAGE;
     uint64_t rodata_vaddr = text_vaddr + align_up(text_sec.size(), 8);
@@ -336,7 +336,8 @@ std::vector<uint8_t> make_elf64_executable(
     fdynsym.off = foff; foff += fdynsym.sz;
     fdynstr.off = foff; foff += fdynstr.sz;
 
-    uint64_t load1_fsize = fdt.sz;
+    uint64_t load1_fsize = fdt.sz + fcm.sz + fsm.sz + fst.sz + fsh.sz;
+    if (shared) load1_fsize += fdynsym.sz + fdynstr.sz + 80;  // .dynamic(80) + .dynsym + .dynstr
     uint64_t load1_msize = align_up(load1_fsize + bss_size, PAGE);
     if (!shared) {
         phnum = 2;
@@ -386,11 +387,6 @@ std::vector<uint8_t> make_elf64_executable(
         dynsym_vaddr = data_vaddr + (fdynsym.off - data_off_file);
         dynstr_vaddr = data_vaddr + (fdynstr.off - data_off_file);
         
-        // Create empty .rela.dyn
-        std::vector<uint8_t> rela_dyn(24, 0); // one empty R_X86_64_NONE entry
-        rela_off = elf.size();
-        elf.insert(elf.end(), rela_dyn.begin(), rela_dyn.end());
-        rela_vaddr = data_vaddr + (rela_off - data_off_file);
         // Build .dynamic
         std::vector<uint8_t> dyn_data;
         auto dpush = [&](int64_t tag, uint64_t val) {
@@ -401,6 +397,7 @@ std::vector<uint8_t> make_elf64_executable(
         dpush(5, 0);   // DT_STRTAB (placeholder, fixed below)
         dpush(10, dynstr.size()); // DT_STRSZ
         dpush(11, 24); // DT_SYMENT (sizeof(Elf64_Sym) = 24)
+        dpush(4, 0);   // DT_HASH (placeholder)
         dpush(0, 0);   // DT_NULL
         
         dyn_off = elf.size();
@@ -455,7 +452,8 @@ std::vector<uint8_t> make_elf64_executable(
     // .dynamic section for shared libraries
     if (shared && dynamic_idx > 0) {
         uint32_t dynstr_num = static_cast<uint32_t>(next_idx + 5);  // .dynstr section number
-        push_shdr64(name_offs[dynamic_idx], 6, 2, 0, dyn_off, 80, dynstr_num, 0, 8, 16); // .dynamic
+        uint64_t dyn_vaddr = data_vaddr + (dyn_off - data_off_file);
+        push_shdr64(name_offs[dynamic_idx], 6, 2, dyn_vaddr, dyn_off, 80, 0, 0, 8, 16); // .dynamic
         push_shdr64(name_offs[dynamic_idx+1], 11, 2, dynsym_vaddr, fdynsym.off, fdynsym.sz, dynstr_num, 1, 8, 24); // .dynsym, link=.dynstr
         push_shdr64(name_offs[dynamic_idx+2], 3, 2, dynstr_vaddr, fdynstr.off, fdynstr.sz, 0, 0, 1, 0); // .dynstr
     }
