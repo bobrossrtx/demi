@@ -87,6 +87,7 @@ public:
     inline static Architecture architecture = Architecture::AUTO;
     inline static AssemblyTarget assembly_target = AssemblyTarget::DemiBytecode;
     inline static bool debug_info = false;         // Emit DWARF debug sections in compiled binaries
+    inline static bool listing = false;            // Generate .lst listing file
     inline static bool arch_warn_silenced = false;
     inline static bool arch_warn_printed = false;
 

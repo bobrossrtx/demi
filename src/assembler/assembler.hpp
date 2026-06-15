@@ -45,6 +45,9 @@ public:
     // Get bytecode-to-source-line mapping (for DWARF debug info)
     const std::vector<std::pair<size_t, uint32_t>>& get_line_map() const { return bytecode_line_map; }
 
+    // Get listing output (call after assemble when listing is enabled)
+    void write_listing(const std::string& source, const std::string& filename) const;
+
     // Architecture detection
     Architecture detect_architecture(const Program& program);
 

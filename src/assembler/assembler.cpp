@@ -1,7 +1,10 @@
 #include <iostream>
 #include <ios>
 #include <iomanip>
+#include <sstream>
 #include <string>
+#include <map>
+#include <fstream>
 #include <vector>
 #include <cstdint>
 #include <cstddef>
@@ -2371,6 +2374,38 @@ void AssemblerEngine::handle_struct_directive(const std::vector<std::unique_ptr<
 
 void AssemblerEngine::handle_endstruct_directive(const std::vector<std::unique_ptr<Expression>>&) {
     in_struct = false;
+}
+
+void AssemblerEngine::write_listing(const std::string& source, const std::string& filename) const {
+    // Split source into lines
+    std::vector<std::string> source_lines;
+    std::istringstream src_stream(source);
+    std::string line;
+    while (std::getline(src_stream, line)) source_lines.push_back(line);
+
+    // Build offset->source_line mapping from bytecode_line_map
+    // Show all instruction start offsets with their bytes
+    std::string lst_path = filename + ".lst";
+    std::ofstream out(lst_path);
+    if (!out) return;
+
+    out << "; Listing for " << filename << "\n";
+    out << "; " << bytecode.size() << " bytes\n\n";
+
+    for (const auto& [offset, src_line] : bytecode_line_map) {
+        std::string hex_bytes;
+        for (size_t i = offset; i < bytecode.size() && i < offset + 8; i++) {
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%02X ", bytecode[i]);
+            hex_bytes += buf;
+        }
+        out << fmt::format("{:04X}  {:<26s}", offset, hex_bytes);
+        if (src_line > 0 && src_line <= source_lines.size())
+            out << " " << source_lines[src_line - 1];
+        out << "\n";
+    }
+    out.close();
+    std::cout << "Listing written to: " << lst_path << std::endl;
 }
 
 } // namespace Assembler

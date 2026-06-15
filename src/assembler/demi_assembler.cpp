@@ -29,10 +29,10 @@ std::vector<uint8_t> DemiAssembler::assemble_file(const std::string& filename) {
         return {};
     }
     std::string base_path = std::filesystem::path(filename).parent_path().string();
-    return assemble_internal(source, base_path);
+    return assemble_internal(source, base_path, filename);
 }
 
-std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source, const std::string& base_path) {
+std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source, const std::string& base_path, const std::string& listing_name) {
     clear_errors();
 
     // Preprocessing
@@ -86,6 +86,10 @@ std::vector<uint8_t> DemiAssembler::assemble_internal(const std::string& source,
         entry_address = assembler.get_entry_address();
         memory_size = assembler.get_memory_size();
         bytecode_line_map = assembler.get_line_map();
+
+        if (Config::listing) {
+            assembler.write_listing(source, listing_name.empty() ? "<stdin>" : listing_name);
+        }
 
         return bytecode;
     }

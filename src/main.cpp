@@ -944,6 +944,8 @@ public:
         // Debug info flag for compiled binaries
         parser.add_bool_arg("debug_info", "--debug-info", "-g", "Include DWARF debug info in compiled binaries", "Execution", [this](bool value) { Config::debug_info = value; });
 
+        parser.add_bool_arg("listing", "--listing", "-l", "Generate assembly listing file (.lst)", "Execution", [this](bool value) { Config::listing = value; });
+
         // Memory dump argument
         parser.add_bool_arg("memdump", "--memdump", "-m", "Print memory dump after execution", "Debugging", [this](bool value) { Config::memdump = value; });
 
