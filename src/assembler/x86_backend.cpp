@@ -657,6 +657,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             if (mem_size == 0) return 0;
             return mem_size + (fits_i8(imm) ? 1 : 4);
         }
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
+            return 1 + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
+        }
     }
 
     if (mnemonic == "SUB" || mnemonic == "CMP") {
@@ -682,6 +685,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             if (mem_size == 0) return 0;
             return mem_size + (fits_i8(imm) ? 1 : 4);
         }
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
+            return 1 + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
+        }
     }
 
     if (mnemonic == "XOR" || mnemonic == "AND" || mnemonic == "OR") {
@@ -706,6 +712,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             const size_t mem_size = compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
             if (mem_size == 0) return 0;
             return mem_size + (fits_i8(imm) ? 1 : 4);
+        }
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
+            return 1 + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
         }
     }
 
@@ -1429,6 +1438,19 @@ EncodedInstructionResult X86Backend::encode_instruction(
             }
             return result;
         }
+
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
+            const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            if (!dst_reg) {
+                errors.push_back("x86 backend does not support that register in ADD reg, [mem]");
+                return result;
+            }
+            warn_unsized_memory(std::get<IRMemoryOperand>(src.value), "ADD reg, [mem]");
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *dst_reg, 0x03, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
     }
 
     if (mnemonic == "SUB") {
@@ -1497,6 +1519,19 @@ EncodedInstructionResult X86Backend::encode_instruction(
             }
             return result;
         }
+
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
+            const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            if (!dst_reg) {
+                errors.push_back("x86 backend does not support that register in SUB reg, [mem]");
+                return result;
+            }
+            warn_unsized_memory(std::get<IRMemoryOperand>(src.value), "SUB reg, [mem]");
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *dst_reg, 0x2B, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
     }
 
     if (mnemonic == "CMP") {
@@ -1528,6 +1563,12 @@ EncodedInstructionResult X86Backend::encode_instruction(
                     result.bytes.push_back(static_cast<uint8_t>(0xF8 | dst_reg));
                     append_u32(result.bytes, static_cast<uint32_t>(imm));
                 }
+                return true;
+            }
+            if (src.kind == IROperandKind::Memory) {
+                const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), dst_reg, 0x3B, is_64bit_mode(), errors);
+                if (!errors.empty()) return false;
+                result.bytes = encoded_mem.bytes;
                 return true;
             }
             return false;
@@ -1613,6 +1654,23 @@ EncodedInstructionResult X86Backend::encode_instruction(
             const auto src_reg = encode_register_id(std::get<IRRegisterOperand>(src.value).name);
             if (!src_reg) { errors.push_back("bad src register in " + inst.mnemonic + " [mem], reg"); return result; }
             const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(dst.value), *src_reg, reg_opcode, is_64bit_mode(), errors);
+            if (!errors.empty()) return result;
+            result.bytes = encoded_mem.bytes;
+            return result;
+        }
+
+        if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
+            const auto dst_reg = encode_register_id(std::get<IRRegisterOperand>(dst.value).name);
+            if (!dst_reg) {
+                errors.push_back("x86 backend does not support that register in " + inst.mnemonic + " reg, [mem]");
+                return result;
+            }
+            // Opcodes for "r, r/m" form: XOR=0x33, AND=0x23, OR=0x0B
+            uint8_t rm_opcode = 0x33;
+            if (mnemonic == "AND") rm_opcode = 0x23;
+            if (mnemonic == "OR")  rm_opcode = 0x0B;
+            warn_unsized_memory(std::get<IRMemoryOperand>(src.value), inst.mnemonic + " reg, [mem]");
+            const auto encoded_mem = encode_memory_operand32(std::get<IRMemoryOperand>(src.value), *dst_reg, rm_opcode, is_64bit_mode(), errors);
             if (!errors.empty()) return result;
             result.bytes = encoded_mem.bytes;
             return result;
