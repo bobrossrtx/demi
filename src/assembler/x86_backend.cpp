@@ -762,13 +762,13 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return 0;
         }
         if (instruction.operands[1].kind == IROperandKind::Immediate) {
-            return 3; // C1 /r ib
+            return (is_64bit_mode() ? 1 : 0) + 3; // C1 /r ib
         }
         if (instruction.operands[1].kind == IROperandKind::Register) {
-            return 2; // D3 /r
+            return (is_64bit_mode() ? 1 : 0) + 2; // D3 /r
         }
         if (instruction.operands[1].kind == IROperandKind::Symbol) {
-            return 2; // D3 /r (CL as symbol)
+            return (is_64bit_mode() ? 1 : 0) + 2; // D3 /r (CL as symbol)
         }
     }
 
@@ -807,9 +807,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm8 or reg, CL");
             return 0;
         }
-        if (instruction.operands[1].kind == IROperandKind::Immediate) return 3;
-        if (instruction.operands[1].kind == IROperandKind::Register) return 2;
-        if (instruction.operands[1].kind == IROperandKind::Symbol) return 2;
+        if (instruction.operands[1].kind == IROperandKind::Immediate) return (is_64bit_mode() ? 1 : 0) + 3;
+        if (instruction.operands[1].kind == IROperandKind::Register) return (is_64bit_mode() ? 1 : 0) + 2;
+        if (instruction.operands[1].kind == IROperandKind::Symbol) return (is_64bit_mode() ? 1 : 0) + 2;
     }
 
     if (mnemonic == "LOOP" || mnemonic == "LOOPE" || mnemonic == "LOOPNE") {
@@ -842,8 +842,8 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm8 or reg, CL");
             return 0;
         }
-        if (instruction.operands[1].kind == IROperandKind::Immediate) return 3;
-        if (instruction.operands[1].kind == IROperandKind::Register) return 2;
+        if (instruction.operands[1].kind == IROperandKind::Immediate) return (is_64bit_mode() ? 1 : 0) + 3;
+        if (instruction.operands[1].kind == IROperandKind::Register) return (is_64bit_mode() ? 1 : 0) + 2;
         if (instruction.operands[1].kind == IROperandKind::Symbol) return 2;
     }
 
@@ -944,7 +944,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
                 errors.push_back("x86 backend expects IMUL reg, IMUL reg,reg, or IMUL reg,reg,imm");
                 return 0;
             }
-            return 2; // F7 /5
+            return (is_64bit_mode() ? 1 : 0) + 2; // F7 /5
         }
         if (instruction.operands.size() == 2) {
             if (instruction.operands[0].kind != IROperandKind::Register ||
@@ -952,7 +952,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
                 errors.push_back("x86 backend expects IMUL reg, reg");
                 return 0;
             }
-            return 3; // 0F AF /r
+            return (is_64bit_mode() ? 1 : 0) + 3; // 0F AF /r
         }
         if (instruction.operands.size() == 3) {
             if (instruction.operands[0].kind != IROperandKind::Register ||
@@ -962,7 +962,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
                 return 0;
             }
             const int64_t imm = std::get<IRImmediateOperand>(instruction.operands[2].value).value;
-            return fits_i8(imm) ? 3 : 6; // 6B /r ib or 69 /r id
+            return (is_64bit_mode() ? 1 : 0) + (fits_i8(imm) ? 3 : 6); // 6B /r ib or 69 /r id
         }
     }
 
