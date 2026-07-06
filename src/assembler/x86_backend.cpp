@@ -189,7 +189,7 @@ EncodedMemoryOperand encode_memory_operand32(
         append_i32(encoded.bytes, static_cast<int32_t>(memory.displacement));
         encoded.has_symbol_relocation = true;
         encoded.relocation_symbol = *memory.symbol;
-        encoded.relocation_addend = memory.displacement;
+        encoded.relocation_addend = memory.displacement - (is64 ? 4 : 0);
         encoded.is_pc_relative = is64;
         return encoded;
     }
@@ -207,7 +207,7 @@ EncodedMemoryOperand encode_memory_operand32(
         append_i32(encoded.bytes, static_cast<int32_t>(memory.displacement));
         encoded.has_symbol_relocation = true;
         encoded.relocation_symbol = *memory.symbol;
-        encoded.relocation_addend = memory.displacement;
+        encoded.relocation_addend = memory.displacement - (is64 ? 4 : 0);
         encoded.is_pc_relative = is64;
         return encoded;
     }
@@ -580,7 +580,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
             const auto& mem = std::get<IRMemoryOperand>(src.value);
             if (mem.symbol && !mem.base && !mem.index) {
-                return 6;
+                return is_64bit_mode() ? 7 : 6;
             }
             return compute_memory_operand_size(mem, errors);
         }
@@ -588,7 +588,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
             const auto& mem = std::get<IRMemoryOperand>(dst.value);
             if (mem.symbol && !mem.base && !mem.index) {
-                return 6;
+                return is_64bit_mode() ? 7 : 6;
             }
             return compute_memory_operand_size(mem, errors);
         }
@@ -667,7 +667,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return mem_size + (fits_i8(imm) ? 1 : 4);
         }
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
-            return 1 + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
         }
     }
 
@@ -695,7 +695,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return mem_size + (fits_i8(imm) ? 1 : 4);
         }
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
-            return 1 + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
         }
     }
 
@@ -723,7 +723,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return mem_size + (fits_i8(imm) ? 1 : 4);
         }
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
-            return 1 + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
         }
     }
 
