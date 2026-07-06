@@ -509,9 +509,19 @@ help:
 		echo "  make clean        - Remove build artifacts"; \
 		echo "  make prereqs      - Install system dependencies"; \
 		echo "  make force-rebuild - Force rebuild opcodes"; \
-		echo "  make format       - Format source code"; \
-		echo "  make lint         - Static analysis"; \
-		echo "  make codacy-install  - Install Codacy Cloud CLI"; \
+		echo "  make format       - Format source code"; \\
+		echo "  make lint         - Static analysis"; \\
+		echo ""; \\
+		echo "📦 Installation:"; \\
+		echo "  make install      - Install binary + headers + examples"; \\
+		echo "  make install-bin  - Install binary only (demi)"; \\
+		echo "  make install-libs - Install shared/static libraries"; \\
+		echo "  make install-headers - Install development headers only"; \\
+		echo "  make install-examples - Install example programs"; \\
+		echo "  make uninstall    - Remove all installed files"; \\
+		echo "  PREFIX=/usr make install  - Install to custom prefix"; \\
+		echo ""; \\
+		echo "  make codacy-install  - Install Codacy Cloud CLI"; \\
 		echo "  make codacy-info     - Codacy setup instructions"; \
 		echo "  make sonar-info      - SonarCloud setup guide"; \
 		echo "  make promote        - Growth checklist & action plan"; \
@@ -1100,14 +1110,85 @@ promote-check:
 	@echo "📂 All promotion docs: docs/PROMOTION_PLAN.md"
 
 # =============================================================================
-# Special Targets and Rules
+# Installation
+# =============================================================================
+# Configurable paths — override with: make install PREFIX=/usr
+# DESTDIR is for staged installs (packaging): make install DESTDIR=/tmp/staging
 # =============================================================================
 
-# Install to system (optional)
-install: $(TARGET)
-	@echo "📦 Installing DEMI Engine..."
-	@sudo install -D $(TARGET) /usr/local/bin/demi-engine
-	@echo "✅ Installed to /usr/local/bin/demi-engine"
+PREFIX     ?= /usr/local
+BINDIR     ?= $(PREFIX)/bin
+LIBDIR     ?= $(PREFIX)/lib
+INCLUDEDIR ?= $(PREFIX)/include/demi
+DATADIR    ?= $(PREFIX)/share/demi
+MANDIR     ?= $(PREFIX)/share/man/man1
+
+.PHONY: install install-bin install-libs install-headers install-examples uninstall
+
+# ── Full install ────────────────────────────────────────────────────────────
+install: install-bin install-headers install-examples
+	@echo ""
+	@echo "═══════════════════════════════════════════"
+	@echo "  DEMI Engine installed successfully"
+	@echo "═══════════════════════════════════════════"
+	@echo "  binary  : $(BINDIR)/demi"
+	@echo "  examples: $(DATADIR)/examples/"
+	@echo "  headers : $(INCLUDEDIR)/"
+	@echo ""
+	@echo "  Run 'demi -h' for help."
+	@echo "  Uninstall with: make uninstall"
+	@echo "═══════════════════════════════════════════"
+
+# ── Main binary ─────────────────────────────────────────────────────────────
+install-bin: $(TARGET)
+	@echo "📦 Installing DEMI Engine binary..."
+	@install -d $(DESTDIR)$(BINDIR)
+	@install -m 755 $(TARGET) $(DESTDIR)$(BINDIR)/demi
+	@ln -sf demi $(DESTDIR)$(BINDIR)/demi-engine
+	@echo "   $(BINDIR)/demi"
+	@echo "   $(BINDIR)/demi-engine → demi"
+
+# ── Libraries (optional: make install-libs) ─────────────────────────────────
+install-libs: $(LIB_SHARED) $(LIB_STATIC)
+	@echo "📚 Installing DEMI Engine libraries..."
+	@install -d $(DESTDIR)$(LIBDIR)
+	@install -m 755 $(LIB_SHARED) $(DESTDIR)$(LIBDIR)/
+	@install -m 644 $(LIB_STATIC) $(DESTDIR)$(LIBDIR)/
+	@install -d $(DESTDIR)$(INCLUDEDIR)
+	@install -m 644 $(INCLUDE_DIR)/demi/engine.hpp $(DESTDIR)$(INCLUDEDIR)/
+	@install -m 644 $(INCLUDE_DIR)/demi/engine_c_api.h $(DESTDIR)$(INCLUDEDIR)/
+	@ldconfig $(DESTDIR)$(LIBDIR) 2>/dev/null || true
+	@echo "   $(LIBDIR)/libdemi*.so"
+	@echo "   $(LIBDIR)/libdemi*.a"
+	@echo "   $(INCLUDEDIR)/"
+
+# ── Headers only (dev setup) ────────────────────────────────────────────────
+install-headers:
+	@echo "📋 Installing DEMI Engine headers..."
+	@install -d $(DESTDIR)$(INCLUDEDIR)
+	@install -m 644 $(INCLUDE_DIR)/demi/engine.hpp $(DESTDIR)$(INCLUDEDIR)/
+	@install -m 644 $(INCLUDE_DIR)/demi/engine_c_api.h $(DESTDIR)$(INCLUDEDIR)/
+	@echo "   $(INCLUDEDIR)/"
+
+# ── Examples ────────────────────────────────────────────────────────────────
+install-examples:
+	@echo "📂 Installing example programs..."
+	@install -d $(DESTDIR)$(DATADIR)/examples/x86
+	@install -d $(DESTDIR)$(DATADIR)/examples/x64
+	@cp -r examples/x86 $(DESTDIR)$(DATADIR)/examples/ 2>/dev/null || true
+	@cp -r examples/x64 $(DESTDIR)$(DATADIR)/examples/ 2>/dev/null || true
+	@echo "   $(DATADIR)/examples/x86/"
+	@echo "   $(DATADIR)/examples/x64/"
+
+# ── Uninstall ───────────────────────────────────────────────────────────────
+uninstall:
+	@echo "🧹 Uninstalling DEMI Engine..."
+	@rm -f $(DESTDIR)$(BINDIR)/demi
+	@rm -f $(DESTDIR)$(BINDIR)/demi-engine
+	@rm -rf $(DESTDIR)$(DATADIR)
+	@rm -rf $(DESTDIR)$(INCLUDEDIR)
+	@rm -f $(DESTDIR)$(LIBDIR)/libdemi*
+	@echo "✅ Uninstall complete"
 
 # Generate compile_commands.json for clangd IntelliSense
 compile_commands.json: Makefile generate_compile_commands.py

@@ -38,7 +38,7 @@ _start:
     INT 0x80
 
     ; The hidden answer is '7'. Give the player three attempts.
-    LOAD_IMM R8, 3
+    LOAD_IMM R10, 3
 
 game_loop:
     ; Print the input prompt.
@@ -84,24 +84,24 @@ invalid_input:
     JMP game_loop
 
 guess_too_low:
-    DEC R8
+    DEC R10
     LOAD_IMM RAX, 4
     LOAD_IMM RBX, 1
     LOAD_IMM RCX, too_low
     LOAD_IMM RDX, too_low_len
     INT 0x80
-    CMP R8, 0
+    CMP R10, 0
     JG game_loop
     JMP player_loses
 
 guess_too_high:
-    DEC R8
+    DEC R10
     LOAD_IMM RAX, 4
     LOAD_IMM RBX, 1
     LOAD_IMM RCX, too_high
     LOAD_IMM RDX, too_high_len
     INT 0x80
-    CMP R8, 0
+    CMP R10, 0
     JG game_loop
     JMP player_loses
 
