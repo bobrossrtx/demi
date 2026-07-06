@@ -196,6 +196,8 @@ void RegisterAllocator::print_allocation_state() const {
 
 std::optional<X86Register> RegisterAllocator::find_free_register() {
     for (X86Register reg : ALLOCATABLE_REGS) {
+        // In 32-bit mode, R8-R15 alias with RAX-RDI (no REX prefix)
+        if (!is_64bit_ && static_cast<uint8_t>(reg) >= 8) continue;
         if (used_regs.find(reg) == used_regs.end()) {
             return reg;
         }

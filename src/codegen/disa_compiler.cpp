@@ -165,6 +165,7 @@ std::vector<uint8_t> DISAToX86Compiler::compile_program(const std::vector<uint8_
     encoder.clear();
     encoder.set_64bit(is_64bit);
     reg_alloc.reset_for_new_function();
+    reg_alloc.set_64bit(is_64bit);
     jump_targets.clear();
     function_labels.clear();
     function_addresses.clear();
@@ -748,6 +749,9 @@ void DISAToX86Compiler::emit_data_initialization(const std::vector<uint8_t>& byt
                                                    uint32_t entry_point) {
     // Scan the entire bytecode for non-zero bytes and copy them into the
     // memory buffer at RSI. Memory is zeroed by the _start stub.
+    // In 32-bit mode, use 4-byte chunks because emit_mov_reg_imm64
+    // only stores 4 bytes of the immediate (no REX.W prefix).
+    const size_t chunk_size = encoder.is_64bit() ? 8 : 4;
     size_t pos = 0;
     while (pos < bytecode.size()) {
         if (bytecode[pos] == 0) { pos++; continue; }
@@ -756,10 +760,10 @@ void DISAToX86Compiler::emit_data_initialization(const std::vector<uint8_t>& byt
         while (run_end < bytecode.size() && bytecode[run_end] != 0) run_end++;
         // Include one trailing zero byte so null-terminated strings work
         if (run_end < bytecode.size()) run_end++;
-        for (size_t chunk_start = run_start; chunk_start < run_end; chunk_start += 8) {
-            size_t chunk_end = std::min(chunk_start + 8, run_end);
+        for (size_t chunk_start = run_start; chunk_start < run_end; chunk_start += chunk_size) {
+            size_t chunk_end = std::min(chunk_start + chunk_size, run_end);
             uint64_t val = 0;
-            for (size_t i = 0; i < 8 && (chunk_start + i) < run_end; i++)
+            for (size_t i = 0; i < chunk_size && (chunk_start + i) < run_end; i++)
                 val |= static_cast<uint64_t>(bytecode[chunk_start + i]) << (i * 8);
             if (val != 0) {
                 encoder.emit_mov_reg_imm64(X86Register::RAX, val);
@@ -817,6 +821,10 @@ void DISAToX86Compiler::translate_outw(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 2);
     encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86)
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // fd
+        encoder.emit_mov_reg_reg(X86Register::RCX, X86Register::RSI);  // buf
+    }
     encoder.emit_syscall();
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     encoder.emit_pop_reg(X86Register::RSI);
@@ -834,6 +842,10 @@ void DISAToX86Compiler::translate_outl(uint8_t reg, uint8_t port) {
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 4);
     encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86)
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // fd
+        encoder.emit_mov_reg_reg(X86Register::RCX, X86Register::RSI);  // buf
+    }
     encoder.emit_syscall();
     encoder.emit_add_reg_imm32(X86Register::RSP, 8);
     encoder.emit_pop_reg(X86Register::RSI);
@@ -847,29 +859,33 @@ void DISAToX86Compiler::translate_outstr(uint8_t reg, uint8_t port) {
     encoder.emit_push_reg(X86Register::RDI);
     encoder.emit_push_reg(X86Register::RSI);
     
-    // Get string offset from reg_state_map into R8, add memory base
+    // In 32-bit mode, use EBX as scratch to avoid R8→EAX aliasing.
+    // EBX is callee-saved and safe to clobber here.
+    X86Register scratch = encoder.is_64bit() ? X86Register::R8 : X86Register::RBX;
+    
+    // Get string offset from reg_state_map into scratch, add memory base
     auto it_s = reg_state_map.find(reg);
     if (it_s != reg_state_map.end() && it_s->second.loaded) {
-        encoder.emit_mov_reg_reg(X86Register::R8, it_s->second.phys);
+        encoder.emit_mov_reg_reg(scratch, it_s->second.phys);
     } else {
-        restore_virtual_value(reg, X86Register::R8);
+        restore_virtual_value(reg, scratch);
     }
-    encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
+    encoder.emit_add_reg_reg(scratch, X86Register::RSI);
     
-    // strlen: scan for null at [R8]
-    encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::R8);
+    // strlen: scan for null at [scratch]
+    encoder.emit_mov_reg_reg(X86Register::RDI, scratch);
     encoder.emit_mov_reg_imm32(X86Register::RCX, 256);
     encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX);
     encoder.emit_cld();
     encoder.emit_repne_scasb();
     
-    // length = (rdi - 1) - R8
+    // length = (rdi - 1) - scratch
     encoder.emit_mov_reg_reg(X86Register::RDX, X86Register::RDI);
     encoder.emit_dec_reg(X86Register::RDX);
-    encoder.emit_sub_reg_reg(X86Register::RDX, X86Register::R8);
+    encoder.emit_sub_reg_reg(X86Register::RDX, scratch);
     
-    // write(1, R8, len)
-    encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::R8);
+    // write(1, scratch, len)
+    encoder.emit_mov_reg_reg(X86Register::RSI, scratch);
     encoder.emit_mov_reg_imm32(X86Register::RDI, 1);
     encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 1 : 4); // write (1 x64, 4 x86)
     if (!encoder.is_64bit()) {
@@ -1150,7 +1166,11 @@ void DISAToX86Compiler::translate_in(uint8_t reg, uint8_t port) {
     encoder.emit_xor_reg_reg(X86Register::RDI, X86Register::RDI);  // stdin
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);  // buf = temp
     encoder.emit_mov_reg_imm32(X86Register::RDX, 1);
-    encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX);  // sys_read
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 0 : 3);  // sys_read
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // fd
+        encoder.emit_mov_reg_reg(X86Register::RCX, X86Register::RSI);  // buf
+    }
     encoder.emit_syscall();
 
     // Zero-extend byte into RAX
@@ -1185,7 +1205,11 @@ void DISAToX86Compiler::translate_inw(uint8_t reg, uint8_t port) {
     encoder.emit_xor_reg_reg(X86Register::RDI, X86Register::RDI);
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 2);
-    encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 0 : 3);  // sys_read
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // fd
+        encoder.emit_mov_reg_reg(X86Register::RCX, X86Register::RSI);  // buf
+    }
     encoder.emit_syscall();
 
     // Load byte 0 - [RSP+0]=temp, [RSP+8]=RSI, [RSP+16]=RDI
@@ -1223,7 +1247,11 @@ void DISAToX86Compiler::translate_inl(uint8_t reg, uint8_t port) {
     encoder.emit_xor_reg_reg(X86Register::RDI, X86Register::RDI);
     encoder.emit_mov_reg_reg(X86Register::RSI, X86Register::RSP);
     encoder.emit_mov_reg_imm32(X86Register::RDX, 4);
-    encoder.emit_xor_reg_reg(X86Register::RAX, X86Register::RAX);
+    encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 0 : 3);  // sys_read
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // fd
+        encoder.emit_mov_reg_reg(X86Register::RCX, X86Register::RSI);  // buf
+    }
     encoder.emit_syscall();
 
     for (size_t i = 0; i < 4 && (reg + i) < 134; i++) {
@@ -1259,6 +1287,9 @@ void DISAToX86Compiler::translate_nop() {
 
 void DISAToX86Compiler::translate_halt() {
     encoder.emit_mov_reg_imm32(X86Register::RDI, 0);
+    if (!encoder.is_64bit()) {
+        encoder.emit_mov_reg_reg(X86Register::RBX, X86Register::RDI);  // exit code
+    }
     encoder.emit_mov_reg_imm32(X86Register::RAX, encoder.is_64bit() ? 60 : 1); // exit
     encoder.emit_syscall();
     encoder.emit_raw_byte(0xEB);
@@ -1594,6 +1625,23 @@ void DISAToX86Compiler::translate_jle(uint32_t target_address) {
 void DISAToX86Compiler::translate_call(uint32_t target_address) {
     flush_all_registers();
 
+    // In 32-bit mode, skip the spill-frame save/restore since R10/R11 alias
+    // with allocatable registers and the Demi code handles its own calling convention.
+    if (!encoder.is_64bit()) {
+        clear_cached_registers();
+        auto& label = get_or_create_label(target_address);
+        if (label.bound) {
+            int32_t offset = static_cast<int32_t>(label.position - (encoder.size() + 5));
+            encoder.emit_call_rel32(offset);
+        } else {
+            label.unresolved_jumps.push_back(encoder.size() + 1);
+            encoder.emit_call_rel32(0);
+        }
+        return;
+    }
+
+    // --- 64-bit spill frame management below ---
+
     // Save caller's spill frame to stack so callee doesn't clobber it.
     // Allocate save area: sub rsp, SPILL_FRAME_SIZE
     encoder.emit_sub_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
@@ -1617,6 +1665,14 @@ void DISAToX86Compiler::translate_call(uint32_t target_address) {
     encoder.emit_jmp_label(copy_loop);
     encoder.bind_label(copy_done);
 
+    // Restore saved registers for 32-bit mode
+    if (!encoder.is_64bit()) {
+        // RDX/RBX were pushed before sub rsp, so they're at [RSP + SPILL_FRAME_SIZE]
+        encoder.emit_mov_reg_mem(X86Register::RBX, X86Register::RSP, SPILL_FRAME_SIZE);
+        encoder.emit_mov_reg_mem(X86Register::RDX, X86Register::RSP, SPILL_FRAME_SIZE + 4);
+        // Now we can safely push RBP for frame setup
+    }
+
     // Save old RBP, set new frame pointer to saved spill area
     encoder.emit_push_reg(X86Register::RBP);
     encoder.emit_mov_reg_reg(X86Register::RBP, X86Register::RSP);
@@ -1639,11 +1695,26 @@ void DISAToX86Compiler::translate_call(uint32_t target_address) {
 void DISAToX86Compiler::translate_ret() {
     flush_all_registers();
 
+    // In 32-bit mode, skip the spill-frame restore since we skipped the save.
+    if (!encoder.is_64bit()) {
+        clear_cached_registers();
+        encoder.emit_ret();
+        return;
+    }
+
+    // --- 64-bit spill frame restore below ---
+
     // Free callee's spill frame
     encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
 
     // Restore caller's RBP (points to saved spill frame)
     encoder.emit_pop_reg(X86Register::RBP);
+
+    // In 32-bit mode, save EDX/EBX before the copy loop since R10/R11 alias
+    if (!encoder.is_64bit()) {
+        encoder.emit_push_reg(X86Register::RDX);  // save R10 alias
+        encoder.emit_push_reg(X86Register::RBX);  // save R11 alias
+    }
 
     // Copy saved spill frame back to [RBP - SPILL_FRAME_SIZE]
     encoder.emit_mov_reg_reg(X86Register::R10, X86Register::RBP);
@@ -1662,6 +1733,12 @@ void DISAToX86Compiler::translate_ret() {
     encoder.emit_dec_reg(X86Register::RCX);
     encoder.emit_jmp_label(restore_loop);
     encoder.bind_label(restore_done);
+
+    // Restore saved registers for 32-bit mode
+    if (!encoder.is_64bit()) {
+        encoder.emit_pop_reg(X86Register::RBX);
+        encoder.emit_pop_reg(X86Register::RDX);
+    }
 
     // Free the saved spill frame area
     encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
@@ -1800,15 +1877,135 @@ uint64_t DISAToX86Compiler::read_imm64_ptr(const uint8_t* ptr) const {
 // syscalls while preserving Demi's VM register/memory model.
 void DISAToX86Compiler::translate_int80() {
     // In 32-bit mode, INT 0x80 IS the native ABI — no remapping needed.
-    // Just flush registers and emit the syscall directly.
+    // But buffer pointers in Demi registers are bytecode offsets;
+    // they need the memory base (ESI) added.
+    //
+    // Demi register numbering: RAX=0, RCX=1, RDX=2, RBX=3.
+    // x86 assembly names: EAX→Demi0, ECX→Demi1, EDX→Demi2, EBX→Demi3.
+    // 32-bit int 0x80 ABI: eax=syscall, ebx=arg1, ecx=arg2, edx=arg3.
     if (!encoder.is_64bit()) {
         flush_all_registers();
         clear_cached_registers();
-        // Restore EAX (syscall number), EBX, ECX, EDX from Demi regs
-        restore_virtual_value(0, X86Register::RAX);  // syscall number
-        restore_virtual_value(1, X86Register::RBX);  // arg1
-        restore_virtual_value(2, X86Register::RCX);  // arg2
-        restore_virtual_value(3, X86Register::RDX);  // arg3
+        
+        // Restore Demi regs into int 0x80 ABI layout:
+        // EAX (Demi 0) → syscall number
+        // EBX (Demi 3) → arg1 (fd or subcall#)
+        // ECX (Demi 1) → arg2 (buffer offset or args array offset)
+        // EDX (Demi 2) → arg3 (length, unused for socketcall)
+        restore_virtual_value(0, X86Register::RAX);  // Demi 0 (EAX) → syscall number
+        restore_virtual_value(3, X86Register::RBX);  // Demi 3 (EBX) → arg1
+        restore_virtual_value(1, X86Register::RCX);  // Demi 1 (ECX) → arg2 (bytecode offset)
+        restore_virtual_value(2, X86Register::RDX);  // Demi 2 (EDX) → arg3
+        
+        // For socketcall(102): patch pointer args in the args array.
+        // The args array is at [RSI + ECX]. Each arg is a 32-bit value.
+        // Sub-calls with pointer args: bind(2), connect(3), accept(5),
+        // send(9), recv(10). Those args need RSI added.
+        //
+        // Use EDI as scratch — it's unused in the 32-bit int 0x80 ABI here.
+        auto sc32_skip    = encoder.create_label();
+        auto sc32_socket  = encoder.create_label();
+        auto sc32_bind    = encoder.create_label();
+        auto sc32_connect = encoder.create_label();
+        auto sc32_listen  = encoder.create_label();
+        auto sc32_accept  = encoder.create_label();
+        auto sc32_send    = encoder.create_label();
+        auto sc32_recv    = encoder.create_label();
+        auto sc32_done    = encoder.create_label();
+
+        encoder.emit_cmp_reg_imm32(X86Register::RAX, 102);
+        encoder.emit_jnz_label(sc32_skip);
+
+        // Dispatch on sub-call (EBX = Demi reg 3)
+        encoder.emit_cmp_reg_imm32(X86Register::RBX, 1);
+        encoder.emit_jz_label(sc32_socket);
+        encoder.emit_cmp_reg_imm32(X86Register::RBX, 2);
+        encoder.emit_jz_label(sc32_bind);
+        encoder.emit_cmp_reg_imm32(X86Register::RBX, 3);
+        encoder.emit_jz_label(sc32_connect);
+        encoder.emit_cmp_reg_imm32(X86Register::RBX, 4);
+        encoder.emit_jz_label(sc32_listen);
+        encoder.emit_cmp_reg_imm32(X86Register::RBX, 5);
+        encoder.emit_jz_label(sc32_accept);
+        encoder.emit_cmp_reg_imm32(X86Register::RBX, 9);
+        encoder.emit_jz_label(sc32_send);
+        encoder.emit_cmp_reg_imm32(X86Register::RBX, 10);
+        encoder.emit_jz_label(sc32_recv);
+        encoder.emit_jmp_label(sc32_done);  // unknown sub-call: pass through as-is
+
+        // socket(1): all ints — no patching needed
+        encoder.bind_label(sc32_socket);
+        encoder.emit_jmp_label(sc32_done);
+
+        // bind(2): args[1] is a sockaddr pointer → add ESI
+        encoder.bind_label(sc32_bind);
+        encoder.emit_push_reg(X86Register::RAX);  // save syscall#
+        encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::RCX);
+        encoder.emit_add_reg_reg(X86Register::RDI, X86Register::RSI);  // EDI = &args[0]
+        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, 4); // EAX=args[1]
+        encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);    // += ESI
+        encoder.emit_mov_mem_reg(X86Register::RDI, 4, X86Register::R8); // store back
+        encoder.emit_pop_reg(X86Register::RAX);   // restore syscall#
+        encoder.emit_jmp_label(sc32_done);
+
+        // connect(3): args[1] is a sockaddr pointer → add ESI
+        encoder.bind_label(sc32_connect);
+        encoder.emit_push_reg(X86Register::RAX);
+        encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::RCX);
+        encoder.emit_add_reg_reg(X86Register::RDI, X86Register::RSI);
+        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, 4);
+        encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
+        encoder.emit_mov_mem_reg(X86Register::RDI, 4, X86Register::R8);
+        encoder.emit_pop_reg(X86Register::RAX);
+        encoder.emit_jmp_label(sc32_done);
+
+        // listen(4): all ints — no patching needed
+        encoder.bind_label(sc32_listen);
+        encoder.emit_jmp_label(sc32_done);
+
+        // accept(5): args[1] and args[2] are pointers → add ESI
+        encoder.bind_label(sc32_accept);
+        encoder.emit_push_reg(X86Register::RAX);
+        encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::RCX);
+        encoder.emit_add_reg_reg(X86Register::RDI, X86Register::RSI);
+        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, 4);   // args[1]
+        encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
+        encoder.emit_mov_mem_reg(X86Register::RDI, 4, X86Register::R8);
+        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, 8);   // args[2]
+        encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
+        encoder.emit_mov_mem_reg(X86Register::RDI, 8, X86Register::R8);
+        encoder.emit_pop_reg(X86Register::RAX);
+        encoder.emit_jmp_label(sc32_done);
+
+        // send(9): args[1] is a buf pointer → add ESI
+        encoder.bind_label(sc32_send);
+        encoder.emit_push_reg(X86Register::RAX);
+        encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::RCX);
+        encoder.emit_add_reg_reg(X86Register::RDI, X86Register::RSI);
+        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, 4);
+        encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
+        encoder.emit_mov_mem_reg(X86Register::RDI, 4, X86Register::R8);
+        encoder.emit_pop_reg(X86Register::RAX);
+        encoder.emit_jmp_label(sc32_done);
+
+        // recv(10): args[1] is a buf pointer → add ESI
+        encoder.bind_label(sc32_recv);
+        encoder.emit_push_reg(X86Register::RAX);
+        encoder.emit_mov_reg_reg(X86Register::RDI, X86Register::RCX);
+        encoder.emit_add_reg_reg(X86Register::RDI, X86Register::RSI);
+        encoder.emit_mov_reg_mem(X86Register::R8, X86Register::RDI, 4);
+        encoder.emit_add_reg_reg(X86Register::R8, X86Register::RSI);
+        encoder.emit_mov_mem_reg(X86Register::RDI, 4, X86Register::R8);
+        encoder.emit_pop_reg(X86Register::RAX);
+        encoder.emit_jmp_label(sc32_done);
+
+        encoder.bind_label(sc32_done);
+        // Fall through to: add ESI to ECX, then int 0x80
+        encoder.bind_label(sc32_skip);
+        
+        // Convert buffer offset to real address: ECX = ESI + bytecode_offset
+        encoder.emit_add_reg_reg(X86Register::RCX, X86Register::RSI);
+        
         encoder.emit_syscall();  // emits int 0x80
         spill_virtual_value(0, X86Register::RAX);  // return value
         return;
@@ -1824,6 +2021,7 @@ void DISAToX86Compiler::translate_int80() {
     auto label_write = encoder.create_label();
     auto label_open = encoder.create_label();
     auto label_close = encoder.create_label();
+    auto label_socketcall = encoder.create_label();
     auto label_unknown = encoder.create_label();
     auto label_done = encoder.create_label();
 
@@ -1837,6 +2035,8 @@ void DISAToX86Compiler::translate_int80() {
     encoder.emit_jz_label(label_open);
     encoder.emit_cmp_reg_imm32(X86Register::R11, 6);
     encoder.emit_jz_label(label_close);
+    encoder.emit_cmp_reg_imm32(X86Register::R11, 102);
+    encoder.emit_jz_label(label_socketcall);
     encoder.emit_jmp_label(label_unknown);
 
     encoder.bind_label(label_exit);
@@ -1888,6 +2088,142 @@ void DISAToX86Compiler::translate_int80() {
     encoder.emit_mov_reg_imm32(X86Register::RAX, 3); // close
     encoder.emit_syscall();
     spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(label_done);
+
+    // ── socketcall (102) — i386 multiplexer → x86-64 syscalls ──────────
+    // Demi reg layout: 0=EAX=102, 3=EBX=subcall#, 1=ECX=args_array_offset
+    // The args array lives in Demi memory at [RSI + offset]. Each arg is a
+    // 32-bit value. Pointer args are bytecode offsets → add RSI to resolve.
+    // Stack after pushes: [RSP]=R13, [RSP+8]=R12, [RSP+16]=saved_RSI.
+    encoder.bind_label(label_socketcall);
+    encoder.emit_push_reg(X86Register::RSI);
+    encoder.emit_push_reg(X86Register::R12);
+    encoder.emit_push_reg(X86Register::R13);
+
+    restore_virtual_value(3, X86Register::R12);    // R12 = subcall#
+    restore_virtual_value(1, X86Register::R13);    // R13 = args array offset
+    encoder.emit_add_reg_reg(X86Register::R13, X86Register::RSI); // R13 = &args[0]
+
+    auto sc_socket  = encoder.create_label();
+    auto sc_bind    = encoder.create_label();
+    auto sc_connect = encoder.create_label();
+    auto sc_listen  = encoder.create_label();
+    auto sc_accept  = encoder.create_label();
+    auto sc_send    = encoder.create_label();
+    auto sc_recv    = encoder.create_label();
+    auto sc_done    = encoder.create_label();
+
+    encoder.emit_cmp_reg_imm32(X86Register::R12, 1);
+    encoder.emit_jz_label(sc_socket);
+    encoder.emit_cmp_reg_imm32(X86Register::R12, 2);
+    encoder.emit_jz_label(sc_bind);
+    encoder.emit_cmp_reg_imm32(X86Register::R12, 3);
+    encoder.emit_jz_label(sc_connect);
+    encoder.emit_cmp_reg_imm32(X86Register::R12, 4);
+    encoder.emit_jz_label(sc_listen);
+    encoder.emit_cmp_reg_imm32(X86Register::R12, 5);
+    encoder.emit_jz_label(sc_accept);
+    encoder.emit_cmp_reg_imm32(X86Register::R12, 9);
+    encoder.emit_jz_label(sc_send);
+    encoder.emit_cmp_reg_imm32(X86Register::R12, 10);
+    encoder.emit_jz_label(sc_recv);
+    // fall through: restore stack and go to unknown
+    encoder.emit_pop_reg(X86Register::R13);
+    encoder.emit_pop_reg(X86Register::R12);
+    encoder.emit_pop_reg(X86Register::RSI);
+    encoder.emit_jmp_label(label_unknown);
+
+    // Helper: load args[n] → reg, optionally add saved-RSI for pointers.
+    // saved_RSI is at [RSP+16] (under R13+R12 pushes).
+    #define EMIT_LOAD_ARG_INT(dst, arg_n) \
+        encoder.emit_mov_reg_mem(X86Register::dst, X86Register::R13, (arg_n)*4)
+    #define EMIT_LOAD_ARG_PTR(dst, arg_n) \
+        encoder.emit_mov_reg_mem(X86Register::dst, X86Register::R13, (arg_n)*4); \
+        encoder.emit_mov_reg_mem(X86Register::R10, X86Register::RSP, 16); \
+        encoder.emit_add_reg_reg(X86Register::dst, X86Register::R10)
+
+    // socket(domain, type, protocol) → sys_socket(41) — all ints
+    encoder.bind_label(sc_socket);
+    EMIT_LOAD_ARG_INT(RDI, 0);   // domain
+    EMIT_LOAD_ARG_INT(RSI, 1);   // type
+    EMIT_LOAD_ARG_INT(RDX, 2);   // protocol
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 41);
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(sc_done);
+
+    // bind(fd, *addr, addrlen) → sys_bind(49)
+    encoder.bind_label(sc_bind);
+    EMIT_LOAD_ARG_INT(RDI, 0);   // fd
+    EMIT_LOAD_ARG_PTR(RSI, 1);   // addr → real pointer
+    EMIT_LOAD_ARG_INT(RDX, 2);   // addrlen
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 49);
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(sc_done);
+
+    // connect(fd, *addr, addrlen) → sys_connect(42)
+    encoder.bind_label(sc_connect);
+    EMIT_LOAD_ARG_INT(RDI, 0);   // fd
+    EMIT_LOAD_ARG_PTR(RSI, 1);   // addr → real pointer
+    EMIT_LOAD_ARG_INT(RDX, 2);   // addrlen
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 42);
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(sc_done);
+
+    // listen(fd, backlog) → sys_listen(50) — all ints
+    encoder.bind_label(sc_listen);
+    EMIT_LOAD_ARG_INT(RDI, 0);   // fd
+    EMIT_LOAD_ARG_INT(RSI, 1);   // backlog
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 50);
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(sc_done);
+
+    // accept(fd, *addr, *addrlen) → sys_accept(43)
+    encoder.bind_label(sc_accept);
+    EMIT_LOAD_ARG_INT(RDI, 0);   // fd
+    EMIT_LOAD_ARG_PTR(RSI, 1);   // addr → real pointer
+    EMIT_LOAD_ARG_PTR(RDX, 2);   // addrlen → real pointer
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 43);
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(sc_done);
+
+    // send(fd, *buf, len, flags) → sys_sendto(44)
+    encoder.bind_label(sc_send);
+    EMIT_LOAD_ARG_INT(RDI, 0);   // fd
+    EMIT_LOAD_ARG_PTR(RSI, 1);   // buf → real pointer
+    EMIT_LOAD_ARG_INT(RDX, 2);   // len
+    EMIT_LOAD_ARG_INT(R10, 3);   // flags
+    encoder.emit_xor_reg_reg(X86Register::R8, X86Register::R8);   // dest_addr = NULL
+    encoder.emit_xor_reg_reg(X86Register::R9, X86Register::R9);   // addrlen = 0
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 44);
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(sc_done);
+
+    // recv(fd, *buf, len, flags) → sys_recvfrom(45)
+    encoder.bind_label(sc_recv);
+    EMIT_LOAD_ARG_INT(RDI, 0);   // fd
+    EMIT_LOAD_ARG_PTR(RSI, 1);   // buf → real pointer
+    EMIT_LOAD_ARG_INT(RDX, 2);   // len
+    EMIT_LOAD_ARG_INT(R10, 3);   // flags
+    encoder.emit_xor_reg_reg(X86Register::R8, X86Register::R8);   // src_addr = NULL
+    encoder.emit_xor_reg_reg(X86Register::R9, X86Register::R9);   // addrlen = 0
+    encoder.emit_mov_reg_imm32(X86Register::RAX, 45);
+    encoder.emit_syscall();
+    spill_virtual_value(0, X86Register::RAX);
+    encoder.emit_jmp_label(sc_done);
+
+    #undef EMIT_LOAD_ARG_INT
+    #undef EMIT_LOAD_ARG_PTR
+
+    encoder.bind_label(sc_done);
+    encoder.emit_pop_reg(X86Register::R13);
+    encoder.emit_pop_reg(X86Register::R12);
+    encoder.emit_pop_reg(X86Register::RSI);
     encoder.emit_jmp_label(label_done);
 
     encoder.bind_label(label_unknown);

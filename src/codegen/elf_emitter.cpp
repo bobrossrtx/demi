@@ -408,6 +408,7 @@ std::vector<uint8_t> ELFEmitter::generate_executable_32(
         0x31, 0xDB,                         // xor ebx, ebx
         0xCD, 0x80,                         // int 0x80
         0x89, 0xC6,                         // mov esi, eax (memory base)
+        0x89, 0xC3,                         // mov ebx, eax (old break)
         0x81, 0xC3, 0x00, 0x00, 0x01, 0x00, // add ebx, 65536
         0xB8, 0x2D, 0x00, 0x00, 0x00,       // mov eax, 45
         0xCD, 0x80,                         // int 0x80

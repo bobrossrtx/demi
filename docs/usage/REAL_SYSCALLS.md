@@ -43,6 +43,7 @@ strace -e trace=write,read,open,close ./bin/demi-engine-debug -A tests/syscall_d
 
 - **sys_ioctl (54)**: I/O control operations
 - **sys_brk (45)**: Memory management (simulated)
+- **socketcall (102)**: Socket operations — native mode only, see [NETWORKING.md](NETWORKING.md)
 
 ## Register Conventions (Linux i386 INT 0x80)
 

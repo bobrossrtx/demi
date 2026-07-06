@@ -68,12 +68,17 @@ public:
     void save_caller_saved_regs(X86Encoder& encoder);
     void restore_caller_saved_regs(X86Encoder& encoder);
 
+    // 32/64-bit mode
+    void set_64bit(bool v) { is_64bit_ = v; }
+    bool is_64bit() const { return is_64bit_; }
+
     // Debug and statistics
     void print_allocation_state() const;
     size_t get_spill_count() const { return spill_count; }
     size_t get_allocation_count() const { return allocation_count; }
 
 private:
+    bool is_64bit_ = true;
     std::optional<X86Register> find_free_register();
     int32_t allocate_spill_slot();
     void update_lru(uint8_t virt_reg);
