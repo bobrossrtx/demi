@@ -328,7 +328,20 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
     }
 
     // Track function state for epilogue insertion
-    bool in_function = false;
+    // Precompute which function (if any) each instruction belongs to.
+    // This replaces the old leaky `in_function` bool that never reset,
+    // causing LEAVE to be emitted for RETs in non-function code.
+    std::unordered_map<uint64_t, std::string> instruction_function;
+    {
+        std::string current_func;
+        for (size_t i = 0; i < program.instructions.size(); ++i) {
+            auto it = function_entries.find(static_cast<uint64_t>(i));
+            if (it != function_entries.end()) current_func = it->second;
+            if (!current_func.empty())
+                instruction_function[static_cast<uint64_t>(i)] = current_func;
+        }
+    }
+    auto in_any_function = [&](uint64_t idx) { return instruction_function.count(idx) > 0; };
 
     const size_t prologue_size = is_64bit_mode() ? 4 : 3;  // PUSH EBP + MOV EBP,ESP (or RBP variant)
     const size_t epilogue_size = is_64bit_mode() ? 2 : 1;  // LEAVE (REX.W + 0xC9 in 64-bit)
@@ -337,12 +350,11 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
         size_t base_size = 0;
         if (function_entries.count(instruction_index)) {
             base_size += prologue_size;
-            in_function = true;
         }
         text_offset_map[static_cast<uint64_t>(instruction_index)] = text_bytes.size() + base_size;
         const auto estimated = estimate_instruction_size(program.instructions[instruction_index], artifact.errors);
         if (!artifact.ok()) return artifact;
-        if (in_function && program.instructions[instruction_index].mnemonic == "RET") {
+        if (in_any_function(instruction_index) && program.instructions[instruction_index].mnemonic == "RET") {
             text_bytes.resize(text_bytes.size() + estimated + epilogue_size);
         } else {
             text_bytes.resize(text_bytes.size() + estimated + base_size);
@@ -380,8 +392,6 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
 
     std::vector<IRRelocation> text_relocations;
 
-    in_function = false;
-
     for (size_t instruction_index = 0; instruction_index < program.instructions.size(); ++instruction_index) {
         const auto& instruction = program.instructions[instruction_index];
         if (instruction.section != IRSectionKind::Text) {
@@ -391,7 +401,6 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
 
         // Emit prologue at function entry
         if (function_entries.count(instruction_index)) {
-            in_function = true;
             if (is_64bit_mode()) {
                 // PUSH RBP (55) + MOV RBP, RSP (48 89 E5)
                 text_bytes.push_back(0x55);
@@ -412,8 +421,8 @@ BackendArtifact X86Backend::emit(const IRProgram& program) {
             artifact.symbol_offsets[name] = text_bytes.size() - prologue_size;
         }
 
-        // Emit epilogue (LEAVE) before RET in function bodies
-        if (in_function && instruction.mnemonic == "RET") {
+        // Emit epilogue (LEAVE) before RET — only for RETs inside functions
+        if (in_any_function(instruction_index) && instruction.mnemonic == "RET") {
             if (is_64bit_mode()) text_bytes.push_back(0x48); // REX.W for 64-bit LEAVE
             text_bytes.push_back(0xC9); // LEAVE
         }

@@ -28,6 +28,23 @@ IRProgram LoweringContext::lower_program(const Program& program) {
         lower_statement(*statement, ir_program);
     }
 
+    // Auto-detect CALL targets and mark them as functions.
+    // Without this, local labels that are CALLed (but not .global) get
+    // epilogue (LEAVE) without prologue (PUSH RBP; MOV RBP,RSP),
+    // causing a corrupt stack and SIGSEGV on return.
+    for (const auto& inst : ir_program.instructions) {
+        if (inst.mnemonic == "CALL" && !inst.operands.empty() &&
+            inst.operands[0].kind == IROperandKind::Symbol) {
+            const auto& target = std::get<IRSymbolOperand>(inst.operands[0].value).name;
+            for (auto& sym : ir_program.symbols) {
+                if (sym.name == target && sym.defined && sym.section == IRSectionKind::Text) {
+                    sym.is_function = true;
+                    break;
+                }
+            }
+        }
+    }
+
     return ir_program;
 }
 
