@@ -546,7 +546,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         // Memory-indirect: CALL [mem] / JMP [mem]
         if (instruction.operands.size() == 1 &&
             instruction.operands[0].kind == IROperandKind::Memory) {
-            return compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
         }
         return 5;
     }
@@ -582,7 +582,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             if (mem.symbol && !mem.base && !mem.index) {
                 return is_64bit_mode() ? 7 : 6;
             }
-            return compute_memory_operand_size(mem, errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(mem, errors);
         }
 
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
@@ -590,7 +590,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             if (mem.symbol && !mem.base && !mem.index) {
                 return is_64bit_mode() ? 7 : 6;
             }
-            return compute_memory_operand_size(mem, errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(mem, errors);
         }
 
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
@@ -625,7 +625,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return fits_i8(imm) ? 2 : 5;
         }
         if (instruction.operands[0].kind == IROperandKind::Memory)
-            return compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
         errors.push_back("x86 backend expects " + instruction.mnemonic + " reg, imm, or [mem]");
         return 0;
     }
@@ -639,7 +639,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return is_64bit_mode() ? 3 : 1;
         }
         if (instruction.operands[0].kind == IROperandKind::Memory) {
-            return compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(instruction.operands[0].value), errors);
         }
     }
 
@@ -658,13 +658,13 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return (fits_i8(imm) ? 3 : 6) + (is_64bit_mode() ? 1 : 0);
         }
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
-            return compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
         }
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             const size_t mem_size = compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
             if (mem_size == 0) return 0;
-            return mem_size + (fits_i8(imm) ? 1 : 4);
+            return (is_64bit_mode() ? 1 : 0) + mem_size + (fits_i8(imm) ? 1 : 4);
         }
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
             return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
@@ -686,13 +686,13 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return (fits_i8(imm) ? 3 : 6) + (is_64bit_mode() ? 1 : 0);
         }
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
-            return compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
         }
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             const size_t mem_size = compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
             if (mem_size == 0) return 0;
-            return mem_size + (fits_i8(imm) ? 1 : 4);
+            return (is_64bit_mode() ? 1 : 0) + mem_size + (fits_i8(imm) ? 1 : 4);
         }
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
             return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
@@ -714,13 +714,13 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
             return (fits_i8(imm) ? 3 : 6) + (is_64bit_mode() ? 1 : 0);
         }
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
-            return compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
+            return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
         }
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Immediate) {
             const int64_t imm = std::get<IRImmediateOperand>(src.value).value;
             const size_t mem_size = compute_memory_operand_size(std::get<IRMemoryOperand>(dst.value), errors);
             if (mem_size == 0) return 0;
-            return mem_size + (fits_i8(imm) ? 1 : 4);
+            return (is_64bit_mode() ? 1 : 0) + mem_size + (fits_i8(imm) ? 1 : 4);
         }
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
             return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(std::get<IRMemoryOperand>(src.value), errors);
@@ -977,7 +977,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         if (mem.symbol && !mem.base && !mem.index) {
             return 6;
         }
-        return compute_memory_operand_size(mem, errors);
+        return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(mem, errors);
     }
 
     errors.push_back("x86 backend does not yet support instruction: " + instruction.mnemonic);
