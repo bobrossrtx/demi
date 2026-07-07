@@ -979,7 +979,7 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         }
         const auto& mem = std::get<IRMemoryOperand>(instruction.operands[1].value);
         if (mem.symbol && !mem.base && !mem.index) {
-            return 6;
+            return is_64bit_mode() ? 7 : 6;
         }
         return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(mem, errors);
     }
