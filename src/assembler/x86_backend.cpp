@@ -580,7 +580,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         if (dst.kind == IROperandKind::Register && src.kind == IROperandKind::Memory) {
             const auto& mem = std::get<IRMemoryOperand>(src.value);
             if (mem.symbol && !mem.base && !mem.index) {
-                return is_64bit_mode() ? 7 : 6;
+                int opsize = operand_size_from_reg(std::get<IRRegisterOperand>(dst.value).name);
+                bool has_rex = is_64bit_mode() && opsize >= 32;
+                return (has_rex ? 7 : 6);
             }
             return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(mem, errors);
         }
@@ -588,7 +590,9 @@ size_t X86Backend::estimate_instruction_size(const IRInstruction& instruction, s
         if (dst.kind == IROperandKind::Memory && src.kind == IROperandKind::Register) {
             const auto& mem = std::get<IRMemoryOperand>(dst.value);
             if (mem.symbol && !mem.base && !mem.index) {
-                return is_64bit_mode() ? 7 : 6;
+                int opsize = operand_size_from_reg(std::get<IRRegisterOperand>(src.value).name);
+                bool has_rex = is_64bit_mode() && opsize >= 32;
+                return (has_rex ? 7 : 6);
             }
             return (is_64bit_mode() ? 1 : 0) + compute_memory_operand_size(mem, errors);
         }
@@ -1199,9 +1203,9 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32
+                relocation.kind = (is_64bit_mode() || encoded_mem.is_pc_relative) ? IRRelocationKind::PcRelative32
                     : (is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32);
-                relocation.addend = encoded_mem.relocation_addend;
+                relocation.addend = encoded_mem.relocation_addend - (is_64bit_mode() && !encoded_mem.is_pc_relative ? 4 : 0);
                 result.relocations.push_back(std::move(relocation));
             }
             return result;
@@ -1230,9 +1234,9 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32
+                relocation.kind = (is_64bit_mode() || encoded_mem.is_pc_relative) ? IRRelocationKind::PcRelative32
                     : (is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32);
-                relocation.addend = encoded_mem.relocation_addend;
+                relocation.addend = encoded_mem.relocation_addend - (is_64bit_mode() && !encoded_mem.is_pc_relative ? 4 : 0);
                 result.relocations.push_back(std::move(relocation));
             }
             return result;
@@ -1728,9 +1732,9 @@ EncodedInstructionResult X86Backend::encode_instruction(
                 relocation.section = IRSectionKind::Text;
                 relocation.offset = instruction_offset + encoded_mem.displacement_offset;
                 relocation.symbol = encoded_mem.relocation_symbol;
-                relocation.kind = encoded_mem.is_pc_relative ? IRRelocationKind::PcRelative32
+                relocation.kind = (is_64bit_mode() || encoded_mem.is_pc_relative) ? IRRelocationKind::PcRelative32
                     : (is_64bit_mode() ? IRRelocationKind::Absolute32S : IRRelocationKind::Absolute32);
-                relocation.addend = encoded_mem.relocation_addend;
+                relocation.addend = encoded_mem.relocation_addend - (is_64bit_mode() && !encoded_mem.is_pc_relative ? 4 : 0);
                 result.relocations.push_back(std::move(relocation));
             }
             return result;
