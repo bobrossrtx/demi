@@ -962,6 +962,7 @@ public:
 
         // Memory dump argument
         parser.add_bool_arg("memdump", "--memdump", "-m", "Print memory dump after execution", "Debugging", [this](bool value) { Config::memdump = value; });
+        parser.add_bool_arg("interactive", "--interactive", "-i", "Start interactive REPL (Demi language)", "Execution", [this](bool value) { Config::interactive = value; });
 
         // Entry point argument
         parser.add_value_arg("entry_point", "--entry-point", "-e", "Specify entry point symbol (default: _start)", "Execution",
@@ -1386,6 +1387,9 @@ public:
                 std::cerr << "Failed to load program file: " << Config::program_file << std::endl;
                 return;
             }
+        } else if (Config::interactive) {
+            run_repl();
+            return;
         } else {
             // No file specified, show help
             parser.print_help();

@@ -59,6 +59,7 @@ public:
     inline static bool extended_registers = false;  // Show extended register output
     inline static bool assembly_mode = false;  // Assembly mode enabled
     inline static bool memdump = false; // Print memory dump after execution if true
+    inline static bool interactive = false; // Interactive REPL mode
     inline static bool quiet_assembly_test = false;  // Quiet mode for assembly tests
     inline static bool quiet = false;  // Global quiet mode - suppress logs and only show results
     inline static bool test_mode = false;  // Test mode - suppress verbose logs during testing
@@ -103,3 +104,4 @@ public:
 // Declare device initialization for use in tests and main
 class CPU;
 void initialize_devices(CPU* cpu = nullptr);
+void run_repl();
