@@ -608,7 +608,17 @@ Parser::ParseRule Parser::get_rule(TokenType type) {
             break;
         case TokenType::OP_DOT:
             rule.infix = [this](std::unique_ptr<DemiExpr> obj) {
-                Token member = consume(TokenType::IDENTIFIER, "Expected member name");
+                // Allow keywords as member names (e.g., sys.alloc, sys.free)
+                Token member = peek();
+                bool is_id = (member.type == TokenType::IDENTIFIER);
+                bool is_kw = (static_cast<int>(member.type) >= static_cast<int>(TokenType::KW_FN) &&
+                              static_cast<int>(member.type) <= static_cast<int>(TokenType::KW_AS));
+                if (is_id || is_kw) {
+                    advance();
+                } else {
+                    errors_.push_back("Expected member name after '.'");
+                    return obj;
+                }
                 auto e = std::make_unique<DemiExpr>();
                 e->kind = DemiExpr::Kind::Member;
                 e->left = std::move(obj); e->literal = member.lexeme;

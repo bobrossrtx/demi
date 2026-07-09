@@ -17,6 +17,10 @@ namespace DemiEngine {
 enum class Syscall : uint32_t {
     // Process Control
     SYS_EXIT        = 1,
+    SYS_ALLOC       = 200,   // Demi: bump-allocate bytes from VM heap
+    SYS_FREE        = 201,   // Demi: free allocation (no-op for bump)
+    SYS_TIME_MS     = 202,   // Demi: get monotonic time in ms
+    SYS_RANDOM      = 203,   // Demi: get random u32
     SYS_FORK        = 2,
     SYS_ACCESS       = 33,
     SYS_WAITPID     = 7,
@@ -94,6 +98,10 @@ enum class Syscall : uint32_t {
 inline Syscall to_syscall(uint32_t num) {
     switch (num) {
         case 1: return Syscall::SYS_EXIT;
+        case 200: return Syscall::SYS_ALLOC;
+        case 201: return Syscall::SYS_FREE;
+        case 202: return Syscall::SYS_TIME_MS;
+        case 203: return Syscall::SYS_RANDOM;
         case 7: return Syscall::SYS_WAITPID;
         case 2: return Syscall::SYS_FORK;
         case 33: return Syscall::SYS_ACCESS;
@@ -120,6 +128,10 @@ inline Syscall to_syscall(uint32_t num) {
 inline const char* syscall_name(Syscall sc) {
     switch (sc) {
         case Syscall::SYS_EXIT: return "sys_exit";
+        case Syscall::SYS_ALLOC: return "sys_alloc";
+        case Syscall::SYS_FREE: return "sys_free";
+        case Syscall::SYS_TIME_MS: return "sys_time_ms";
+        case Syscall::SYS_RANDOM: return "sys_random";
             case Syscall::SYS_ACCESS: return "sys_access";
             case Syscall::SYS_GETDENTS: return "sys_getdents";
             case Syscall::SYS_GETCWD: return "sys_getcwd";

@@ -330,6 +330,9 @@ void CPU::reset() {
 
     // Sync legacy registers
     sync_legacy_registers();
+
+    // Reset heap pointer
+    heap_ptr_ = 0x10000;
 }
 
 void CPU::print_state(const std::string& info) const {
@@ -1483,6 +1486,25 @@ void CPU::handle_syscall(bool& running) {
                 fmt::format("[SYSCALL] {}({}) = {}", sc_name,
                     (arg1 < memory.size() ? reinterpret_cast<const char*>(&memory[arg1]) : "?"), result),
                 Logging::DebugLevel::INFO);
+            break;
+
+        case Syscall::SYS_ALLOC: {
+            // Bump allocate arg1 bytes from heap. Returns address or -1 if OOM.
+            uint32_t size = arg1;
+            uint32_t addr = heap_ptr_;
+            // Align to 4 bytes
+            uint32_t aligned_size = (size + 3) & ~3u;
+            if (addr + aligned_size <= memory.size()) {
+                heap_ptr_ = addr + aligned_size;
+                result = addr;
+            } else {
+                result = -1; // OOM
+            }
+            break;
+        }
+        case Syscall::SYS_FREE:
+            // No-op for bump allocator
+            result = 0;
             break;
 
         default:

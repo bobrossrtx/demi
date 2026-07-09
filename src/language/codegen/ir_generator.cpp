@@ -522,6 +522,25 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                             emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(static_cast<uint8_t>(a_reg));
                             break;
                         }
+                        if (obj == "sys" && method == "alloc") {
+                            // SYS_ALLOC (200): bump allocate from VM heap
+                            // INT 0x80: R0=200, R3=size → returns address in R0
+                            int size_reg = next_local_reg_++;
+                            if (!expr.args.empty()) {
+                                generate_expr(*expr.args[0], size_reg);
+                            } else {
+                                emit_load_imm(size_reg, 0);
+                            }
+                            // Set up syscall: R0 = 200, R3 = size
+                            emit_load_imm(0, 200);        // R0 = SYS_ALLOC
+                            emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(size_reg)); // R3 = size
+                            emit_opcode(0xCD); emit_byte(0x80); // INT 0x80
+                            // Result in R0, copy to dest_reg
+                            if (dest_reg != 0) {
+                                emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
                     }
                     emit_load_imm(dest_reg, 0);
                     break;

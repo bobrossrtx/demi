@@ -564,6 +564,10 @@ public:
 
     void set_timer_device(std::shared_ptr<vhw::TimerDevice> td) { timer_device_ = std::move(td); }
     bool has_timer_device() const { return timer_device_ != nullptr; }
+
+    // Heap allocator
+    uint32_t get_heap_ptr() const { return heap_ptr_; }
+    void set_heap_ptr(uint32_t p) { heap_ptr_ = p; }
     
     /**
      * @brief Trigger an interrupt
@@ -666,6 +670,9 @@ private:
 
     // Timer device for periodic interrupts
     std::shared_ptr<vhw::TimerDevice> timer_device_;
+
+    // Heap bump allocator pointer
+    uint32_t heap_ptr_ = 0x10000;  // start after code+stack
 
     // Speculative Execution Engine (temporarily disabled)
     // SpeculativeExecution::SpeculativeExecutor speculative_executor;
