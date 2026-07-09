@@ -1695,56 +1695,17 @@ void DISAToX86Compiler::translate_call(uint32_t target_address) {
 void DISAToX86Compiler::translate_ret() {
     flush_all_registers();
 
-    // In 32-bit mode, skip the spill-frame restore since we skipped the save.
-    if (!encoder.is_64bit()) {
-        clear_cached_registers();
-        encoder.emit_ret();
-        return;
-    }
-
-    // --- 64-bit spill frame restore below ---
-
-    // Free callee's spill frame
-    encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
-
-    // Restore caller's RBP (points to saved spill frame)
-    encoder.emit_pop_reg(X86Register::RBP);
-
-    // In 32-bit mode, save EDX/EBX before the copy loop since R10/R11 alias
-    if (!encoder.is_64bit()) {
-        encoder.emit_push_reg(X86Register::RDX);  // save R10 alias
-        encoder.emit_push_reg(X86Register::RBX);  // save R11 alias
-    }
-
-    // Copy saved spill frame back to [RBP - SPILL_FRAME_SIZE]
-    encoder.emit_mov_reg_reg(X86Register::R10, X86Register::RBP);
-    encoder.emit_sub_reg_imm32(X86Register::R10, SPILL_FRAME_SIZE);
-    encoder.emit_mov_reg_reg(X86Register::R11, X86Register::RSP);
-    encoder.emit_mov_reg_imm32(X86Register::RCX, SPILL_FRAME_SIZE / 8);
-    auto restore_loop = encoder.create_label();
-    auto restore_done = encoder.create_label();
-    encoder.bind_label(restore_loop);
-    encoder.emit_cmp_reg_imm32(X86Register::RCX, 0);
-    encoder.emit_jz_label(restore_done);
-    encoder.emit_mov_reg_mem(X86Register::RAX, X86Register::R11, 0);
-    encoder.emit_mov_mem_reg(X86Register::R10, 0, X86Register::RAX);
-    encoder.emit_add_reg_imm32(X86Register::R10, 8);
-    encoder.emit_add_reg_imm32(X86Register::R11, 8);
-    encoder.emit_dec_reg(X86Register::RCX);
-    encoder.emit_jmp_label(restore_loop);
-    encoder.bind_label(restore_done);
-
-    // Restore saved registers for 32-bit mode
-    if (!encoder.is_64bit()) {
-        encoder.emit_pop_reg(X86Register::RBX);
-        encoder.emit_pop_reg(X86Register::RDX);
-    }
-
-    // Free the saved spill frame area
-    encoder.emit_add_reg_imm32(X86Register::RSP, SPILL_FRAME_SIZE);
-
+    // Let emit_function_epilogue() handle spill-frame deallocation and
+    // register restores. translate_ret() just ensures dirty regs are
+    // flushed before the epilogue runs.
     clear_cached_registers();
-    encoder.emit_ret();
+
+    // In 32-bit mode we can emit ret directly since the epilogue doesn't
+    // restore callee-saved regs that weren't saved (only RBX + RBP).
+    if (!encoder.is_64bit()) {
+        encoder.emit_ret();
+    }
+    // 64-bit: epilogue handles everything including the ret
 }
 
 // --- Jump target management ---
