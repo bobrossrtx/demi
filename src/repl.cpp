@@ -6,16 +6,16 @@
 #include "language/codegen/ir_generator.hpp"
 #include <iostream>
 #include <string>
+#include <sstream>
+#include <vector>
 
 void run_repl() {
     using namespace DemiLanguage;
 
-    CPU cpu;
-    cpu.reset();
-    initialize_devices(&cpu);
+    std::cout << "Demi REPL  v1.1  —  type .exit to quit, .help for commands" << std::endl;
 
-    std::cout << "Demi REPL  v1.0  —  type .exit to quit, .help for commands" << std::endl;
-
+    // Accumulate all statements into one growing program
+    std::string prog;
     std::string input;
 
     while (true) {
@@ -25,15 +25,32 @@ void run_repl() {
 
         if (input == ".exit" || input == ".quit") break;
         if (input == ".help") {
-            std::cout << "  <stmt>           Execute a statement (let, if, while, etc.)" << std::endl;
-            std::cout << "  fn ...           Define a function" << std::endl;
+            std::cout << "  <stmt>           Execute statement (persistent state)" << std::endl;
+            std::cout << "  fn ...           Define a function (persistent)" << std::endl;
+            std::cout << "  .clear           Reset REPL state" << std::endl;
+            std::cout << "  .show            Show accumulated program" << std::endl;
             std::cout << "  .exit/.quit      Exit REPL" << std::endl;
             std::cout << "  .help            Show this help" << std::endl;
             continue;
         }
+        if (input == ".clear") {
+            prog.clear();
+            std::cout << "REPL state cleared." << std::endl;
+            continue;
+        }
+        if (input == ".show") {
+            std::cout << "--- program ---" << std::endl;
+            std::cout << prog << std::endl;
+            std::cout << "--- end ---" << std::endl;
+            continue;
+        }
 
-        // Wrap input as the entry-point function 'main'
-        std::string wrapped = "fn main() { " + input + "; }";
+        // Append this statement to the accumulated program
+        if (!prog.empty()) prog += "\n";
+        prog += input + ";";
+
+        // Wrap accumulated program into a main function
+        std::string wrapped = "fn main() {\n" + prog + "\n}";
 
         Lexer lexer(wrapped);
         auto tokens = lexer.tokenize();
@@ -60,14 +77,8 @@ void run_repl() {
             continue;
         }
 
-        // Debug: show bytecode
-        if (Config::debug) {
-            std::cout << "Bytecode (" << result.bytecode.size() << " bytes): ";
-            for (auto b : result.bytecode) std::cout << std::hex << (int)b << " ";
-            std::cout << std::dec << std::endl;
-        }
-
-        // Execute on VM
+        // Re-execute full program on fresh CPU
+        CPU cpu;
         cpu.reset();
         initialize_devices(&cpu);
         try {
@@ -75,5 +86,6 @@ void run_repl() {
         } catch (const std::exception& e) {
             std::cerr << "Runtime: " << e.what() << std::endl;
         }
+        std::cout << std::endl;  // newline after execution output
     }
 }
