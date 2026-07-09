@@ -1,0 +1,12 @@
+// math.dem — Function calls and arithmetic
+fn square(x: i32) -> i32 {
+    return x * x;
+}
+
+fn cube(x: i32) -> i32 {
+    return x * square(x);
+}
+
+pub fn main() -> i32 {
+    return cube(3);  // 27
+}

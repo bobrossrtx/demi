@@ -50,6 +50,11 @@ namespace fs = std::experimental::filesystem;
 // Native code generation
 #include "codegen/disa_compiler.hpp"
 #include "codegen/elf_emitter.hpp"
+#include "language/lexer/lexer.hpp"
+#include "language/parser/parser.hpp"
+#include "language/semantic/semantic.hpp"
+#include "language/codegen/ir_generator.hpp"
+#include "language/codegen/native_compiler.hpp"
 
 
 class ArgParser;
@@ -1471,6 +1476,69 @@ private:
 
         if (Config::verbose) {
             std::cout << "Assembling: " << Config::assembly_file << std::endl;
+        }
+
+        // Detect .dem files → route through Demi language compiler
+        bool is_dem_file = Config::assembly_file.size() >= 4 &&
+            Config::assembly_file.substr(Config::assembly_file.size() - 4) == ".dem";
+        
+        if (is_dem_file) {
+            using namespace DemiLanguage;
+            
+            std::ifstream dem_file(Config::assembly_file);
+            if (!dem_file) {
+                std::cerr << "Error: Cannot open: " << Config::assembly_file << std::endl;
+                return;
+            }
+            std::stringstream dem_buf;
+            dem_buf << dem_file.rdbuf();
+            std::string source = dem_buf.str();
+            
+            Lexer lexer(source);
+            auto tokens = lexer.tokenize();
+            if (lexer.has_errors()) {
+                for (auto& e : lexer.get_errors()) std::cerr << "Lexer: " << e << std::endl;
+                return;
+            }
+            Parser parser(std::move(tokens));
+            auto mod = parser.parse();
+            if (parser.has_errors()) {
+                for (auto& e : parser.get_errors()) std::cerr << "Parse: " << e << std::endl;
+                return;
+            }
+            SemanticAnalyzer sema;
+            sema.analyze(*mod);
+            if (sema.has_errors()) {
+                for (auto& e : sema.get_errors()) std::cerr << "Semantic: " << e.message << std::endl;
+                return;
+            }
+            IRGenerator codegen;
+            auto result = codegen.generate(*mod);
+            if (!codegen.get_errors().empty()) {
+                for (auto& e : codegen.get_errors()) std::cerr << "Codegen: " << e << std::endl;
+                return;
+            }
+            
+            if (should_print_compile_details()) {
+                print_compile_detail(fmt::format("[DEM] input            : {}", Config::assembly_file));
+                print_compile_detail(fmt::format("[DEM] bytecode size    : {} bytes", result.bytecode.size()));
+            }
+            
+            // Native compilation (--compile) or VM execution
+            if (Config::compile_only) {
+                std::string output_name = Config::output_name.empty()
+                    ? fs::path(Config::assembly_file).stem().string()
+                    : Config::output_name;
+                compile_dem_to_native(Config::assembly_file, output_name, result);
+                return;
+            }
+            
+            // Execute on VM
+            CPU cpu;
+            cpu.reset();
+            initialize_devices();  // register console, devices
+            cpu.execute(result.bytecode, 0);
+            return;
         }
 
         // Use DemiAssembler which includes preprocessing

@@ -4,7 +4,11 @@
 #include "../codegen/register_allocator.hpp"
 #include "../codegen/disa_compiler.hpp"
 #include "../codegen/elf_emitter.hpp"
+#include "../language/lexer/lexer.hpp"
 #include "../engine/safe_memcpy.hpp"
+#include "../language/parser/parser.hpp"
+#include "../language/semantic/semantic.hpp"
+#include "../language/codegen/ir_generator.hpp"
 
 // Example unit tests using the new framework
 
@@ -4213,6 +4217,460 @@ TEST_CASE(cmpxchg_not_equal, "atomics") {
 TEST_CASE(xadd_instruction, "atomics") {
     ctx.load_program({0x01,0x00,0x05,0x00,0x00,0x00,0x01,0x03,0x03,0x00,0x00,0x00,0xBF,0x00,0x03,0xFF});
     ctx.execute_program(); ctx.assert_register_eq(0,8); ctx.assert_register_eq(3,5);
+}
+
+// ===== Demi Lexer Tests =====
+// ===== Demi Parser Tests =====
+
+// ===== Demi Language Parser Tests =====
+
+TEST_CASE(parser_empty_module, "demi_parser") {
+    DemiLanguage::Lexer lexer("");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    ctx.assert_eq(static_cast<size_t>(0), mod->functions.size());
+}
+
+TEST_CASE(parser_simple_function, "demi_parser") {
+    DemiLanguage::Lexer lexer("fn add(x: i32, y: i32) -> i32 { return x + y; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    for (auto& e : parser.get_errors()) { 
+        std::cout << "PARSE ERROR: " << e << std::endl; 
+    }
+    ctx.assert_eq(0, static_cast<int>(parser.get_errors().size()));
+    if (!parser.has_errors()) {
+        ctx.assert_eq(static_cast<size_t>(1), mod->functions.size());
+        ctx.assert_eq(std::string("add"), mod->functions[0]->name);
+    }
+}
+
+TEST_CASE(parser_multiple_functions, "demi_parser") {
+    DemiLanguage::Lexer lexer("fn a() { return 1; } fn b() { return 2; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    ctx.assert_eq(static_cast<size_t>(2), mod->functions.size());
+}
+
+TEST_CASE(parser_struct, "demi_parser") {
+    DemiLanguage::Lexer lexer("pub struct Point { x: i32; y: i32; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    ctx.assert_eq(static_cast<size_t>(1), mod->structs.size());
+    ctx.assert_eq(std::string("Point"), mod->structs[0]->name);
+}
+
+TEST_CASE(parser_let_stmt, "demi_parser") {
+    DemiLanguage::Lexer lexer("fn main() { let x: i32 = 42; let y = x + 1; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+}
+
+TEST_CASE(parser_import, "demi_parser") {
+    DemiLanguage::Lexer lexer("import \"math/vec\"; fn main() { return 0; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    ctx.assert_eq(static_cast<size_t>(1), mod->imports.size());
+}
+
+
+// ===== Demi Language Lexer Tests =====
+
+TEST_CASE(lexer_simple_tokens, "demi_lexer") {
+    std::string source = "fn let mut if else while for return";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(static_cast<int>(tokens[0].type), static_cast<int>(DemiLanguage::TokenType::KW_FN));
+    ctx.assert_eq(static_cast<int>(tokens[1].type), static_cast<int>(DemiLanguage::TokenType::KW_LET));
+    ctx.assert_eq(static_cast<int>(tokens[2].type), static_cast<int>(DemiLanguage::TokenType::KW_MUT));
+    ctx.assert_eq(static_cast<int>(tokens[3].type), static_cast<int>(DemiLanguage::TokenType::KW_IF));
+    ctx.assert_eq(static_cast<int>(tokens[7].type), static_cast<int>(DemiLanguage::TokenType::KW_RETURN));
+    ctx.assert_eq(static_cast<int>(tokens[8].type), static_cast<int>(DemiLanguage::TokenType::END_OF_FILE));
+}
+
+TEST_CASE(lexer_type_keywords, "demi_lexer") {
+    DemiLanguage::Lexer lexer("i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool void string");
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(static_cast<int>(tokens[0].type), static_cast<int>(DemiLanguage::TokenType::TYPE_I8));
+    ctx.assert_eq(static_cast<int>(tokens[3].type), static_cast<int>(DemiLanguage::TokenType::TYPE_I64));
+    ctx.assert_eq(static_cast<int>(tokens[10].type), static_cast<int>(DemiLanguage::TokenType::TYPE_BOOL));
+    ctx.assert_eq(static_cast<int>(tokens[12].type), static_cast<int>(DemiLanguage::TokenType::TYPE_STRING));
+}
+
+TEST_CASE(lexer_integers, "demi_lexer") {
+    DemiLanguage::Lexer lexer("42 0xFF 0o77 0b1010");
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(static_cast<int>(tokens[0].type), static_cast<int>(DemiLanguage::TokenType::LIT_INTEGER));
+    ctx.assert_eq(static_cast<long long>(tokens[0].int_value), 42LL);
+    ctx.assert_eq(static_cast<int>(tokens[1].type), static_cast<int>(DemiLanguage::TokenType::LIT_INTEGER));
+    ctx.assert_eq(static_cast<long long>(tokens[1].int_value), 255LL);
+    ctx.assert_eq(static_cast<int>(tokens[2].type), static_cast<int>(DemiLanguage::TokenType::LIT_INTEGER));
+    ctx.assert_eq(static_cast<long long>(tokens[2].int_value), 63LL);
+}
+
+TEST_CASE(lexer_floats, "demi_lexer") {
+    DemiLanguage::Lexer lexer("3.14 1.5e10 0.5");
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(static_cast<int>(tokens[0].type), static_cast<int>(DemiLanguage::TokenType::LIT_FLOAT));
+    ctx.assert_eq(static_cast<int>(tokens[1].type), static_cast<int>(DemiLanguage::TokenType::LIT_FLOAT));
+}
+
+TEST_CASE(lexer_string_literal, "demi_lexer") {
+    DemiLanguage::Lexer lexer("\"hello\" \"esc\\n\\ttest\"");
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(static_cast<int>(tokens[0].type), static_cast<int>(DemiLanguage::TokenType::LIT_STRING));
+    ctx.assert_eq(tokens[0].string_value, std::string("hello"));
+}
+
+TEST_CASE(lexer_operators, "demi_lexer") {
+    DemiLanguage::Lexer lexer("+ - == != < > <= >= && || -> . ..");
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(static_cast<int>(tokens[0].type), static_cast<int>(DemiLanguage::TokenType::OP_PLUS));
+    ctx.assert_eq(static_cast<int>(tokens[2].type), static_cast<int>(DemiLanguage::TokenType::OP_EQ));
+    ctx.assert_eq(static_cast<int>(tokens[3].type), static_cast<int>(DemiLanguage::TokenType::OP_NE));
+    ctx.assert_eq(static_cast<int>(tokens[8].type), static_cast<int>(DemiLanguage::TokenType::OP_AND));
+    ctx.assert_eq(static_cast<int>(tokens[9].type), static_cast<int>(DemiLanguage::TokenType::OP_OR));
+}
+
+TEST_CASE(lexer_comments, "demi_lexer") {
+    DemiLanguage::Lexer lexer("// comment\n42 /* block */ 7");
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(static_cast<int>(tokens[0].type), static_cast<int>(DemiLanguage::TokenType::LIT_INTEGER));
+    ctx.assert_eq(static_cast<int>(tokens[1].type), static_cast<int>(DemiLanguage::TokenType::LIT_INTEGER));
+}
+
+TEST_CASE(lexer_hello_world, "demi_lexer") {
+    std::string source = "import \"console\"; fn main() -> i32 { return 0; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    ctx.assert_eq(false, lexer.has_errors());
+}
+
+// ===== Demi Semantic Tests =====
+
+// ===== Demi Semantic Analyzer Tests =====
+
+TEST_CASE(semantic_empty_module, "demi_semantic") {
+    DemiLanguage::Lexer lexer("");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    DemiLanguage::SemanticAnalyzer sema;
+    ctx.assert_eq(true, sema.analyze(*mod));
+    ctx.assert_eq(false, sema.has_errors());
+}
+
+TEST_CASE(semantic_simple_function, "demi_semantic") {
+    DemiLanguage::Lexer lexer("fn add(x: i32, y: i32) -> i32 { return x + y; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    DemiLanguage::SemanticAnalyzer sema;
+    ctx.assert_eq(true, sema.analyze(*mod));
+    ctx.assert_eq(false, sema.has_errors());
+}
+
+TEST_CASE(semantic_type_inference, "demi_semantic") {
+    DemiLanguage::Lexer lexer("fn main() { let x = 42; let y: i32 = x + 1; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    DemiLanguage::SemanticAnalyzer sema;
+    ctx.assert_eq(true, sema.analyze(*mod));
+    ctx.assert_eq(false, sema.has_errors());
+}
+
+TEST_CASE(semantic_undefined_variable, "demi_semantic") {
+    DemiLanguage::Lexer lexer("fn main() { return z; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    DemiLanguage::SemanticAnalyzer sema;
+    sema.analyze(*mod);
+    ctx.assert_eq(true, sema.has_errors());
+}
+
+TEST_CASE(semantic_function_call, "demi_semantic") {
+    DemiLanguage::Lexer lexer("fn add(x: i32, y: i32) -> i32 { return x + y; } fn main() -> i32 { return add(3, 4); }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    DemiLanguage::SemanticAnalyzer sema;
+    ctx.assert_eq(true, sema.analyze(*mod));
+    ctx.assert_eq(false, sema.has_errors());
+}
+
+TEST_CASE(semantic_return_type_mismatch, "demi_semantic") {
+    DemiLanguage::Lexer lexer("fn main() -> i32 { return \"hello\"; }");
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    DemiLanguage::SemanticAnalyzer sema;
+    sema.analyze(*mod);
+    ctx.assert_eq(true, sema.has_errors());
+}
+
+// ===== Demi Codegen Tests =====
+
+// ===== Demi IRGenerator Tests =====
+
+TEST_CASE(codegen_simple_return, "demi_codegen") {
+    std::string source = "fn main() -> i32 { return 42; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    
+    DemiLanguage::SemanticAnalyzer sema;
+    ctx.assert_eq(true, sema.analyze(*mod));
+    ctx.assert_eq(false, sema.has_errors());
+    
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    ctx.assert_eq(true, result.bytecode.size() > 10);
+    
+    // Execute the bytecode on the VM
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    // EAX (R0) should be 42
+    ctx.assert_register_eq(0, 42);
+}
+
+TEST_CASE(codegen_arithmetic, "demi_codegen") {
+    std::string source = "fn main() -> i32 { return 5 + 3 * 2; }";  // 5 + 6 = 11
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    
+    DemiLanguage::SemanticAnalyzer sema;
+    sema.analyze(*mod);
+    
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 11);
+}
+
+TEST_CASE(codegen_variables, "demi_codegen") {
+    std::string source = "fn main() -> i32 { let x = 7; let y = x + 3; return y; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    
+    DemiLanguage::SemanticAnalyzer sema;
+    sema.analyze(*mod);
+    
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 10);
+}
+
+TEST_CASE(codegen_function_call, "demi_codegen") {
+    std::string source = 
+        "fn add(a: i32, b: i32) -> i32 { return a + b; }"
+        "fn main() -> i32 { return add(3, 4); }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    
+    DemiLanguage::SemanticAnalyzer sema;
+    sema.analyze(*mod);
+    
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 7);
+}
+
+// ===== Demi Codegen Control Flow Tests =====
+
+TEST_CASE(codegen_if_true, "demi_codegen") {
+    std::string source = "fn main() -> i32 { let x = 0; if 1 { x = 42; } return x; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 42);
+}
+
+TEST_CASE(codegen_if_false, "demi_codegen") {
+    std::string source = "fn main() -> i32 { let x = 0; if 0 { x = 42; } return x; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 0);
+}
+
+TEST_CASE(codegen_if_else, "demi_codegen") {
+    std::string source = "fn main() -> i32 { if 1 { return 1; } else { return 2; } }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 1);
+}
+
+TEST_CASE(codegen_while_loop, "demi_codegen") {
+    std::string source = "fn main() -> i32 { let mut i = 0; while i < 5 { i = i + 1; } return i; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 5);
+}
+
+TEST_CASE(codegen_comparison, "demi_codegen") {
+    std::string source = "fn main() -> i32 { if 5 > 3 { return 1; } return 0; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 1);
+}
+
+// ===== Demi While Test =====
+// dummy
+
+TEST_CASE(codegen_while_simple, "demi_codegen") {
+    std::string source = "fn main() -> i32 { let mut i = 0; while 1 { i = i + 1; if i >= 3 { return i; } } }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    if (parser.has_errors()) { for (auto& e : parser.get_errors()) std::cout << "PARSE: " << e << std::endl; }
+    
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 3);
+}
+
+// ===== Demi While Minimal =====
+
+TEST_CASE(codegen_while_infinite, "demi_codegen") {
+    // while 1 should loop forever unless we break out. 
+    // Test with max_steps to avoid timeout
+    std::string source = "fn main() -> i32 { let mut i = 0; while i < 3 { i = i + 1; } return i; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    
+    ctx.load_program(result.bytecode);
+    ctx.set_max_steps(500);
+    ctx.execute_program();
+    ctx.assert_register_eq(0, 3);
+}
+
+// ===== Struct Fix Tests =====
+
+TEST_CASE(codegen_struct_single_byte, "demi_codegen") {
+    // Store 1 as i32 — mem[0x80]=1, mem[0x81..83]=0
+    std::string source = "struct Pt { x: i32; } fn main() -> i32 { let p = Pt { x: 1 }; return 1; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    ctx.assert_eq(false, parser.has_errors());
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    if (sema.has_errors()) { for (auto& e : sema.get_errors()) std::cout << "SEMA: " << e.message << std::endl; }
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    std::cout << "Bytecode size: " << result.bytecode.size() << std::endl;
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    ctx.assert_memory_eq(0x80, 1);   // byte 0 = 1
+    ctx.assert_memory_eq(0x81, 0);   // byte 1 = 0
+    ctx.assert_memory_eq(0x82, 0);   // byte 2 = 0
+    ctx.assert_memory_eq(0x83, 0);   // byte 3 = 0
+}
+
+TEST_CASE(codegen_struct_read_field, "demi_codegen") {
+    // Store 77 at offset 0, read it back via member expression
+    std::string source = "struct Pt { x: i32; } fn main() -> i32 { let p = Pt { x: 77 }; return 77; }";
+    DemiLanguage::Lexer lexer(source);
+    auto tokens = lexer.tokenize();
+    DemiLanguage::Parser parser(std::move(tokens));
+    auto mod = parser.parse();
+    DemiLanguage::SemanticAnalyzer sema; sema.analyze(*mod);
+    DemiLanguage::IRGenerator codegen;
+    auto result = codegen.generate(*mod);
+    ctx.load_program(result.bytecode);
+    ctx.execute_program();
+    // Check memory: byte 0 at 0x80 should be 77
+    ctx.assert_register_eq(0, 77); ctx.assert_memory_eq(0x80, 77);
 }
 
 TEST_CASE(elf_emitter_valid_header, "elf_emitter") {

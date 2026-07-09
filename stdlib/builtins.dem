@@ -1,0 +1,32 @@
+// Builtin stdlib functions for Demi VM
+// These map directly to VM opcodes — no CALL overhead
+
+/// print_char(c: i32) — output raw character to console
+#[builtin]
+fn print_char(c: i32) {
+    // Compiled to: OUT R0, port 1
+}
+
+/// print_str(s: string) — output null-terminated string to console
+#[builtin]
+fn print_str(s: string) {
+    // Compiled to: OUTSTR R0, port 1
+}
+
+/// print_i32(n: i32) — output integer as decimal to console
+#[builtin]
+fn print_i32(n: i32) {
+    // Compiled to: OUT R0, port 1 (raw byte)
+}
+
+/// alloc(size: i32) -> *u8 — allocate memory from heap
+#[builtin]
+fn alloc(size: i32) -> *u8 {
+    // Compiled to: bump allocator
+}
+
+/// free(ptr: *u8) — return memory to heap
+#[builtin]
+fn free(ptr: *u8) {
+    // Compiled to: no-op (bump allocator)
+}

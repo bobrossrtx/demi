@@ -1,0 +1,10 @@
+// point.dem — Struct creation and field access
+struct Point {
+    x: i32;
+    y: i32;
+}
+
+pub fn main() -> i32 {
+    let p = Point { x: 10, y: 20 };
+    return p.x + p.y;  // 30
+}

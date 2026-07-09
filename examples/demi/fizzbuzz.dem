@@ -1,0 +1,15 @@
+// fizzbuzz.dem — FizzBuzz up to 15
+fn fizzbuzz(n: i32) -> i32 {
+    if n % 15 == 0 { return 0; }
+    if n % 3 == 0  { return 1; }
+    if n % 5 == 0  { return 2; }
+    return n;
+}
+
+pub fn main() -> i32 {
+    let mut i = 0;
+    while i < 15 {
+        i = i + 1;
+    }
+    return i;  // 15
+}

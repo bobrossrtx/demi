@@ -1,0 +1,12 @@
+// hello.dem — Demi language hello world
+// Uses print_i32 to output ASCII characters
+
+pub fn main() -> i32 {
+    console.print_i32(72);   // H
+    console.print_i32(101);  // e
+    console.print_i32(108);  // l
+    console.print_i32(108);  // l
+    console.print_i32(111);  // o
+    console.print_i32(10);   // newline
+    return 0;
+}
