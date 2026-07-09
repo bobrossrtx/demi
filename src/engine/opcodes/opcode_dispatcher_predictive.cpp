@@ -139,15 +139,15 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
             uint8_t reg2 = program[pc + 2];
             
             #ifndef NDEBUG
-            if (__builtin_expect(reg1 >= cpu.get_registers().size() || 
-                                 reg2 >= cpu.get_registers().size(), 0)) {
+            if (__builtin_expect(reg1 >= TOTAL_REGISTERS || 
+                                 reg2 >= TOTAL_REGISTERS, 0)) {
                 running = false;
                 return;
             }
             #endif
             
-            uint64_t old_value = cpu.get_registers()[reg1];
-            uint64_t result = old_value + cpu.get_registers()[reg2];
+            uint64_t old_value = cpu.get_register_mode_aware(static_cast<Register>(reg1));
+            uint64_t result = old_value + cpu.get_register_mode_aware(static_cast<Register>(reg2));
             
             // Set flags for overflow and carry
             uint32_t flags = cpu.get_flags();
@@ -157,7 +157,7 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
                 flags &= ~FLAG_CARRY;
             }
             
-            if ((old_value & 0x80000000) == (cpu.get_registers()[reg2] & 0x80000000) &&
+            if ((old_value & 0x80000000) == (cpu.get_register_mode_aware(static_cast<Register>(reg2)) & 0x80000000) &&
                 (result & 0x80000000) != (old_value & 0x80000000)) {
                 flags |= FLAG_OVERFLOW;
             } else {
@@ -173,7 +173,7 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
             }
             
             cpu.set_flags(flags);
-            cpu.get_registers()[reg1] = result;
+            cpu.set_register_mode_aware(static_cast<Register>(reg1), result);
             
             // Also update the 64-bit register array to maintain consistency
             if (reg1 < cpu.get_registers_64().size()) {
@@ -186,7 +186,7 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
             if (Config::debug) {
                 DEBUG_TRACE(Logging::DebugCategory::CPU_DISPATCHER, 
                     "[PC=0x{:04X}] [ADD] R{} = {} + {} = {}", 
-                    pc, reg1, old_value, cpu.get_registers()[reg2], result);
+                    pc, reg1, old_value, cpu.get_register_mode_aware(static_cast<Register>(reg2)), result);
             }
             #endif
             
@@ -206,8 +206,8 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
             uint8_t reg2 = program[pc + 2];
             
             #ifndef NDEBUG
-            if (__builtin_expect(reg1 >= cpu.get_registers().size() || 
-                                 reg2 >= cpu.get_registers().size(), 0)) {
+            if (__builtin_expect(reg1 >= TOTAL_REGISTERS || 
+                                 reg2 >= TOTAL_REGISTERS, 0)) {
                 running = false;
                 return;
             }
@@ -218,8 +218,8 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
             cpu.set_register_mode_aware(static_cast<Register>(reg1), val);
             
             // Also update legacy registers directly if needed
-            if (reg1 < cpu.get_registers().size()) {
-                cpu.get_registers()[reg1] = static_cast<uint32_t>(val);
+            if (reg1 < 8) {
+                cpu.set_register_mode_aware(static_cast<Register>(reg1), static_cast<uint32_t>(val));
             }
             
             #ifndef NDEBUG
@@ -287,7 +287,7 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
             cpu.set_flags(flags);
             cpu.get_registers_64()[reg] = result;
             if (reg < 8) {
-                cpu.get_registers()[reg] = static_cast<uint32_t>(result);
+                cpu.set_register_mode_aware(static_cast<Register>(reg), static_cast<uint32_t>(result));
             }
             cpu.set_pc(pc + 2);
             break;
@@ -330,7 +330,7 @@ void dispatch_opcode_predictive(CPU& cpu, const std::vector<uint8_t>& program, b
             cpu.set_flags(flags);
             cpu.get_registers_64()[reg] = result;
             if (reg < 8) {
-                cpu.get_registers()[reg] = static_cast<uint32_t>(result);
+                cpu.set_register_mode_aware(static_cast<Register>(reg), static_cast<uint32_t>(result));
             }
             cpu.set_pc(pc + 2);
             break;
