@@ -432,13 +432,17 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                         if (obj == "math" && method == "abs") {
                             int val_reg = next_local_reg_++;
                             generate_expr(*expr.args[0], val_reg);
-                            // if val >= 0, skip; else neg
+                            // if val >= 0, skip; else val = 0 - val (SUB from zero)
                             int zero_reg = next_local_reg_++;
                             emit_load_imm(zero_reg, 0);
                             emit_opcode(OP_CMP); emit_byte(static_cast<uint8_t>(val_reg)); emit_byte(static_cast<uint8_t>(zero_reg));
                             uint32_t jge_off = static_cast<uint32_t>(code_.size());
                             emit_opcode(OP_JGE); emit_u32(0);
-                            emit_opcode(OP_NEG); emit_byte(static_cast<uint8_t>(val_reg));
+                            // negate: result = 0 - val  (load 0 into temp, SUB val from it)
+                            int tmp_reg = next_local_reg_++;
+                            emit_load_imm(tmp_reg, 0);
+                            emit_opcode(OP_SUB); emit_byte(static_cast<uint8_t>(tmp_reg)); emit_byte(static_cast<uint8_t>(val_reg));
+                            emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(val_reg)); emit_byte(static_cast<uint8_t>(tmp_reg));
                             uint32_t skip_off = static_cast<uint32_t>(code_.size());
                             patch_jump(jge_off, skip_off);
                             emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(static_cast<uint8_t>(val_reg));
