@@ -7,15 +7,7 @@
 using namespace DemiEngine_Registers;
 
 void handle_VCMPGT(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
-    if (cpu.get_pc() + 2 >= program.size()) {
-        Logging::DebugHandler::instance().report(Logging::DebugCategory::CPU_EXECUTION,
-            "VCMPGT: Insufficient instruction bytes", Logging::DebugLevel::CRITICAL);
-        running = false;
-        return;
-    }
-
-    // Note: VCMPGT operates on fixed registers R0-R3 and R4-R7
-    // dest_reg and src_reg bytes are present but not used
+    // VCMPGT uses fixed registers R0-R3 (dest) and R4-R7 (src) — no operands needed
     
     // Compare R0-R3 > R4-R7 element-wise
     auto& regs = cpu.get_registers(); // Use legacy register system like LOAD_IMM

@@ -6,13 +6,8 @@
 
 using namespace DemiEngine_Registers;
 
-void handle_VBROADCAST(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
-    if (cpu.get_pc() + 1 >= program.size()) {
-        Logging::DebugHandler::instance().report(Logging::DebugCategory::CPU_EXECUTION,
-            "VBROADCAST: Insufficient instruction bytes", Logging::DebugLevel::CRITICAL);
-        running = false;
-        return;
-    }
+void handle_VBROADCAST(CPU& cpu, [[maybe_unused]] const std::vector<uint8_t>& program, [[maybe_unused]] bool& running) {
+    // VBROADCAST uses fixed registers R0 (src) → R4-R7 (dest) — no operands needed
 
     // Broadcast value from R0 to R4, R5, R6, R7
     auto& regs = cpu.get_registers(); // Use legacy register system like LOAD_IMM
