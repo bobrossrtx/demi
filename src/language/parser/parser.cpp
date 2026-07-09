@@ -536,8 +536,10 @@ Parser::ParseRule Parser::get_rule(TokenType type) {
             break;
         case TokenType::OP_MINUS:
             rule.prefix = [this]() {
-                return DemiExpr::make_binary(BinaryOp::Sub,
-                    DemiExpr::make_literal_int(0, "0"), parse_precedence(PREC_UNARY));
+                auto e = std::make_unique<DemiExpr>();
+                e->kind = DemiExpr::Kind::Unary; e->unary_op = UnaryOp::Neg;
+                e->operand = parse_precedence(PREC_UNARY);
+                return e;
             };
             break;
         case TokenType::OP_NOT:

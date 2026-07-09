@@ -306,6 +306,18 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
             break;
         }
         
+        
+        case DemiExpr::Kind::Unary: {
+            if (expr.unary_op == UnaryOp::Neg) {
+                int tmp = next_local_reg_++;
+                generate_expr(*expr.operand, tmp);
+                int zero = next_local_reg_++;
+                emit_load_imm(zero, 0);
+                emit_opcode(OP_SUB); emit_byte(static_cast<uint8_t>(zero)); emit_byte(static_cast<uint8_t>(tmp));
+                emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(static_cast<uint8_t>(zero));
+            }
+            break;
+        }
         case DemiExpr::Kind::Binary: {
             // Evaluate left into temp (not dest_reg — CALL clobbers R0)
             int left_reg = next_local_reg_++;
