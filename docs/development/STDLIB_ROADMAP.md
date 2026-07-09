@@ -24,7 +24,7 @@ The Demi stdlib has three implementation tiers:
 | Function | Tier | Status | Notes |
 |----------|------|--------|-------|
 | `console.print_i32(n)` | Builtin | ✅ DONE | Raw byte output |
-| `console.print_hex(n)` | Builtin | 🔲 | 8-char hex: "0000002A" |
+| `console.print_hex(n) | Builtin | ✅ DONE | 8-char hex | 8-char hex: "0000002A" |
 | `console.print_int(n)` | Builtin | 🔲 | Decimal ASCII digits |
 | `console.print_uint(n)` | Builtin | 🔲 | Unsigned decimal |
 | `console.print_float(f)` | Builtin | 🔲 | Via FPU ops |
@@ -47,7 +47,7 @@ The Demi stdlib has three implementation tiers:
 | `math.abs(n)` → i32 | Builtin | ✅ DONE | CMP+JGE+SUB from zero |
 | `math.min(a,b)` → i32 | Builtin | ✅ DONE | CMP+JLE+MOV |
 | `math.max(a,b)` → i32 | Builtin | ✅ DONE | CMP+JGE+MOV |
-| `math.clamp(x, lo, hi)` → i32 | Builtin | 🔲 | min(max(x, lo), hi) |
+| `math.clamp(x, lo, hi) → i32 | Builtin | ✅ DONE | min(max(x,lo), hi) | min(max(x, lo), hi) |
 | `math.pow(base, exp)` → i32 | Library | 🔲 | Repeated MUL loop |
 | `math.sqrt_f(f)` → float | Builtin | 🔲 | FSQRT FPU opcode |
 | `math.sin_f(f)` → float | Syscall | 🔲 | Need trig in VM or library |
@@ -102,10 +102,10 @@ The Demi stdlib has three implementation tiers:
 
 | Function | Tier | Status | Notes |
 |----------|------|--------|-------|
-| `sys.time_ms()` → i64 | Syscall | 🔲 | clock_gettime or rdtsc |
+| `sys.time_ms() | Syscall | ✅ DONE | Monotonic ms | clock_gettime or rdtsc |
 | `sys.sleep_ms(n)` | Syscall | 🔲 | usleep or nanosleep |
 | `sys.exit(code)` | Syscall | ✅ DONE | SYS_EXIT (INT 0x80 with RAX=1) |
-| `sys.alloc(bytes)` → addr | Syscall | 🔲 | Bump allocator in VM |
+| `sys.alloc(bytes) | Syscall | ✅ DONE | Bump allocator | Bump allocator in VM |
 | `sys.free(addr)` | Syscall | 🔲 | No-op for bump, or free list |
 | `sys.heap_used()` → i32 | Syscall | 🔲 | Current heap usage |
 | `sys.argc()` → i32 | Syscall | 🔲 | Command line arg count |

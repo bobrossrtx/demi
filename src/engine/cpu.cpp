@@ -1507,6 +1507,20 @@ void CPU::handle_syscall(bool& running) {
             result = 0;
             break;
 
+        case Syscall::SYS_TIME_MS: {
+            // Return monotonic milliseconds since epoch
+            auto now = std::chrono::steady_clock::now().time_since_epoch();
+            result = static_cast<long>(std::chrono::duration_cast<std::chrono::milliseconds>(now).count());
+            break;
+        }
+        case Syscall::SYS_RANDOM: {
+            // Return pseudo-random u32 (LCG)
+            static uint32_t seed = 12345;
+            seed = seed * 1103515245 + 12345;
+            result = static_cast<long>(seed);
+            break;
+        }
+
         default:
             Logging::ErrorHandler::instance().report_runtime(
                 Logging::ErrorCode::IO_GENERIC,
