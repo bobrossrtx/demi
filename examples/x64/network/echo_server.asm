@@ -1,7 +1,7 @@
 .section .data
 sockaddr:
     .byte 0x02, 0x00             ; AF_INET
-    .byte 0x1F, 0x90             ; port 8080 (network byte order)
+    .byte 0x23, 0x82             ; port 9090 (network byte order)
     .byte 0, 0, 0, 0             ; INADDR_ANY
     .byte 0,0,0,0,0,0,0,0        ; padding
 client_addr:
@@ -11,7 +11,7 @@ client_addr_len:
 buf:
     .space 1024
 msg_listen:
-    .string "Listening on port 8080\n"
+    .string "Listening on port 9090\n"
 msg_conn:
     .string "Client connected\n"
 msg_echo:

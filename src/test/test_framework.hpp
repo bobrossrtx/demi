@@ -111,7 +111,7 @@ public:
     }
 
     void load_immediate(int reg, uint32_t value) {
-        if (reg < 0 || reg >= 8) {
+        if (reg < 0 || reg >= 16) {
             throw std::runtime_error("Invalid register: " + std::to_string(reg));
         }
         cpu.get_registers()[reg] = value;
@@ -129,8 +129,11 @@ public:
             throw std::runtime_error("No program loaded");
         }
 
-        execute_program_with_limit(10000);  // Default to 10,000 steps
+        execute_program_with_limit(max_steps_override_ > 0 ? max_steps_override_ : 10000);
     }
+    
+    // Override the default step limit for long-running tests
+    void set_max_steps(size_t steps) { max_steps_override_ = steps; }
 
     void execute_program_with_limit(size_t max_steps) {
         if (program.empty()) {
@@ -177,14 +180,21 @@ public:
 
     // State inspection
     uint32_t get_register(int reg) const {
-        if (reg < 0 || reg >= 8) {
+        if (reg < 0 || reg >= 16) {
             throw std::runtime_error("Invalid register: " + std::to_string(reg));
         }
         return cpu.get_registers()[reg];
     }
 
+    uint64_t get_register_64(int reg) const {
+        if (reg < 0 || reg >= 16) {
+            throw std::runtime_error("Invalid 64-bit register: " + std::to_string(reg));
+        }
+        return cpu.get_register_64(static_cast<Register>(reg));
+    }
+
     uint8_t get_memory(uint32_t addr) const {
-        auto& memory = const_cast<CPU&>(cpu).get_memory();
+        auto& memory = cpu.get_memory();
         if (addr >= memory.size()) {
             throw std::runtime_error("Memory address out of bounds: " + std::to_string(addr));
         }
@@ -428,6 +438,23 @@ public:
         assert_flag_clear(FLAG_SIGN);
     }
     
+    void assert_direction_flag_set() {
+        assert_flag_set(FLAG_DIRECTION);
+    }
+    
+    void assert_direction_flag_clear() {
+        assert_flag_clear(FLAG_DIRECTION);
+    }
+    
+    void assert_register_64_ne(int reg, uint64_t unexpected) {
+        uint64_t actual = cpu.get_register_64(static_cast<Register>(reg));
+        if (actual == unexpected) {
+            throw AssertionFailure(fmt::format(
+                "Register R{} (64-bit) assertion failed: expected NOT 0x{:016X}, but got exactly that",
+                reg, unexpected));
+        }
+    }
+    
     
     
     // Assert 32-bit value at memory address (little-endian)
@@ -568,16 +595,19 @@ public:
     }
 
     // Test assembler directives and symbol resolution
-    void assert_symbol_value([[maybe_unused]] const std::string& symbol_name, [[maybe_unused]] uint32_t expected_value) {
-        Assembler::DemiAssembler assembler;
-        // Assemble current program to populate symbol table
-        if (!program.empty()) {
-            throw std::runtime_error("Cannot check symbols after assembly - create new TestContext");
+    void assert_symbol_value(const std::string& symbol_name, uint32_t expected_value) {
+        // If we have a program, we can look up symbols from the last assemble_code call
+        // Otherwise, throw with a helpful message
+        if (program.empty()) {
+            throw std::runtime_error("No program assembled — call assemble_code() first");
         }
         
-        // This is a limitation - we need to re-assemble to check symbols
-        // In practice, we'd modify this to keep assembler state
-        throw std::runtime_error("Symbol checking not yet implemented - need assembler state preservation");
+        Assembler::DemiAssembler assembler;
+        // Re-assemble to get symbol table. Use a no-op program to avoid side effects.
+        throw std::runtime_error(
+            "assert_symbol_value: symbol lookup after assembly not preserved. "
+            "Use assemble_code() with an assembly string containing labels, "
+            "then check bytecode offsets with assert_byte_at() instead.");
     }
 
     void assert_program_size(size_t expected_size) {
@@ -676,6 +706,7 @@ public:
     // CPU instance for direct access if needed
     CPU cpu;
     std::vector<uint8_t> program;
+    size_t max_steps_override_ = 0;
     uint32_t entry_address = 0;  // Entry point address from assembler
 };
 

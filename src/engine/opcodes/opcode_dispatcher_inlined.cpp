@@ -61,6 +61,85 @@ extern void handle_jge(CPU& cpu, const std::vector<uint8_t>& program, bool& runn
 extern void handle_jle(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_mod(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 
+// High-priority missing x86-equivalent opcodes
+extern void handle_adc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sbb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_imul(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_idiv(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sal(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sar(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+
+// Medium-priority opcodes
+extern void handle_clc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cld(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_std(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lahf(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sahf(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cbw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cwde(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cwd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cdq(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rol(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_ror(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_loop(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_loope(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_loopne(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rcl(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rcr(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setnz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setnc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_seto(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setno(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sets(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setns(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setge(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setl(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setle(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_xchg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_bswap(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsx(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movzx(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovo(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovno(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovnc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovnz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovs(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovns(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovge(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovl(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovle(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmova(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovbe(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stosb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stosw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stosd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lodsb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lodsw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lodsd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_bt(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_bts(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_btr(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_btc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmpxchg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_xadd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cpuid(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rdtsc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_syscall(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sysenter(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_enter(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rep(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+
 // 64-bit operation handlers
 extern void handle_add64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_sub64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
@@ -670,6 +749,77 @@ void dispatch_opcode_inlined(CPU& cpu, const std::vector<uint8_t>& program, bool
             case static_cast<uint8_t>(Opcode::CALL): handle_call(cpu, program, running); break;
             case static_cast<uint8_t>(Opcode::RET):  handle_ret(cpu, program, running);  break;
             
+            // High-priority missing x86-equivalent opcodes (0x44-0x49)
+            case 0x44: handle_adc(cpu, program, running); break;   // ADC
+            case 0x45: handle_sbb(cpu, program, running); break;   // SBB
+            case 0x46: handle_imul(cpu, program, running); break;  // IMUL
+            case 0x47: handle_idiv(cpu, program, running); break;  // IDIV
+            case 0x48: handle_sal(cpu, program, running); break;   // SAL
+            case 0x49: handle_sar(cpu, program, running); break;   // SAR
+            case 0x4A: handle_clc(cpu, program, running); break;    // CLC
+            case 0x4B: handle_stc(cpu, program, running); break;    // STC
+            case 0x4C: handle_cmc(cpu, program, running); break;    // CMC
+            case 0x4D: handle_cld(cpu, program, running); break;    // CLD
+            case 0x4E: handle_std(cpu, program, running); break;    // STD
+            case 0x4F: handle_lahf(cpu, program, running); break;   // LAHF
+            case 0x74: handle_sahf(cpu, program, running); break;   // SAHF
+            case 0x75: handle_cbw(cpu, program, running); break;    // CBW
+            case 0x76: handle_cwde(cpu, program, running); break;   // CWDE
+            case 0x77: handle_cwd(cpu, program, running); break;    // CWD
+            case 0x78: handle_cdq(cpu, program, running); break;    // CDQ
+            case 0x79: handle_rol(cpu, program, running); break;    // ROL
+            case 0x7A: handle_ror(cpu, program, running); break;    // ROR
+            case 0x7B: handle_loop(cpu, program, running); break;   // LOOP
+            case 0x7C: handle_loope(cpu, program, running); break;  // LOOPE
+            case 0x7D: handle_loopne(cpu, program, running); break; // LOOPNE
+            case 0x7E: handle_rcl(cpu, program, running); break;    // RCL
+            case 0x7F: handle_rcr(cpu, program, running); break;    // RCR
+            case 0x3A: handle_cmovo(cpu, program, running); break;  // CMOVO
+            case 0x3B: handle_cmovno(cpu, program, running); break; // CMOVNO
+            case 0x3C: handle_cmovc(cpu, program, running); break;  // CMOVC
+            case 0x3D: handle_cmovnc(cpu, program, running); break; // CMOVNC
+            case 0x3E: handle_cmovz(cpu, program, running); break;  // CMOVZ
+            case 0x3F: handle_cmovnz(cpu, program, running); break; // CMOVNZ
+            case 0x6A: handle_cmovs(cpu, program, running); break;  // CMOVS
+            case 0x6B: handle_cmovns(cpu, program, running); break; // CMOVNS
+            case 0x6C: handle_cmovg(cpu, program, running); break;  // CMOVG
+            case 0x6D: handle_cmovge(cpu, program, running); break; // CMOVGE
+            case 0x6E: handle_cmovl(cpu, program, running); break;  // CMOVL
+            case 0x6F: handle_cmovle(cpu, program, running); break; // CMOVLE
+            case 0xEB: handle_setz(cpu, program, running); break;   // SETZ
+            case 0xEC: handle_setnz(cpu, program, running); break;  // SETNZ
+            case 0xED: handle_setc(cpu, program, running); break;   // SETC
+            case 0xEE: handle_setnc(cpu, program, running); break;  // SETNC
+            case 0xEF: handle_seto(cpu, program, running); break;   // SETO
+            case 0xF0: handle_setno(cpu, program, running); break;  // SETNO
+            case 0xF1: handle_sets(cpu, program, running); break;   // SETS
+            case 0xF2: handle_setns(cpu, program, running); break;  // SETNS
+            case 0xF3: handle_setg(cpu, program, running); break;   // SETG
+            case 0xF4: handle_setge(cpu, program, running); break;  // SETGE
+            case 0xF5: handle_setl(cpu, program, running); break;   // SETL
+            case 0xF6: handle_setle(cpu, program, running); break;  // SETLE
+            case 0xF7: handle_xchg(cpu, program, running); break;  // XCHG
+            case 0xF8: handle_bswap(cpu, program, running); break; // BSWAP
+            case 0xF9: handle_movsx(cpu, program, running); break; // MOVSX
+            case 0xFC: handle_movzx(cpu, program, running); break; // MOVZX
+            case 0xFD: handle_cmova(cpu, program, running); break;  // CMOVA
+            case 0xFE: handle_cmovbe(cpu, program, running); break; // CMOVBE
+            case 0x9A: handle_movsb(cpu, program, running); break; // MOVSB
+            case 0x9B: handle_movsw(cpu, program, running); break; // MOVSW
+            case 0x9C: handle_movsd(cpu, program, running); break; // MOVSD
+            case 0x9D: handle_stosb(cpu, program, running); break; // STOSB
+            case 0x9E: handle_stosw(cpu, program, running); break; // STOSW
+            case 0x9F: handle_stosd(cpu, program, running); break; // STOSD
+            case 0xB7: handle_lodsb(cpu, program, running); break; // LODSB
+            case 0xB8: handle_lodsw(cpu, program, running); break; // LODSW
+            case 0xB9: handle_lodsd(cpu, program, running); break; // LODSD
+            case 0xBA: handle_bt(cpu, program, running); break;      // BT
+            case 0xBB: handle_bts(cpu, program, running); break;     // BTS
+            case 0xBC: handle_btr(cpu, program, running); break;     // BTR
+            case 0xBD: handle_btc(cpu, program, running); break;     // BTC
+            case 0xBE: handle_cmpxchg(cpu, program, running); break; // CMPXCHG
+            case 0xBF: handle_xadd(cpu, program, running); break;    // XADD
+            
             // 64-bit operations (0x50-0x5F range)
             case 0x50: handle_add64(cpu, program, running); break;  // ADD64
             case 0x51: handle_sub64(cpu, program, running); break;  // SUB64
@@ -796,6 +946,12 @@ init_dispatch_table:
         dispatch_table[0x27] = &&op_handler;    // JGE
         dispatch_table[0x28] = &&op_handler;    // JLE
         dispatch_table[0x29] = &&op_handler;    // MOD
+        dispatch_table[0x2A] = &&op_handler;    // CPUID
+        dispatch_table[0x2B] = &&op_handler;    // RDTSC
+        dispatch_table[0x2C] = &&op_handler;    // SYSCALL
+        dispatch_table[0x2D] = &&op_handler;    // SYSENTER
+        dispatch_table[0x2E] = &&op_handler;    // ENTER
+        dispatch_table[0x2F] = &&op_handler;    // REP
         
         // I/O operations
         dispatch_table[0x30] = &&op_handler;    // IN
@@ -808,12 +964,42 @@ init_dispatch_table:
         dispatch_table[0x37] = &&op_handler;    // OUTL
         dispatch_table[0x38] = &&op_handler;    // INSTR
         dispatch_table[0x39] = &&op_handler;    // OUTSTR
+        dispatch_table[0x3A] = &&op_handler;    // CMOVO
+        dispatch_table[0x3B] = &&op_handler;    // CMOVNO
+        dispatch_table[0x3C] = &&op_handler;    // CMOVC
+        dispatch_table[0x3D] = &&op_handler;    // CMOVNC
+        dispatch_table[0x3E] = &&op_handler;    // CMOVZ
+        dispatch_table[0x3F] = &&op_handler;    // CMOVNZ
         
         // Data and memory operations
         dispatch_table[static_cast<uint8_t>(Opcode::DB)] = &&op_handler;    // DB
         dispatch_table[0x41] = &&op_handler;    // LOADR
         dispatch_table[0x42] = &&op_debug;      // DEBUG
         dispatch_table[0x43] = &&op_handler;    // STORER
+        dispatch_table[0x44] = &&op_handler;    // ADC
+        dispatch_table[0x45] = &&op_handler;    // SBB
+        dispatch_table[0x46] = &&op_handler;    // IMUL
+        dispatch_table[0x47] = &&op_handler;    // IDIV
+        dispatch_table[0x48] = &&op_handler;    // SAL
+        dispatch_table[0x49] = &&op_handler;    // SAR
+        dispatch_table[0x4A] = &&op_handler;    // CLC
+        dispatch_table[0x4B] = &&op_handler;    // STC
+        dispatch_table[0x4C] = &&op_handler;    // CMC
+        dispatch_table[0x4D] = &&op_handler;    // CLD
+        dispatch_table[0x4E] = &&op_handler;    // STD
+        dispatch_table[0x4F] = &&op_handler;    // LAHF
+        dispatch_table[0x74] = &&op_handler;    // SAHF
+        dispatch_table[0x75] = &&op_handler;    // CBW
+        dispatch_table[0x76] = &&op_handler;    // CWDE
+        dispatch_table[0x77] = &&op_handler;    // CWD
+        dispatch_table[0x78] = &&op_handler;    // CDQ
+        dispatch_table[0x79] = &&op_handler;    // ROL
+        dispatch_table[0x7A] = &&op_handler;    // ROR
+        dispatch_table[0x7B] = &&op_handler;    // LOOP
+        dispatch_table[0x7C] = &&op_handler;    // LOOPE
+        dispatch_table[0x7D] = &&op_handler;    // LOOPNE
+        dispatch_table[0x7E] = &&op_handler;    // RCL
+        dispatch_table[0x7F] = &&op_handler;    // RCR
         
         // 64-bit operations (0x50-0x5F range)
         dispatch_table[0x50] = &&op_handler;    // ADD64
@@ -843,6 +1029,12 @@ init_dispatch_table:
         dispatch_table[0x67] = &&op_handler;    // STOREX
         dispatch_table[0x68] = &&op_handler;    // PUSHEX
         dispatch_table[0x69] = &&op_handler;    // POPEX
+        dispatch_table[0x6A] = &&op_handler;    // CMOVS
+        dispatch_table[0x6B] = &&op_handler;    // CMOVNS
+        dispatch_table[0x6C] = &&op_handler;    // CMOVG
+        dispatch_table[0x6D] = &&op_handler;    // CMOVGE
+        dispatch_table[0x6E] = &&op_handler;    // CMOVL
+        dispatch_table[0x6F] = &&op_handler;    // CMOVLE
         
         // CPU mode operations
         dispatch_table[0x70] = &&op_handler;    // MODE32
@@ -853,12 +1045,27 @@ init_dispatch_table:
         // SIMD Operations (0x80-0x9F range)
         for (int i = 0x80; i <= 0x99; i++) {
             dispatch_table[i] = &&op_handler;
+        dispatch_table[0x9A] = &&op_handler;    // MOVSB
+        dispatch_table[0x9B] = &&op_handler;    // MOVSW
+        dispatch_table[0x9C] = &&op_handler;    // MOVSD
+        dispatch_table[0x9D] = &&op_handler;    // STOSB
+        dispatch_table[0x9E] = &&op_handler;    // STOSW
+        dispatch_table[0x9F] = &&op_handler;    // STOSD
         }
         
         // FPU Operations (0xA0-0xBF range)
         for (int i = 0xA0; i <= 0xB6; i++) {
             dispatch_table[i] = &&op_handler;
         }
+        dispatch_table[0xB7] = &&op_handler;    // LODSB
+        dispatch_table[0xB8] = &&op_handler;    // LODSW
+        dispatch_table[0xB9] = &&op_handler;    // LODSD
+        dispatch_table[0xBA] = &&op_handler;    // BT
+        dispatch_table[0xBB] = &&op_handler;    // BTS
+        dispatch_table[0xBC] = &&op_handler;    // BTR
+        dispatch_table[0xBD] = &&op_handler;    // BTC
+        dispatch_table[0xBE] = &&op_handler;    // CMPXCHG
+        dispatch_table[0xBF] = &&op_handler;    // XADD
         
         // AVX Operations (0xC0-0xDF range)
         for (int i = 0xC0; i <= 0xDF; i++) {
@@ -869,6 +1076,26 @@ init_dispatch_table:
         for (int i = 0xE0; i <= 0xEA; i++) {
             dispatch_table[i] = &&op_handler;
         }
+        
+        // SETcc Conditional Set Byte (0xEB-0xF6)
+        dispatch_table[0xEB] = &&op_handler;    // SETZ
+        dispatch_table[0xEC] = &&op_handler;    // SETNZ
+        dispatch_table[0xED] = &&op_handler;    // SETC
+        dispatch_table[0xEE] = &&op_handler;    // SETNC
+        dispatch_table[0xEF] = &&op_handler;    // SETO
+        dispatch_table[0xF0] = &&op_handler;    // SETNO
+        dispatch_table[0xF1] = &&op_handler;    // SETS
+        dispatch_table[0xF2] = &&op_handler;    // SETNS
+        dispatch_table[0xF3] = &&op_handler;    // SETG
+        dispatch_table[0xF4] = &&op_handler;    // SETGE
+        dispatch_table[0xF5] = &&op_handler;    // SETL
+        dispatch_table[0xF6] = &&op_handler;    // SETLE
+        dispatch_table[0xF7] = &&op_handler;    // XCHG
+        dispatch_table[0xF8] = &&op_handler;    // BSWAP
+        dispatch_table[0xF9] = &&op_handler;    // MOVSX
+        dispatch_table[0xFC] = &&op_handler;    // MOVZX
+        dispatch_table[0xFD] = &&op_handler;    // CMOVA
+        dispatch_table[0xFE] = &&op_handler;    // CMOVBE
         
         initialized.store(true, std::memory_order_release);
         DEBUG_TRACE(Logging::DebugCategory::CPU_DISPATCHER, "Inlined threaded dispatcher initialized", "");

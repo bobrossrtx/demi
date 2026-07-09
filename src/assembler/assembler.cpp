@@ -204,6 +204,107 @@ void AssemblerEngine::init_opcode_table() {
     mnemonic_to_opcode["PACKB"] = 0xDA;
     mnemonic_to_opcode["UNPACKB"] = 0xDB;
 
+    // High-priority missing x86-equivalent opcodes (0x44-0x49)
+    mnemonic_to_opcode["ADC"] = static_cast<uint8_t>(Opcode::ADC);
+    mnemonic_to_opcode["SBB"] = static_cast<uint8_t>(Opcode::SBB);
+    mnemonic_to_opcode["IMUL"] = static_cast<uint8_t>(Opcode::IMUL);
+    mnemonic_to_opcode["IDIV"] = static_cast<uint8_t>(Opcode::IDIV);
+    mnemonic_to_opcode["SAL"] = static_cast<uint8_t>(Opcode::SAL);
+    mnemonic_to_opcode["SAR"] = static_cast<uint8_t>(Opcode::SAR);
+
+    // Medium-priority x86-equivalent opcodes (0x4A-0x4F, 0x74-0x7D)
+    mnemonic_to_opcode["CLC"] = static_cast<uint8_t>(Opcode::CLC);
+    mnemonic_to_opcode["STC"] = static_cast<uint8_t>(Opcode::STC);
+    mnemonic_to_opcode["CMC"] = static_cast<uint8_t>(Opcode::CMC);
+    mnemonic_to_opcode["CLD"] = static_cast<uint8_t>(Opcode::CLD);
+    mnemonic_to_opcode["STD"] = static_cast<uint8_t>(Opcode::STD);
+    mnemonic_to_opcode["LAHF"] = static_cast<uint8_t>(Opcode::LAHF);
+    mnemonic_to_opcode["SAHF"] = static_cast<uint8_t>(Opcode::SAHF);
+    mnemonic_to_opcode["CBW"] = static_cast<uint8_t>(Opcode::CBW);
+    mnemonic_to_opcode["CWDE"] = static_cast<uint8_t>(Opcode::CWDE);
+    mnemonic_to_opcode["CWD"] = static_cast<uint8_t>(Opcode::CWD);
+    mnemonic_to_opcode["CDQ"] = static_cast<uint8_t>(Opcode::CDQ);
+    mnemonic_to_opcode["ROL"] = static_cast<uint8_t>(Opcode::ROL);
+    mnemonic_to_opcode["ROR"] = static_cast<uint8_t>(Opcode::ROR);
+    mnemonic_to_opcode["LOOP"] = static_cast<uint8_t>(Opcode::LOOP);
+    mnemonic_to_opcode["LOOPE"] = static_cast<uint8_t>(Opcode::LOOPE);
+    mnemonic_to_opcode["LOOPNE"] = static_cast<uint8_t>(Opcode::LOOPNE);
+    mnemonic_to_opcode["RCL"] = static_cast<uint8_t>(Opcode::RCL);
+    mnemonic_to_opcode["RCR"] = static_cast<uint8_t>(Opcode::RCR);
+    mnemonic_to_opcode["SETZ"] = static_cast<uint8_t>(Opcode::SETZ);
+    mnemonic_to_opcode["SETE"] = static_cast<uint8_t>(Opcode::SETZ);
+    mnemonic_to_opcode["SETNZ"] = static_cast<uint8_t>(Opcode::SETNZ);
+    mnemonic_to_opcode["SETNE"] = static_cast<uint8_t>(Opcode::SETNZ);
+    mnemonic_to_opcode["SETC"] = static_cast<uint8_t>(Opcode::SETC);
+    mnemonic_to_opcode["SETB"] = static_cast<uint8_t>(Opcode::SETC);
+    mnemonic_to_opcode["SETNAE"] = static_cast<uint8_t>(Opcode::SETC);
+    mnemonic_to_opcode["SETNC"] = static_cast<uint8_t>(Opcode::SETNC);
+    mnemonic_to_opcode["SETNB"] = static_cast<uint8_t>(Opcode::SETNC);
+    mnemonic_to_opcode["SETAE"] = static_cast<uint8_t>(Opcode::SETNC);
+    mnemonic_to_opcode["SETO"] = static_cast<uint8_t>(Opcode::SETO);
+    mnemonic_to_opcode["SETNO"] = static_cast<uint8_t>(Opcode::SETNO);
+    mnemonic_to_opcode["SETS"] = static_cast<uint8_t>(Opcode::SETS);
+    mnemonic_to_opcode["SETNS"] = static_cast<uint8_t>(Opcode::SETNS);
+    mnemonic_to_opcode["SETG"] = static_cast<uint8_t>(Opcode::SETG);
+    mnemonic_to_opcode["SETNLE"] = static_cast<uint8_t>(Opcode::SETG);
+    mnemonic_to_opcode["SETGE"] = static_cast<uint8_t>(Opcode::SETGE);
+    mnemonic_to_opcode["SETNL"] = static_cast<uint8_t>(Opcode::SETGE);
+    mnemonic_to_opcode["SETL"] = static_cast<uint8_t>(Opcode::SETL);
+    mnemonic_to_opcode["SETNGE"] = static_cast<uint8_t>(Opcode::SETL);
+    mnemonic_to_opcode["SETLE"] = static_cast<uint8_t>(Opcode::SETLE);
+    mnemonic_to_opcode["SETNG"] = static_cast<uint8_t>(Opcode::SETLE);
+    mnemonic_to_opcode["XCHG"] = static_cast<uint8_t>(Opcode::XCHG);
+    mnemonic_to_opcode["BSWAP"] = static_cast<uint8_t>(Opcode::BSWAP);
+    mnemonic_to_opcode["MOVSX"] = static_cast<uint8_t>(Opcode::MOVSX);
+    mnemonic_to_opcode["MOVZX"] = static_cast<uint8_t>(Opcode::MOVZX);
+    mnemonic_to_opcode["MOVSB"] = static_cast<uint8_t>(Opcode::MOVSB);
+    mnemonic_to_opcode["MOVSW"] = static_cast<uint8_t>(Opcode::MOVSW);
+    mnemonic_to_opcode["MOVSD"] = static_cast<uint8_t>(Opcode::MOVSD);
+    mnemonic_to_opcode["STOSB"] = static_cast<uint8_t>(Opcode::STOSB);
+    mnemonic_to_opcode["STOSW"] = static_cast<uint8_t>(Opcode::STOSW);
+    mnemonic_to_opcode["STOSD"] = static_cast<uint8_t>(Opcode::STOSD);
+    mnemonic_to_opcode["LODSB"] = static_cast<uint8_t>(Opcode::LODSB);
+    mnemonic_to_opcode["LODSW"] = static_cast<uint8_t>(Opcode::LODSW);
+    mnemonic_to_opcode["LODSD"] = static_cast<uint8_t>(Opcode::LODSD);
+    mnemonic_to_opcode["BT"] = static_cast<uint8_t>(Opcode::BT);
+    mnemonic_to_opcode["BTS"] = static_cast<uint8_t>(Opcode::BTS);
+    mnemonic_to_opcode["BTR"] = static_cast<uint8_t>(Opcode::BTR);
+    mnemonic_to_opcode["BTC"] = static_cast<uint8_t>(Opcode::BTC);
+    mnemonic_to_opcode["CMPXCHG"] = static_cast<uint8_t>(Opcode::CMPXCHG);
+    mnemonic_to_opcode["XADD"] = static_cast<uint8_t>(Opcode::XADD);
+    mnemonic_to_opcode["CPUID"] = static_cast<uint8_t>(Opcode::CPUID);
+    mnemonic_to_opcode["RDTSC"] = static_cast<uint8_t>(Opcode::RDTSC);
+    mnemonic_to_opcode["SYSCALL"] = static_cast<uint8_t>(Opcode::SYSCALL);
+    mnemonic_to_opcode["SYSENTER"] = static_cast<uint8_t>(Opcode::SYSENTER);
+    mnemonic_to_opcode["ENTER"] = static_cast<uint8_t>(Opcode::ENTER);
+    mnemonic_to_opcode["REP"] = static_cast<uint8_t>(Opcode::REP);
+    mnemonic_to_opcode["CMOVO"] = static_cast<uint8_t>(Opcode::CMOVO);
+    mnemonic_to_opcode["CMOVNO"] = static_cast<uint8_t>(Opcode::CMOVNO);
+    mnemonic_to_opcode["CMOVC"] = static_cast<uint8_t>(Opcode::CMOVC);
+    mnemonic_to_opcode["CMOVB"] = static_cast<uint8_t>(Opcode::CMOVC);
+    mnemonic_to_opcode["CMOVNAE"] = static_cast<uint8_t>(Opcode::CMOVC);
+    mnemonic_to_opcode["CMOVNC"] = static_cast<uint8_t>(Opcode::CMOVNC);
+    mnemonic_to_opcode["CMOVNB"] = static_cast<uint8_t>(Opcode::CMOVNC);
+    mnemonic_to_opcode["CMOVAE"] = static_cast<uint8_t>(Opcode::CMOVNC);
+    mnemonic_to_opcode["CMOVZ"] = static_cast<uint8_t>(Opcode::CMOVZ);
+    mnemonic_to_opcode["CMOVE"] = static_cast<uint8_t>(Opcode::CMOVZ);
+    mnemonic_to_opcode["CMOVNZ"] = static_cast<uint8_t>(Opcode::CMOVNZ);
+    mnemonic_to_opcode["CMOVNE"] = static_cast<uint8_t>(Opcode::CMOVNZ);
+    mnemonic_to_opcode["CMOVS"] = static_cast<uint8_t>(Opcode::CMOVS);
+    mnemonic_to_opcode["CMOVNS"] = static_cast<uint8_t>(Opcode::CMOVNS);
+    mnemonic_to_opcode["CMOVG"] = static_cast<uint8_t>(Opcode::CMOVG);
+    mnemonic_to_opcode["CMOVNLE"] = static_cast<uint8_t>(Opcode::CMOVG);
+    mnemonic_to_opcode["CMOVGE"] = static_cast<uint8_t>(Opcode::CMOVGE);
+    mnemonic_to_opcode["CMOVNL"] = static_cast<uint8_t>(Opcode::CMOVGE);
+    mnemonic_to_opcode["CMOVL"] = static_cast<uint8_t>(Opcode::CMOVL);
+    mnemonic_to_opcode["CMOVNGE"] = static_cast<uint8_t>(Opcode::CMOVL);
+    mnemonic_to_opcode["CMOVLE"] = static_cast<uint8_t>(Opcode::CMOVLE);
+    mnemonic_to_opcode["CMOVNG"] = static_cast<uint8_t>(Opcode::CMOVLE);
+    mnemonic_to_opcode["CMOVA"] = static_cast<uint8_t>(Opcode::CMOVA);
+    mnemonic_to_opcode["CMOVNBE"] = static_cast<uint8_t>(Opcode::CMOVA);
+    mnemonic_to_opcode["CMOVBE"] = static_cast<uint8_t>(Opcode::CMOVBE);
+    mnemonic_to_opcode["CMOVNA"] = static_cast<uint8_t>(Opcode::CMOVBE);
+
     // SSE/SIMD ops already mapped above via Opcode enum (lines 130-161)
 }
 
@@ -286,6 +387,10 @@ void AssemblerEngine::init_encoder_map() {
     encoder_map_["AND"] = &AssemblerEngine::enc_alu_2reg;
     encoder_map_["OR"] = &AssemblerEngine::enc_alu_2reg;
     encoder_map_["XOR"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["ADC"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["SBB"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["IMUL"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["IDIV"] = &AssemblerEngine::enc_alu_2reg;
     encoder_map_["ADD64"] = &AssemblerEngine::enc_alu_2reg;
     encoder_map_["SUB64"] = &AssemblerEngine::enc_alu_2reg;
     encoder_map_["CMP64"] = &AssemblerEngine::enc_alu_2reg;
@@ -357,6 +462,107 @@ void AssemblerEngine::init_encoder_map() {
     encoder_map_["SHR"] = &AssemblerEngine::enc_shift;
     encoder_map_["SHL64"] = &AssemblerEngine::enc_shift;
     encoder_map_["SHR64"] = &AssemblerEngine::enc_shift;
+    encoder_map_["SAL"] = &AssemblerEngine::enc_shift;
+    encoder_map_["SAR"] = &AssemblerEngine::enc_shift;
+
+    // Flag operations — no operands (1 byte)
+    encoder_map_["CLC"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["STC"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["CMC"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["CLD"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["STD"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["LAHF"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["SAHF"] = &AssemblerEngine::enc_no_operands;
+
+    // Sign extension — no operands (1 byte)
+    encoder_map_["CBW"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["CWDE"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["CWD"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["CDQ"] = &AssemblerEngine::enc_no_operands;
+
+    // Rotates — same as shift (reg, imm)
+    encoder_map_["ROL"] = &AssemblerEngine::enc_shift;
+    encoder_map_["ROR"] = &AssemblerEngine::enc_shift;
+    encoder_map_["RCL"] = &AssemblerEngine::enc_shift;
+    encoder_map_["RCR"] = &AssemblerEngine::enc_shift;
+    encoder_map_["SETZ"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNZ"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETC"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETB"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNAE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNC"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNB"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETAE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETO"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNO"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETS"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNS"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETG"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNLE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETGE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNL"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETL"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNGE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETLE"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["SETNG"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["XCHG"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["BSWAP"] = &AssemblerEngine::enc_single_reg;
+    encoder_map_["MOVSX"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["MOVZX"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["MOVSB"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["MOVSW"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["MOVSD"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["STOSB"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["STOSW"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["STOSD"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["LODSB"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["LODSW"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["LODSD"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["BT"] = &AssemblerEngine::enc_shift;
+    encoder_map_["BTS"] = &AssemblerEngine::enc_shift;
+    encoder_map_["BTR"] = &AssemblerEngine::enc_shift;
+    encoder_map_["BTC"] = &AssemblerEngine::enc_shift;
+    encoder_map_["CMPXCHG"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["XADD"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CPUID"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["RDTSC"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["SYSCALL"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["SYSENTER"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["ENTER"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["REP"] = &AssemblerEngine::enc_no_operands;
+    encoder_map_["CMOVO"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNO"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVC"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVB"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNAE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNC"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNB"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVAE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVZ"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNZ"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVS"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNS"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVG"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNLE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVGE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNL"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVL"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNGE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVLE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNG"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVA"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNBE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVBE"] = &AssemblerEngine::enc_alu_2reg;
+    encoder_map_["CMOVNA"] = &AssemblerEngine::enc_alu_2reg;
+
+    // Counter loops — jump-like (label/address)
+    encoder_map_["LOOP"] = &AssemblerEngine::enc_jump;
+    encoder_map_["LOOPE"] = &AssemblerEngine::enc_jump;
+    encoder_map_["LOOPNE"] = &AssemblerEngine::enc_jump;
 
     encoder_map_["FLD"] = &AssemblerEngine::enc_fpu_ldst;
     encoder_map_["FST"] = &AssemblerEngine::enc_fpu_ldst;
@@ -1713,6 +1919,10 @@ size_t Assembler::AssemblerEngine::get_instruction_size(const std::string& mnemo
 
     // Basic instruction size calculations for Demi Engine
     if (effective_mnemonic == "NOP" || effective_mnemonic == "HALT" || effective_mnemonic == "RET" ||
+        effective_mnemonic == "CLC" || effective_mnemonic == "STC" || effective_mnemonic == "CMC" ||
+        effective_mnemonic == "CLD" || effective_mnemonic == "STD" ||
+        effective_mnemonic == "LAHF" || effective_mnemonic == "SAHF" ||
+        effective_mnemonic == "CBW" || effective_mnemonic == "CWDE" || effective_mnemonic == "CWD" || effective_mnemonic == "CDQ" ||
         effective_mnemonic == "PUSH_FLAG" || effective_mnemonic == "POP_FLAG" ||
         // Interrupt operations (no operands)
         effective_mnemonic == "CLI" || effective_mnemonic == "STI" || effective_mnemonic == "IRET" ||
@@ -1770,19 +1980,22 @@ size_t Assembler::AssemblerEngine::get_instruction_size(const std::string& mnemo
                effective_mnemonic == "SUBPD" || effective_mnemonic == "MULPD" || effective_mnemonic == "DIVPD" ||
                effective_mnemonic == "SQRTPD" || effective_mnemonic == "MAXPD" || effective_mnemonic == "MINPD" ||
                effective_mnemonic == "ANDPD" || effective_mnemonic == "ORPD" || effective_mnemonic == "XORPD" ||
-               effective_mnemonic == "CMPPD") {
+               effective_mnemonic == "CMPPD" ||
+               effective_mnemonic.rfind("CMOV", 0) == 0) {
         return 3; // opcode + reg1 + reg2 (2-operand instructions)
     } else if (effective_mnemonic == "JMP" || effective_mnemonic == "JZ" || effective_mnemonic == "JE" ||
                effective_mnemonic == "JNZ" || effective_mnemonic == "JNE" ||
                effective_mnemonic == "JS" || effective_mnemonic == "JNS" || effective_mnemonic == "JC" ||
                effective_mnemonic == "JNC" || effective_mnemonic == "JO" || effective_mnemonic == "JNO" ||
                effective_mnemonic == "JG" || effective_mnemonic == "JL" || effective_mnemonic == "JGE" ||
-               effective_mnemonic == "JLE" || effective_mnemonic == "CALL") {
+               effective_mnemonic == "JLE" || effective_mnemonic == "CALL" ||
+               effective_mnemonic == "LOOP" || effective_mnemonic == "LOOPE" || effective_mnemonic == "LOOPNE") {
         return 5; // opcode + 4-byte address
     } else if (effective_mnemonic == "PUSH" || effective_mnemonic == "POP" || effective_mnemonic == "INC" ||
                effective_mnemonic == "DEC" || effective_mnemonic == "NOT" || effective_mnemonic == "INC64" ||
                effective_mnemonic == "DEC64" || effective_mnemonic == "NOT64" ||
-               effective_mnemonic == "PUSHEX" || effective_mnemonic == "POPEX") {
+               effective_mnemonic == "PUSHEX" || effective_mnemonic == "POPEX" ||
+               effective_mnemonic.rfind("SET", 0) == 0) {
         return 2; // opcode + register
     } else if (effective_mnemonic == "LOADR" || effective_mnemonic == "STORER") {
         DEBUG_DETAIL(Logging::DebugCategory::ASM_ENCODING, "[PASS1_SIZE] {} -> 3 bytes (explicit LOADR/STORER)", effective_mnemonic);
@@ -1827,7 +2040,8 @@ size_t Assembler::AssemblerEngine::get_instruction_size(const std::string& mnemo
                effective_mnemonic == "INSTR" ||
                effective_mnemonic == "SWAP" || effective_mnemonic == "SHL" ||
                effective_mnemonic == "SHR" || effective_mnemonic == "SHL64" ||
-               effective_mnemonic == "SHR64") {
+               effective_mnemonic == "SHR64" || effective_mnemonic == "SAL" ||
+               effective_mnemonic == "SAR") {
         return 3; // opcode + register + port/immediate/register
     } else if (effective_mnemonic == "LOADEX" || effective_mnemonic == "STOREX") {
         return 10; // opcode + register + 8-byte address

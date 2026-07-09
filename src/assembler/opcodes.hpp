@@ -34,6 +34,7 @@ enum class Opcode : uint8_t {
     JGE = 0x27,         // Jump if greater or equal (signed)
     JLE = 0x28,         // Jump if less or equal (signed)
     MOD = 0x29,         // Modulo (remainder) reg1, reg2
+    CPUID = 0x2A, RDTSC = 0x2B, SYSCALL = 0x2C, SYSENTER = 0x2D, ENTER = 0x2E, REP = 0x2F,
 
     MUL = 0x10,         // Multiply reg1, reg2
     DIV = 0x11,         // Divide reg1, reg2
@@ -65,8 +66,11 @@ enum class Opcode : uint8_t {
     OUTL = 0x37,        // Output long from register to port/device
     INSTR = 0x38,       // Input instruction from port/device to register
     OUTSTR = 0x39,      // Output string from register to port/device
+    CMOVO = 0x3A, CMOVNO = 0x3B, CMOVC = 0x3C, CMOVNC = 0x3D, CMOVZ = 0x3E, CMOVNZ = 0x3F,
 
     DB = 0x40,          // Define byte
+    ADC = 0x44, SBB = 0x45, IMUL = 0x46, IDIV = 0x47, SAL = 0x48, SAR = 0x49,
+    CLC = 0x4A, STC = 0x4B, CMC = 0x4C, CLD = 0x4D, STD = 0x4E, LAHF = 0x4F,
 
     // Extended 64-bit Register Operations (0x50-0x6F range)
     ADD64 = 0x50,       // 64-bit Add reg1, reg2
@@ -97,12 +101,14 @@ enum class Opcode : uint8_t {
     STOREX = 0x67,      // Store from extended register to memory
     PUSHEX = 0x68,      // Push extended register onto stack
     POPEX = 0x69,       // Pop from stack to extended register
+    CMOVS = 0x6A, CMOVNS = 0x6B, CMOVG = 0x6C, CMOVGE = 0x6D, CMOVL = 0x6E, CMOVLE = 0x6F,
 
     // Mode Control Operations (0x70-0x7F range)
     MODE32 = 0x70,      // Switch to 32-bit mode
     MODE64 = 0x71,      // Switch to 64-bit mode
     MODECMP = 0x72,     // Compare current CPU mode
     MODEFLAG = 0x73,    // Set mode flag in RFLAGS register
+    SAHF = 0x74, CBW = 0x75, CWDE = 0x76, CWD = 0x77, CDQ = 0x78, ROL = 0x79, ROR = 0x7A, LOOP = 0x7B, LOOPE = 0x7C, LOOPNE = 0x7D, RCL = 0x7E, RCR = 0x7F,
 
     // SIMD Operations (0x80-0x9F range)
     MOVAPS = 0x80,      // Move Aligned Packed Single
@@ -133,6 +139,7 @@ enum class Opcode : uint8_t {
     ORPD = 0x97,        // Bitwise OR Packed Double
     XORPD = 0x98,       // Bitwise XOR Packed Double
     CMPPD = 0x99,       // Compare Packed Double
+    MOVSB = 0x9A, MOVSW = 0x9B, MOVSD = 0x9C, STOSB = 0x9D, STOSW = 0x9E, STOSD = 0x9F,
 
     // FPU Operations (0xA0-0xBF range)
     FLD = 0xA0,         // Load floating point value
@@ -160,6 +167,7 @@ enum class Opcode : uint8_t {
     FSTSW = 0xB4,       // Store status word
     FCOMPP = 0xB5,      // Compare and pop twice
     FUCOMPP = 0xB6,     // Unordered compare and pop twice
+    LODSB = 0xB7, LODSW = 0xB8, LODSD = 0xB9, BT = 0xBA, BTS = 0xBB, BTR = 0xBC, BTC = 0xBD, CMPXCHG = 0xBE, XADD = 0xBF,
 
     // AVX Operations (0xC0-0xDF range)
     VADDPS = 0xC0,      // AVX Add Packed Single
@@ -214,6 +222,7 @@ enum class Opcode : uint8_t {
     CLI = 0xFA,         // Clear interrupt flag (disable interrupts)
     STI = 0xFB,         // Set interrupt flag (enable interrupts)
 
+    SETZ = 0xEB, SETNZ = 0xEC, SETC = 0xED, SETNC = 0xEE, SETO = 0xEF, SETNO = 0xF0, SETS = 0xF1, SETNS = 0xF2, SETG = 0xF3, SETGE = 0xF4, SETL = 0xF5, SETLE = 0xF6, XCHG = 0xF7, BSWAP = 0xF8, MOVSX = 0xF9, MOVZX = 0xFC, CMOVA = 0xFD, CMOVBE = 0xFE,
     HALT = 0xFF         // Halt execution
 };
 

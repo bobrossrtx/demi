@@ -80,6 +80,85 @@ extern void handle_subex(CPU& cpu, const std::vector<uint8_t>& program, bool& ru
 extern void handle_loadex(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_storex(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 
+// High-priority missing x86-equivalent opcodes
+extern void handle_adc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sbb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_imul(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_idiv(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sal(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sar(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+
+// Medium-priority x86-equivalent opcodes
+extern void handle_clc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cld(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_std(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lahf(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sahf(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cbw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cwde(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cwd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cdq(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rol(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_ror(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_loop(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_loope(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_loopne(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rcl(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rcr(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setnz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setnc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_seto(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setno(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sets(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setns(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setge(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setl(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_setle(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_xchg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_bswap(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsx(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movzx(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovo(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovno(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovnc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovnz(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovs(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovns(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovge(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovl(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovle(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmova(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmovbe(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_movsd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stosb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stosw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_stosd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lodsb(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lodsw(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_lodsd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_bt(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_bts(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_btr(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_btc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cmpxchg(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_xadd(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_cpuid(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rdtsc(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_syscall(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_sysenter(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_enter(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_rep(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+
 // Interrupt operations
 extern void handle_cli(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_sti(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
@@ -207,6 +286,85 @@ void OpcodeRegistry::initialize_handlers() {
     REGISTER_OPCODE(0x31, handle_outl);       // OUTL
     REGISTER_OPCODE(0x32, handle_outstr);     // OUTSTR
     REGISTER_OPCODE(static_cast<uint8_t>(Opcode::DB), handle_db);         // DB
+    
+    // High-priority missing x86-equivalent opcodes (0x44-0x49)
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::ADC), handle_adc);       // ADC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SBB), handle_sbb);       // SBB
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::IMUL), handle_imul);     // IMUL
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::IDIV), handle_idiv);     // IDIV
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SAL), handle_sal);       // SAL
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SAR), handle_sar);       // SAR
+    
+    // Medium-priority x86-equivalent opcodes
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CLC), handle_clc);       // CLC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::STC), handle_stc);       // STC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMC), handle_cmc);       // CMC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CLD), handle_cld);       // CLD
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::STD), handle_std);       // STD
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::LAHF), handle_lahf);     // LAHF
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SAHF), handle_sahf);     // SAHF
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CBW), handle_cbw);       // CBW
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CWDE), handle_cwde);     // CWDE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CWD), handle_cwd);       // CWD
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CDQ), handle_cdq);       // CDQ
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::ROL), handle_rol);       // ROL
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::ROR), handle_ror);       // ROR
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::LOOP), handle_loop);     // LOOP
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::LOOPE), handle_loope);   // LOOPE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::LOOPNE), handle_loopne); // LOOPNE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::RCL), handle_rcl);         // RCL
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::RCR), handle_rcr);         // RCR
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETZ), handle_setz);     // SETZ
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETNZ), handle_setnz);   // SETNZ
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETC), handle_setc);     // SETC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETNC), handle_setnc);   // SETNC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETO), handle_seto);     // SETO
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETNO), handle_setno);   // SETNO
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETS), handle_sets);     // SETS
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETNS), handle_setns);   // SETNS
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETG), handle_setg);     // SETG
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETGE), handle_setge);   // SETGE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETL), handle_setl);     // SETL
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SETLE), handle_setle);   // SETLE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::XCHG), handle_xchg);       // XCHG
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::BSWAP), handle_bswap);     // BSWAP
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::MOVSX), handle_movsx);     // MOVSX
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::MOVZX), handle_movzx);     // MOVZX
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVO), handle_cmovo);     // CMOVO
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVNO), handle_cmovno);   // CMOVNO
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVC), handle_cmovc);     // CMOVC/B/NAE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVNC), handle_cmovnc);   // CMOVNC/NB/AE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVZ), handle_cmovz);     // CMOVZ/E
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVNZ), handle_cmovnz);   // CMOVNZ/NE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVS), handle_cmovs);     // CMOVS
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVNS), handle_cmovns);   // CMOVNS
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVG), handle_cmovg);     // CMOVG/NLE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVGE), handle_cmovge);   // CMOVGE/NL
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVL), handle_cmovl);     // CMOVL/NGE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVLE), handle_cmovle);   // CMOVLE/NG
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVA), handle_cmova);     // CMOVA/NBE
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMOVBE), handle_cmovbe);   // CMOVBE/NA
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::MOVSB), handle_movsb); // MOVSB
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::MOVSW), handle_movsw); // MOVSW
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::MOVSD), handle_movsd); // MOVSD
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::STOSB), handle_stosb); // STOSB
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::STOSW), handle_stosw); // STOSW
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::STOSD), handle_stosd); // STOSD
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::LODSB), handle_lodsb); // LODSB
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::LODSW), handle_lodsw); // LODSW
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::LODSD), handle_lodsd); // LODSD
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::BT), handle_bt);           // BT
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::BTS), handle_bts);         // BTS
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::BTR), handle_btr);         // BTR
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::BTC), handle_btc);         // BTC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CMPXCHG), handle_cmpxchg); // CMPXCHG
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::XADD), handle_xadd);       // XADD
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::CPUID), handle_cpuid);       // CPUID
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::RDTSC), handle_rdtsc);       // RDTSC
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SYSCALL), handle_syscall);   // SYSCALL
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::SYSENTER), handle_sysenter); // SYSENTER
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::ENTER), handle_enter);     // ENTER
+    REGISTER_OPCODE(static_cast<uint8_t>(Opcode::REP), handle_rep);         // REP
     
     // Extended 64-bit operations (temporary range until proper 0x50+ range implemented)
     REGISTER_OPCODE(0x34, handle_add64);      // ADD64

@@ -470,7 +470,7 @@ std::vector<uint8_t> make_elf64_executable(
     if (shared && dynamic_idx > 0) {
         uint32_t dynstr_num = static_cast<uint32_t>(next_idx + 5);  // .dynstr section number
         uint64_t dyn_vaddr = data_vaddr + (dyn_off - data_off_file);
-        push_shdr64(name_offs[dynamic_idx], 6, 2, dyn_vaddr, dyn_off, 96, 0, 0, 8, 16); // .dynamic (6 entries)
+        push_shdr64(name_offs[dynamic_idx], 6, 2, dyn_vaddr, dyn_off, 96, dynstr_num, 0, 8, 16); // .dynamic, link=.dynstr
         push_shdr64(name_offs[dynamic_idx+1], 11, 2, dynsym_vaddr, fdynsym.off, fdynsym.sz, dynstr_num, 1, 8, 24); // .dynsym, link=.dynstr
         push_shdr64(name_offs[dynamic_idx+2], 3, 2, dynstr_vaddr, fdynstr.off, fdynstr.sz, 0, 0, 1, 0); // .dynstr
     }

@@ -103,6 +103,85 @@ void handle_mod64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 #include "swap.hpp"
 #include "xor.hpp"
 
+// High-priority missing x86-equivalent opcodes
+#include "adc.hpp"
+#include "sbb.hpp"
+#include "imul.hpp"
+#include "idiv.hpp"
+#include "sal.hpp"
+#include "sar.hpp"
+
+// Medium-priority x86-equivalent opcodes
+#include "clc.hpp"
+#include "stc.hpp"
+#include "cmc.hpp"
+#include "cld.hpp"
+#include "std.hpp"
+#include "lahf.hpp"
+#include "sahf.hpp"
+#include "cbw.hpp"
+#include "cwde.hpp"
+#include "cwd.hpp"
+#include "cdq.hpp"
+#include "rol.hpp"
+#include "ror.hpp"
+#include "loop.hpp"
+#include "loope.hpp"
+#include "loopne.hpp"
+#include "rcl.hpp"
+#include "rcr.hpp"
+#include "setz.hpp"
+#include "setnz.hpp"
+#include "setc.hpp"
+#include "setnc.hpp"
+#include "seto.hpp"
+#include "setno.hpp"
+#include "sets.hpp"
+#include "setns.hpp"
+#include "setg.hpp"
+#include "setge.hpp"
+#include "setl.hpp"
+#include "setle.hpp"
+#include "xchg.hpp"
+#include "bswap.hpp"
+#include "movsx.hpp"
+#include "movzx.hpp"
+#include "cmovo.hpp"
+#include "cmovno.hpp"
+#include "cmovc.hpp"
+#include "cmovnc.hpp"
+#include "cmovz.hpp"
+#include "cmovnz.hpp"
+#include "cmovs.hpp"
+#include "cmovns.hpp"
+#include "cmovg.hpp"
+#include "cmovge.hpp"
+#include "cmovl.hpp"
+#include "cmovle.hpp"
+#include "cmova.hpp"
+#include "cmovbe.hpp"
+#include "movsb.hpp"
+#include "movsw.hpp"
+#include "movsd.hpp"
+#include "stosb.hpp"
+#include "stosw.hpp"
+#include "stosd.hpp"
+#include "lodsb.hpp"
+#include "lodsw.hpp"
+#include "lodsd.hpp"
+#include "bt.hpp"
+#include "bts.hpp"
+#include "btr.hpp"
+#include "btc.hpp"
+#include "cmpxchg.hpp"
+#include "xadd.hpp"
+#include "cpuid.hpp"
+#include "rdtsc.hpp"
+#include "syscall.hpp"
+#include "sysenter.hpp"
+#include "enter.hpp"
+#include "rep.hpp"
+
 // Extended 64-bit register operation headers
 #include "add64.hpp"
 #include "sub64.hpp"
@@ -4036,4 +4115,1513 @@ void handle_not64(CPU& cpu, const std::vector<uint8_t>& program, bool& running) 
     }
 
     cpu.print_state("NOT64");
+}
+
+// === High-Priority Missing x86-Equivalent Opcodes ===
+
+// ADC — Add with Carry: R[dst] = R[dst] + R[src] + CF
+void handle_adc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+
+    if (pc + 2 < program.size()) {
+        uint8_t reg1 = program[pc + 1];
+        uint8_t reg2 = program[pc + 2];
+
+        DEBUG_INSTRUCTION("ADC", pc, fmt::format("R{} += R{} + CF", reg1, reg2), "");
+
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
+            uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
+            uint32_t current_flags = cpu.get_flags();
+            uint64_t carry_in = (current_flags & FLAG_CARRY) ? 1 : 0;
+
+            uint64_t result = val1 + val2 + carry_in;
+            uint64_t mask = cpu.get_operand_mask();
+            uint64_t masked_result = result & mask;
+
+            // Zero Flag
+            if (masked_result == 0) {
+                current_flags |= FLAG_ZERO;
+            } else {
+                current_flags &= ~FLAG_ZERO;
+            }
+
+            // Sign Flag
+            if (cpu.is_32bit_mode()) {
+                if ((masked_result & 0x80000000) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            } else {
+                if ((masked_result & 0x8000000000000000ULL) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            }
+
+            // Carry Flag (unsigned overflow of full-precision result)
+            bool carry = false;
+            if (cpu.is_32bit_mode()) {
+                carry = (result > 0xFFFFFFFF);
+            } else {
+                carry = (result < val1 || (carry_in && result == val1));
+            }
+            if (carry) {
+                current_flags |= FLAG_CARRY;
+            } else {
+                current_flags &= ~FLAG_CARRY;
+            }
+
+            // Overflow Flag (signed overflow)
+            bool sign1, sign2, signR;
+            if (cpu.is_32bit_mode()) {
+                sign1 = (val1 & 0x80000000) != 0;
+                sign2 = (val2 & 0x80000000) != 0;
+                signR = (masked_result & 0x80000000) != 0;
+            } else {
+                sign1 = (val1 & 0x8000000000000000ULL) != 0;
+                sign2 = (val2 & 0x8000000000000000ULL) != 0;
+                signR = (masked_result & 0x8000000000000000ULL) != 0;
+            }
+            if ((sign1 == sign2) && (sign1 != signR)) {
+                current_flags |= FLAG_OVERFLOW;
+            } else {
+                current_flags &= ~FLAG_OVERFLOW;
+            }
+
+            cpu.set_flags(current_flags);
+            cpu.set_register_mode_aware(static_cast<Register>(reg1), result);
+
+            DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                "[PC=0x{:04X}] [ADC] R{}: {} + {} + {} = {} (carry={}, overflow={})",
+                pc, reg1, val1, val2, carry_in, result,
+                (cpu.get_flags() & FLAG_CARRY) ? 1 : 0,
+                (cpu.get_flags() & FLAG_OVERFLOW) ? 1 : 0
+            ), DebugLevel::DETAIL);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("ADC");
+}
+
+// SBB — Subtract with Borrow: R[dst] = R[dst] - R[src] - CF
+void handle_sbb(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+
+    if (pc + 2 < program.size()) {
+        uint8_t reg1 = program[pc + 1];
+        uint8_t reg2 = program[pc + 2];
+
+        DEBUG_INSTRUCTION("SBB", pc, fmt::format("R{} -= R{} + CF", reg1, reg2), "");
+
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
+            uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
+            uint32_t current_flags = cpu.get_flags();
+            uint64_t borrow_in = (current_flags & FLAG_CARRY) ? 1 : 0;
+
+            uint64_t subtrahend = val2 + borrow_in;
+            uint64_t result = val1 - subtrahend;
+            uint64_t mask = cpu.get_operand_mask();
+            uint64_t masked_result = result & mask;
+
+            // Zero Flag
+            if (masked_result == 0) {
+                current_flags |= FLAG_ZERO;
+            } else {
+                current_flags &= ~FLAG_ZERO;
+            }
+
+            // Sign Flag
+            if (cpu.is_32bit_mode()) {
+                if ((masked_result & 0x80000000) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            } else {
+                if ((masked_result & 0x8000000000000000ULL) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            }
+
+            // Borrow Flag (Carry flag is set on borrow)
+            bool borrow = false;
+            if (cpu.is_32bit_mode()) {
+                borrow = (static_cast<uint32_t>(val1) < static_cast<uint32_t>(subtrahend));
+            } else {
+                borrow = (val1 < subtrahend);
+            }
+            if (borrow) {
+                current_flags |= FLAG_CARRY;
+            } else {
+                current_flags &= ~FLAG_CARRY;
+            }
+
+            // Overflow Flag (signed overflow)
+            bool sign1, sign2, signR;
+            if (cpu.is_32bit_mode()) {
+                sign1 = (val1 & 0x80000000) != 0;
+                sign2 = (val2 & 0x80000000) != 0;
+                signR = (masked_result & 0x80000000) != 0;
+            } else {
+                sign1 = (val1 & 0x8000000000000000ULL) != 0;
+                sign2 = (val2 & 0x8000000000000000ULL) != 0;
+                signR = (masked_result & 0x8000000000000000ULL) != 0;
+            }
+            // Overflow on SUB: sign1 != sign2 AND sign1 != signR
+            if ((sign1 != sign2) && (sign1 != signR)) {
+                current_flags |= FLAG_OVERFLOW;
+            } else {
+                current_flags &= ~FLAG_OVERFLOW;
+            }
+
+            cpu.set_flags(current_flags);
+            cpu.set_register_mode_aware(static_cast<Register>(reg1), result);
+
+            DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                "[PC=0x{:04X}] [SBB] R{}: {} - ({} + {}) = {} (borrow={}, overflow={})",
+                pc, reg1, val1, val2, borrow_in, result,
+                (cpu.get_flags() & FLAG_CARRY) ? 1 : 0,
+                (cpu.get_flags() & FLAG_OVERFLOW) ? 1 : 0
+            ), DebugLevel::DETAIL);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("SBB");
+}
+
+// IMUL — Signed Multiply: R[dst] = R[dst] * R[src] (signed)
+// Sets CF/OF if upper half is not the sign-extension of lower half
+void handle_imul(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+
+    if (pc + 2 < program.size()) {
+        uint8_t reg1 = program[pc + 1];
+        uint8_t reg2 = program[pc + 2];
+
+        DEBUG_INSTRUCTION("IMUL", pc, fmt::format("R{} *= R{} (signed)", reg1, reg2), "");
+
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
+            uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
+
+            int64_t sval1, sval2;
+            uint64_t mask = cpu.get_operand_mask();
+
+            if (cpu.is_32bit_mode()) {
+                sval1 = static_cast<int64_t>(static_cast<int32_t>(val1 & 0xFFFFFFFF));
+                sval2 = static_cast<int64_t>(static_cast<int32_t>(val2 & 0xFFFFFFFF));
+            } else {
+                sval1 = static_cast<int64_t>(val1);
+                sval2 = static_cast<int64_t>(val2);
+            }
+
+#if defined(__GNUC__) || defined(__clang__)
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wpedantic"
+            __int128 signed_result = static_cast<__int128>(sval1) * static_cast<__int128>(sval2);
+            uint64_t result = static_cast<uint64_t>(signed_result);
+            #pragma GCC diagnostic pop
+#else
+            int64_t result = sval1 * sval2;
+#endif
+
+            uint64_t masked_result = result & mask;
+
+            uint32_t current_flags = cpu.get_flags();
+
+            // Zero Flag
+            if (masked_result == 0) {
+                current_flags |= FLAG_ZERO;
+            } else {
+                current_flags &= ~FLAG_ZERO;
+            }
+
+            // Sign Flag
+            if (cpu.is_32bit_mode()) {
+                if ((masked_result & 0x80000000) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            } else {
+                if ((masked_result & 0x8000000000000000ULL) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            }
+
+            // CF/OF: set if upper half is not the sign-extension of the lower half
+            bool overflow = false;
+            if (cpu.is_32bit_mode()) {
+                // Check if the 64-bit signed result fits in 32 bits (sign-extended)
+                int64_t truncated = static_cast<int64_t>(static_cast<int32_t>(result & 0xFFFFFFFF));
+                overflow = (truncated != static_cast<int64_t>(signed_result));
+            } else {
+                // Check if the 128-bit result fits in 64 bits (sign-extended)
+                int64_t truncated_result = static_cast<int64_t>(result);
+                __int128 upper = signed_result >> 64;
+                overflow = (upper != 0 && upper != -1) ||
+                           ((static_cast<int64_t>(result) < 0) != (static_cast<int64_t>(static_cast<uint64_t>(signed_result)) < 0));
+                // Simpler: the upper 64 bits must be all 0 or all 1 (sign extension of lower half)
+                uint64_t upper64 = static_cast<uint64_t>(static_cast<__int128>(signed_result) >> 64);
+                bool lower_negative = (result & 0x8000000000000000ULL) != 0;
+                overflow = !((lower_negative && upper64 == 0xFFFFFFFFFFFFFFFFULL) ||
+                             (!lower_negative && upper64 == 0));
+            }
+
+            if (overflow) {
+                current_flags |= FLAG_CARRY;
+                current_flags |= FLAG_OVERFLOW;
+            } else {
+                current_flags &= ~FLAG_CARRY;
+                current_flags &= ~FLAG_OVERFLOW;
+            }
+
+            cpu.set_flags(current_flags);
+            cpu.set_register_mode_aware(static_cast<Register>(reg1), result);
+
+            DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                "[PC=0x{:04X}] [IMUL] R{}: {} * {} = {} (signed) (carry={}, overflow={})",
+                pc, reg1, static_cast<int64_t>(sval1), static_cast<int64_t>(sval2),
+                static_cast<int64_t>(result),
+                (cpu.get_flags() & FLAG_CARRY) ? 1 : 0,
+                (cpu.get_flags() & FLAG_OVERFLOW) ? 1 : 0
+            ), DebugLevel::DETAIL);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("IMUL");
+}
+
+// IDIV — Signed Divide: R[dst] = R[dst] / R[src] (signed)
+// Special case: INT_MIN / -1 is undefined (sets overflow, leaves dst unchanged)
+void handle_idiv(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+
+    if (pc + 2 < program.size()) {
+        uint8_t reg1 = program[pc + 1];
+        uint8_t reg2 = program[pc + 2];
+
+        DEBUG_INSTRUCTION("IDIV", pc, fmt::format("R{} /= R{} (signed)", reg1, reg2), "");
+
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
+            uint64_t val2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
+
+            int64_t sval1, sval2;
+            if (cpu.is_32bit_mode()) {
+                sval1 = static_cast<int64_t>(static_cast<int32_t>(val1 & 0xFFFFFFFF));
+                sval2 = static_cast<int64_t>(static_cast<int32_t>(val2 & 0xFFFFFFFF));
+            } else {
+                sval1 = static_cast<int64_t>(val1);
+                sval2 = static_cast<int64_t>(val2);
+            }
+
+            uint32_t current_flags = cpu.get_flags();
+
+            if (sval2 == 0) {
+                // Division by zero — undefined, leave result and flags unchanged
+                DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                    "[PC=0x{:04X}] [IDIV] Division by zero — result unchanged", pc
+                ), DebugLevel::IMPORTANT);
+            } else if (cpu.is_32bit_mode() &&
+                       sval1 == INT32_MIN && sval2 == -1) {
+                // INT32_MIN / -1 overflows 32-bit signed range
+                current_flags |= FLAG_OVERFLOW;
+                DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                    "[PC=0x{:04X}] [IDIV] INT32_MIN / -1 overflow — result unchanged", pc
+                ), DebugLevel::IMPORTANT);
+            } else if (!cpu.is_32bit_mode() &&
+                       sval1 == INT64_MIN && sval2 == -1) {
+                // INT64_MIN / -1 overflows 64-bit signed range
+                current_flags |= FLAG_OVERFLOW;
+                DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                    "[PC=0x{:04X}] [IDIV] INT64_MIN / -1 overflow — result unchanged", pc
+                ), DebugLevel::IMPORTANT);
+            } else {
+                int64_t result = sval1 / sval2;
+                uint64_t mask = cpu.get_operand_mask();
+                uint64_t masked_result = static_cast<uint64_t>(result) & mask;
+
+                // Zero Flag
+                if (masked_result == 0) {
+                    current_flags |= FLAG_ZERO;
+                } else {
+                    current_flags &= ~FLAG_ZERO;
+                }
+
+                // Sign Flag
+                if (cpu.is_32bit_mode()) {
+                    if ((masked_result & 0x80000000) != 0) current_flags |= FLAG_SIGN;
+                    else current_flags &= ~FLAG_SIGN;
+                } else {
+                    if ((masked_result & 0x8000000000000000ULL) != 0) current_flags |= FLAG_SIGN;
+                    else current_flags &= ~FLAG_SIGN;
+                }
+
+                // IDIV clears CF and OF on valid division
+                current_flags &= ~FLAG_CARRY;
+                current_flags &= ~FLAG_OVERFLOW;
+
+                cpu.set_register_mode_aware(static_cast<Register>(reg1), static_cast<uint64_t>(result));
+
+                DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                    "[PC=0x{:04X}] [IDIV] R{}: {} / {} = {} (signed)",
+                    pc, reg1, sval1, sval2, result
+                ), DebugLevel::DETAIL);
+            }
+
+            cpu.set_flags(current_flags);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("IDIV");
+}
+
+// SAL — Shift Arithmetic Left: identical to SHL (x86 SAL and SHL are the same opcode)
+void handle_sal(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+
+    if (pc + 2 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        uint8_t imm = program[pc + 2];
+
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+            uint64_t result = val << imm;
+            uint64_t mask = cpu.get_operand_mask();
+            uint64_t masked_result = result & mask;
+
+            uint32_t current_flags = cpu.get_flags();
+
+            // Zero Flag
+            if (masked_result == 0) {
+                current_flags |= FLAG_ZERO;
+            } else {
+                current_flags &= ~FLAG_ZERO;
+            }
+
+            // Sign Flag
+            if (cpu.is_32bit_mode()) {
+                if ((masked_result & 0x80000000) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            } else {
+                if ((masked_result & 0x8000000000000000ULL) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            }
+
+            // Carry Flag (last bit shifted out)
+            if (imm > 0) {
+                bool carry = false;
+                if (cpu.is_32bit_mode()) {
+                    if (imm <= 32) {
+                        carry = (val & (1ULL << (32 - imm))) != 0;
+                    }
+                } else {
+                    if (imm <= 64) {
+                        carry = (val & (1ULL << (64 - imm))) != 0;
+                    }
+                }
+                if (carry) {
+                    current_flags |= FLAG_CARRY;
+                } else {
+                    current_flags &= ~FLAG_CARRY;
+                }
+            }
+
+            // Overflow Flag (only for 1-bit shifts)
+            if (imm == 1) {
+                bool msb_before, msb_after;
+                if (cpu.is_32bit_mode()) {
+                    msb_before = (val & 0x80000000) != 0;
+                    msb_after = (masked_result & 0x80000000) != 0;
+                } else {
+                    msb_before = (val & 0x8000000000000000ULL) != 0;
+                    msb_after = (masked_result & 0x8000000000000000ULL) != 0;
+                }
+                if (msb_before != msb_after) {
+                    current_flags |= FLAG_OVERFLOW;
+                } else {
+                    current_flags &= ~FLAG_OVERFLOW;
+                }
+            }
+
+            cpu.set_flags(current_flags);
+            cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+
+            DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                "[PC=0x{:04X}] [SAL] R{} << {} = {} (carry={})",
+                pc, reg, imm, result,
+                (cpu.get_flags() & FLAG_CARRY) ? 1 : 0
+            ), DebugLevel::DETAIL);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("SAL");
+}
+
+// SAR — Shift Arithmetic Right: sign-extending right shift
+void handle_sar(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+
+    if (pc + 2 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        uint8_t imm = program[pc + 2];
+
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+
+            // Arithmetic right shift: preserve the sign bit
+            uint64_t result;
+            if (cpu.is_32bit_mode()) {
+                int32_t sval = static_cast<int32_t>(val & 0xFFFFFFFF);
+                result = static_cast<uint64_t>(static_cast<uint32_t>(sval >> imm));
+            } else {
+                int64_t sval = static_cast<int64_t>(val);
+                result = static_cast<uint64_t>(sval >> imm);
+            }
+
+            uint64_t mask = cpu.get_operand_mask();
+            uint64_t masked_result = result & mask;
+
+            uint32_t current_flags = cpu.get_flags();
+
+            // Zero Flag
+            if (masked_result == 0) {
+                current_flags |= FLAG_ZERO;
+            } else {
+                current_flags &= ~FLAG_ZERO;
+            }
+
+            // Sign Flag
+            if (cpu.is_32bit_mode()) {
+                if ((masked_result & 0x80000000) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            } else {
+                if ((masked_result & 0x8000000000000000ULL) != 0) current_flags |= FLAG_SIGN;
+                else current_flags &= ~FLAG_SIGN;
+            }
+
+            // Carry Flag (last bit shifted out)
+            if (imm > 0) {
+                bool carry = (val & (1ULL << (imm - 1))) != 0;
+                if (carry) {
+                    current_flags |= FLAG_CARRY;
+                } else {
+                    current_flags &= ~FLAG_CARRY;
+                }
+            }
+
+            // Overflow Flag (only for 1-bit shifts)
+            if (imm == 1) {
+                bool msb;
+                if (cpu.is_32bit_mode()) {
+                    msb = (val & 0x80000000) != 0;
+                } else {
+                    msb = (val & 0x8000000000000000ULL) != 0;
+                }
+                if (msb) {
+                    current_flags |= FLAG_OVERFLOW;
+                } else {
+                    current_flags &= ~FLAG_OVERFLOW;
+                }
+            }
+
+            cpu.set_flags(current_flags);
+            cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+
+            DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                "[PC=0x{:04X}] [SAR] R{} >> {} (arithmetic) = {} (carry={})",
+                pc, reg, imm, static_cast<int64_t>(result),
+                (cpu.get_flags() & FLAG_CARRY) ? 1 : 0
+            ), DebugLevel::DETAIL);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("SAR");
+}
+
+// === Medium-Priority x86-Equivalent Opcodes ===
+
+// CLC — Clear Carry Flag
+void handle_clc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint32_t flags = cpu.get_flags();
+    flags &= ~FLAG_CARRY;
+    cpu.set_flags(flags);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("CLC");
+}
+
+// STC — Set Carry Flag
+void handle_stc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint32_t flags = cpu.get_flags();
+    flags |= FLAG_CARRY;
+    cpu.set_flags(flags);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("STC");
+}
+
+// CMC — Complement Carry Flag
+void handle_cmc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint32_t flags = cpu.get_flags();
+    flags ^= FLAG_CARRY;
+    cpu.set_flags(flags);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("CMC");
+}
+
+// CLD — Clear Direction Flag
+void handle_cld(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint32_t flags = cpu.get_flags();
+    flags &= ~FLAG_DIRECTION;
+    cpu.set_flags(flags);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("CLD");
+}
+
+// STD — Set Direction Flag
+void handle_std(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint32_t flags = cpu.get_flags();
+    flags |= FLAG_DIRECTION;
+    cpu.set_flags(flags);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("STD");
+}
+
+// LAHF — Load Flags into AH (bits 8-15 of RAX)
+// SF:ZF:0:AF:0:PF:1:CF → bit layout: 7:6:5:4:3:2:1:0
+void handle_lahf(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint32_t flags = cpu.get_flags();
+    uint8_t ah = 0;
+    if (flags & FLAG_SIGN)      ah |= 0x80;  // SF → bit 7
+    if (flags & FLAG_ZERO)      ah |= 0x40;  // ZF → bit 6
+    // AF = 0, PF = 0 (not implemented in VM)
+    ah |= 0x02;  // bit 1 always 1 in LAHF
+    if (flags & FLAG_CARRY)     ah |= 0x01;  // CF → bit 0
+
+    // Place AH into RAX bits 15:8 (bit-shift into position 8)
+    uint64_t rax = cpu.get_register_mode_aware(static_cast<Register>(0));
+    rax = (rax & 0xFFFFFFFFFFFF00FFULL) | (static_cast<uint64_t>(ah) << 8);
+    cpu.set_register_mode_aware(static_cast<Register>(0), rax);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("LAHF");
+}
+
+// SAHF — Store AH into Flags
+void handle_sahf(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint64_t rax = cpu.get_register_mode_aware(static_cast<Register>(0));
+    uint8_t ah = static_cast<uint8_t>((rax >> 8) & 0xFF);
+
+    uint32_t flags = cpu.get_flags();
+    // SF ← bit 7
+    if (ah & 0x80) flags |= FLAG_SIGN; else flags &= ~FLAG_SIGN;
+    // ZF ← bit 6
+    if (ah & 0x40) flags |= FLAG_ZERO; else flags &= ~FLAG_ZERO;
+    // CF ← bit 0
+    if (ah & 0x01) flags |= FLAG_CARRY; else flags &= ~FLAG_CARRY;
+    // Bits 5,3,1 ignored (AF, PF, reserved)
+    cpu.set_flags(flags);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("SAHF");
+}
+
+// CBW — Convert Byte to Word: sign-extend AL to AX
+void handle_cbw(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint64_t rax = cpu.get_register_mode_aware(static_cast<Register>(0));
+    int8_t al = static_cast<int8_t>(rax & 0xFF);
+    int16_t ax = static_cast<int16_t>(al);
+    // Place sign-extended value into lower 16 bits, preserve upper bits
+    rax = (rax & 0xFFFFFFFFFFFF0000ULL) | (static_cast<uint16_t>(ax));
+    cpu.set_register_mode_aware(static_cast<Register>(0), rax);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("CBW");
+}
+
+// CWDE — Convert Word to Doubleword: sign-extend AX to EAX
+void handle_cwde(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint64_t rax = cpu.get_register_mode_aware(static_cast<Register>(0));
+    int16_t ax = static_cast<int16_t>(rax & 0xFFFF);
+    int32_t eax = static_cast<int32_t>(ax);
+    // Place into lower 32 bits
+    rax = (rax & 0xFFFFFFFF00000000ULL) | (static_cast<uint32_t>(eax));
+    cpu.set_register_mode_aware(static_cast<Register>(0), rax);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("CWDE");
+}
+
+// CWD — Convert Word to Doubleword: sign-extend AX to DX:AX
+void handle_cwd(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint64_t rax = cpu.get_register_mode_aware(static_cast<Register>(0));
+    int16_t ax = static_cast<int16_t>(rax & 0xFFFF);
+    int32_t dword = static_cast<int32_t>(ax);
+    // DX gets high 16 bits (sign extension), AX gets low 16 bits
+    uint16_t dx_val = static_cast<uint16_t>((dword >> 16) & 0xFFFF);
+    uint16_t ax_val = static_cast<uint16_t>(dword & 0xFFFF);
+    // DX is register 2 (RDX)
+    uint64_t rdx = cpu.get_register_mode_aware(static_cast<Register>(2));
+    rdx = (rdx & 0xFFFFFFFFFFFF0000ULL) | dx_val;
+    cpu.set_register_mode_aware(static_cast<Register>(2), rdx);
+    rax = (rax & 0xFFFFFFFFFFFF0000ULL) | ax_val;
+    cpu.set_register_mode_aware(static_cast<Register>(0), rax);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("CWD");
+}
+
+// CDQ — Convert Doubleword to Quadword: sign-extend EAX to EDX:EAX
+void handle_cdq(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    uint64_t rax = cpu.get_register_mode_aware(static_cast<Register>(0));
+    int32_t eax = static_cast<int32_t>(rax & 0xFFFFFFFF);
+    int64_t qword = static_cast<int64_t>(eax);
+    // EDX (R2) gets high 32 bits, EAX gets low 32 bits
+    uint32_t edx_val = static_cast<uint32_t>((qword >> 32) & 0xFFFFFFFF);
+    uint32_t eax_val = static_cast<uint32_t>(qword & 0xFFFFFFFF);
+    uint64_t rdx = cpu.get_register_mode_aware(static_cast<Register>(2));
+    rdx = (rdx & 0xFFFFFFFF00000000ULL) | edx_val;
+    cpu.set_register_mode_aware(static_cast<Register>(2), rdx);
+    rax = (rax & 0xFFFFFFFF00000000ULL) | eax_val;
+    cpu.set_register_mode_aware(static_cast<Register>(0), rax);
+    cpu.set_pc(pc + 1);
+    cpu.print_state("CDQ");
+}
+
+// ROL — Rotate Left: bits shifted out on left come back in on right
+void handle_rol(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        uint8_t imm = program[pc + 2];
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+            uint64_t mask = cpu.get_operand_mask();
+            uint32_t current_flags = cpu.get_flags();
+
+            uint64_t effective_shift = imm;
+            if (cpu.is_32bit_mode()) {
+                effective_shift = imm & 0x1F;  // Mask to 5 bits for 32-bit
+                uint32_t val32 = static_cast<uint32_t>(val);
+                uint32_t result32 = (val32 << effective_shift) | (val32 >> (32 - effective_shift));
+                uint64_t result = (val & 0xFFFFFFFF00000000ULL) | result32;
+                uint32_t masked = result32 & 0xFFFFFFFF;
+
+                if (imm > 0 && ((masked & 1) != 0)) current_flags |= FLAG_CARRY;
+                else if (imm > 0) current_flags &= ~FLAG_CARRY;
+
+                if (masked == 0) current_flags |= FLAG_ZERO;
+                else current_flags &= ~FLAG_ZERO;
+
+                cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+            } else {
+                effective_shift = imm & 0x3F;  // Mask to 6 bits for 64-bit
+                uint64_t result = (val << effective_shift) | (val >> (64 - effective_shift));
+                uint64_t masked = result & mask;
+
+                if (imm > 0 && ((masked & 1) != 0)) current_flags |= FLAG_CARRY;
+                else if (imm > 0) current_flags &= ~FLAG_CARRY;
+
+                if (masked == 0) current_flags |= FLAG_ZERO;
+                else current_flags &= ~FLAG_ZERO;
+
+                cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+            }
+
+            // ROL: overflow flag undefined for multi-bit, defined for 1-bit
+            if (imm == 1) {
+                bool msb_before, msb_after;
+                if (cpu.is_32bit_mode()) {
+                    msb_before = (val & 0x80000000) != 0;
+                    msb_after = (cpu.get_register_mode_aware(static_cast<Register>(reg)) & 0x80000000) != 0;
+                } else {
+                    msb_before = (val & 0x8000000000000000ULL) != 0;
+                    msb_after = (cpu.get_register_mode_aware(static_cast<Register>(reg)) & 0x8000000000000000ULL) != 0;
+                }
+                if (msb_before != (current_flags & FLAG_CARRY ? true : false)) {
+                    current_flags |= FLAG_OVERFLOW;
+                } else {
+                    current_flags &= ~FLAG_OVERFLOW;
+                }
+            }
+
+            cpu.set_flags(current_flags);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("ROL");
+}
+
+// ROR — Rotate Right: bits shifted out on right come back in on left
+void handle_ror(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        uint8_t imm = program[pc + 2];
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+            uint64_t mask = cpu.get_operand_mask();
+            uint32_t current_flags = cpu.get_flags();
+
+            uint64_t effective_shift = imm;
+            if (cpu.is_32bit_mode()) {
+                effective_shift = imm & 0x1F;
+                uint32_t val32 = static_cast<uint32_t>(val);
+                uint32_t result32 = (val32 >> effective_shift) | (val32 << (32 - effective_shift));
+                uint64_t result = (val & 0xFFFFFFFF00000000ULL) | result32;
+
+                if (imm > 0 && ((result32 >> 31) & 1)) current_flags |= FLAG_CARRY;
+                else if (imm > 0) current_flags &= ~FLAG_CARRY;
+
+                if (result32 == 0) current_flags |= FLAG_ZERO;
+                else current_flags &= ~FLAG_ZERO;
+
+                cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+            } else {
+                effective_shift = imm & 0x3F;
+                uint64_t result = (val >> effective_shift) | (val << (64 - effective_shift));
+                uint64_t masked = result & mask;
+
+                if (imm > 0 && ((result >> 63) & 1)) current_flags |= FLAG_CARRY;
+                else if (imm > 0) current_flags &= ~FLAG_CARRY;
+
+                if (masked == 0) current_flags |= FLAG_ZERO;
+                else current_flags &= ~FLAG_ZERO;
+
+                cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+            }
+
+            if (imm == 1) {
+                bool msb_before, msb_after;
+                if (cpu.is_32bit_mode()) {
+                    msb_before = (val & 0x80000000) != 0;
+                    msb_after = (cpu.get_register_mode_aware(static_cast<Register>(reg)) & 0x80000000) != 0;
+                } else {
+                    msb_before = (val & 0x8000000000000000ULL) != 0;
+                    msb_after = (cpu.get_register_mode_aware(static_cast<Register>(reg)) & 0x8000000000000000ULL) != 0;
+                }
+                if (msb_before != msb_after) {
+                    current_flags |= FLAG_OVERFLOW;
+                } else {
+                    current_flags &= ~FLAG_OVERFLOW;
+                }
+            }
+
+            cpu.set_flags(current_flags);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("ROR");
+}
+
+// LOOP — Decrement ECX (R1), jump to addr if ECX != 0
+void handle_loop(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 4 < program.size()) {
+        uint32_t addr = static_cast<uint32_t>(program[pc + 1]) |
+                       (static_cast<uint32_t>(program[pc + 2]) << 8) |
+                       (static_cast<uint32_t>(program[pc + 3]) << 16) |
+                       (static_cast<uint32_t>(program[pc + 4]) << 24);
+        // ECX = register 1
+        uint64_t ecx = cpu.get_register_mode_aware(static_cast<Register>(1));
+        ecx = (ecx & cpu.get_operand_mask()) - 1;
+        cpu.set_register_mode_aware(static_cast<Register>(1), ecx);
+
+        if ((ecx & cpu.get_operand_mask()) != 0) {
+            if (addr >= program.size()) { running = false; return; }
+            cpu.set_pc(addr);
+        } else {
+            cpu.set_pc(pc + 5);
+        }
+    } else {
+        running = false;
+    }
+    cpu.print_state("LOOP");
+}
+
+// LOOPE — Decrement ECX, jump if ECX != 0 AND ZF=1
+void handle_loope(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 4 < program.size()) {
+        uint32_t addr = static_cast<uint32_t>(program[pc + 1]) |
+                       (static_cast<uint32_t>(program[pc + 2]) << 8) |
+                       (static_cast<uint32_t>(program[pc + 3]) << 16) |
+                       (static_cast<uint32_t>(program[pc + 4]) << 24);
+        uint64_t ecx = cpu.get_register_mode_aware(static_cast<Register>(1));
+        ecx = (ecx & cpu.get_operand_mask()) - 1;
+        cpu.set_register_mode_aware(static_cast<Register>(1), ecx);
+
+        if ((ecx & cpu.get_operand_mask()) != 0 && (cpu.get_flags() & FLAG_ZERO)) {
+            if (addr >= program.size()) { running = false; return; }
+            cpu.set_pc(addr);
+        } else {
+            cpu.set_pc(pc + 5);
+        }
+    } else {
+        running = false;
+    }
+    cpu.print_state("LOOPE");
+}
+
+// LOOPNE — Decrement ECX, jump if ECX != 0 AND ZF=0
+void handle_loopne(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 4 < program.size()) {
+        uint32_t addr = static_cast<uint32_t>(program[pc + 1]) |
+                       (static_cast<uint32_t>(program[pc + 2]) << 8) |
+                       (static_cast<uint32_t>(program[pc + 3]) << 16) |
+                       (static_cast<uint32_t>(program[pc + 4]) << 24);
+        uint64_t ecx = cpu.get_register_mode_aware(static_cast<Register>(1));
+        ecx = (ecx & cpu.get_operand_mask()) - 1;
+        cpu.set_register_mode_aware(static_cast<Register>(1), ecx);
+
+        if ((ecx & cpu.get_operand_mask()) != 0 && !(cpu.get_flags() & FLAG_ZERO)) {
+            if (addr >= program.size()) { running = false; return; }
+            cpu.set_pc(addr);
+        } else {
+            cpu.set_pc(pc + 5);
+        }
+    } else {
+        running = false;
+    }
+    cpu.print_state("LOOPNE");
+}
+
+// RCL — Rotate Left through Carry: CF acts as an extra bit
+void handle_rcl(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        uint8_t count = program[pc + 2];
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+            uint32_t flags = cpu.get_flags();
+            bool old_cf = (flags & FLAG_CARRY) != 0;
+            uint64_t mask = cpu.get_operand_mask();
+
+            uint64_t result;
+            bool new_cf = false;
+
+            if (cpu.is_32bit_mode()) {
+                uint8_t eff_count = (count & 0x1F) % 33;  // 33-bit rotation (32 + CF)
+                if (eff_count == 0) {
+                    result = val;
+                    new_cf = old_cf;
+                } else {
+                    uint64_t temp = (static_cast<uint64_t>(val & 0xFFFFFFFF) << 1) | (old_cf ? 1ULL : 0);
+                    for (uint8_t i = 1; i < eff_count; i++) {
+                        uint64_t msb = (temp >> 32) & 1;
+                        temp = ((temp & 0xFFFFFFFFULL) << 1) | msb;
+                    }
+                    result = (val & 0xFFFFFFFF00000000ULL) | (temp & 0xFFFFFFFF);
+                    new_cf = ((temp >> 32) & 1) != 0;
+                }
+            } else {
+                uint8_t eff_count = (count & 0x3F) % 65;  // 65-bit rotation (64 + CF)
+                if (eff_count == 0) {
+                    result = val;
+                    new_cf = old_cf;
+                } else {
+                    // Build 65-bit value: (CF << 64) | val
+                    unsigned __int128 temp = (static_cast<unsigned __int128>(val)) |
+                                             (static_cast<unsigned __int128>(old_cf ? 1 : 0) << 64);
+                    // Rotate left by eff_count in 65-bit space
+                    unsigned __int128 rotated = ((temp << eff_count) | (temp >> (65 - eff_count))) & (((unsigned __int128)1 << 65) - 1);
+                    result = static_cast<uint64_t>(rotated & 0xFFFFFFFFFFFFFFFFULL);
+                    new_cf = ((rotated >> 64) & 1) != 0;
+                }
+            }
+
+            // Set flags
+            if ((result & mask) == 0) flags |= FLAG_ZERO; else flags &= ~FLAG_ZERO;
+            if (new_cf) flags |= FLAG_CARRY; else flags &= ~FLAG_CARRY;
+            // OF: only defined for single-bit RCL (CF != new MSB)
+            if (count == 1) {
+                bool new_msb;
+                if (cpu.is_32bit_mode()) new_msb = (result & 0x80000000) != 0;
+                else new_msb = (result & 0x8000000000000000ULL) != 0;
+                if (new_msb != new_cf) flags |= FLAG_OVERFLOW;
+                else flags &= ~FLAG_OVERFLOW;
+            }
+
+            cpu.set_flags(flags);
+            cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("RCL");
+}
+
+// RCR — Rotate Right through Carry: CF acts as an extra bit
+void handle_rcr(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        uint8_t count = program[pc + 2];
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+            uint32_t flags = cpu.get_flags();
+            bool old_cf = (flags & FLAG_CARRY) != 0;
+            uint64_t mask = cpu.get_operand_mask();
+
+            uint64_t result;
+            bool new_cf = false;
+
+            if (cpu.is_32bit_mode()) {
+                uint8_t eff_count = (count & 0x1F) % 33;
+                if (eff_count == 0) {
+                    result = val;
+                    new_cf = old_cf;
+                } else {
+                    // Build 33-bit value: val | (CF << 32)
+                    uint64_t temp = (static_cast<uint64_t>(val & 0xFFFFFFFF)) |
+                                    (static_cast<uint64_t>(old_cf ? 1 : 0) << 32);
+                    // Rotate right by eff_count in 33-bit space
+                    uint64_t rotated = ((temp >> eff_count) | (temp << (33 - eff_count))) & 0x1FFFFFFFFULL;
+                    result = (val & 0xFFFFFFFF00000000ULL) | (rotated & 0xFFFFFFFF);
+                    new_cf = ((rotated >> 32) & 1) != 0;
+                }
+            } else {
+                uint8_t eff_count = (count & 0x3F) % 65;
+                if (eff_count == 0) {
+                    result = val;
+                    new_cf = old_cf;
+                } else {
+                    unsigned __int128 temp = (static_cast<unsigned __int128>(val)) |
+                                             (static_cast<unsigned __int128>(old_cf ? 1 : 0) << 64);
+                    unsigned __int128 rotated = ((temp >> eff_count) | (temp << (65 - eff_count))) & (((unsigned __int128)1 << 65) - 1);
+                    result = static_cast<uint64_t>(rotated & 0xFFFFFFFFFFFFFFFFULL);
+                    new_cf = ((rotated >> 64) & 1) != 0;
+                }
+            }
+
+            if ((result & mask) == 0) flags |= FLAG_ZERO; else flags &= ~FLAG_ZERO;
+            if (new_cf) flags |= FLAG_CARRY; else flags &= ~FLAG_CARRY;
+            if (count == 1) {
+                bool new_msb;
+                if (cpu.is_32bit_mode()) new_msb = (result & 0x80000000) != 0;
+                else new_msb = (result & 0x8000000000000000ULL) != 0;
+                bool old_msb;
+                if (cpu.is_32bit_mode()) old_msb = (val & 0x80000000) != 0;
+                else old_msb = (val & 0x8000000000000000ULL) != 0;
+                if (new_msb != old_msb) flags |= FLAG_OVERFLOW;
+                else flags &= ~FLAG_OVERFLOW;
+            }
+
+            cpu.set_flags(flags);
+            cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+        }
+        cpu.set_pc(pc + 3);
+    } else {
+        running = false;
+    }
+    cpu.print_state("RCR");
+}
+
+// === SETcc — Conditional Set Byte (0xEB-0xF6) ===
+
+// Helper for SETcc: check condition, write 1 or 0 to register
+static void setcc_impl(CPU& cpu, const std::vector<uint8_t>& program, bool& running,
+                        bool condition, const char* name) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 1 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+            uint64_t mask = cpu.get_operand_mask();
+            // Clear lowest byte, then set to 0 or 1
+            val = (val & ~0xFFULL) | (condition ? 1ULL : 0ULL);
+            cpu.set_register_mode_aware(static_cast<Register>(reg), val & mask);
+            DebugHandler::instance().report(DebugCategory::CPU_EXECUTION, fmt::format(
+                "[PC=0x{:04X}] [{}] R{} = {} (condition={})",
+                pc, name, reg, condition ? 1 : 0, condition ? 1 : 0
+            ), DebugLevel::DETAIL);
+        }
+        cpu.set_pc(pc + 2);
+    } else {
+        running = false;
+    }
+    cpu.print_state(name);
+}
+
+void handle_setz(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_ZERO) != 0, "SETZ");
+}
+void handle_setnz(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_ZERO) == 0, "SETNZ");
+}
+void handle_setc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_CARRY) != 0, "SETC");
+}
+void handle_setnc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_CARRY) == 0, "SETNC");
+}
+void handle_seto(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_OVERFLOW) != 0, "SETO");
+}
+void handle_setno(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_OVERFLOW) == 0, "SETNO");
+}
+void handle_sets(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_SIGN) != 0, "SETS");
+}
+void handle_setns(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    setcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_SIGN) == 0, "SETNS");
+}
+void handle_setg(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    bool zf = (f & FLAG_ZERO) != 0;
+    bool sf = (f & FLAG_SIGN) != 0;
+    bool of = (f & FLAG_OVERFLOW) != 0;
+    setcc_impl(cpu, program, running, !zf && (sf == of), "SETG");
+}
+void handle_setge(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    bool sf = (f & FLAG_SIGN) != 0;
+    bool of = (f & FLAG_OVERFLOW) != 0;
+    setcc_impl(cpu, program, running, sf == of, "SETGE");
+}
+void handle_setl(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    bool sf = (f & FLAG_SIGN) != 0;
+    bool of = (f & FLAG_OVERFLOW) != 0;
+    setcc_impl(cpu, program, running, sf != of, "SETL");
+}
+void handle_setle(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    bool zf = (f & FLAG_ZERO) != 0;
+    bool sf = (f & FLAG_SIGN) != 0;
+    bool of = (f & FLAG_OVERFLOW) != 0;
+    setcc_impl(cpu, program, running, zf || (sf != of), "SETLE");
+}
+
+// XCHG — Exchange register contents
+void handle_xchg(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t reg1 = program[pc + 1];
+        uint8_t reg2 = program[pc + 2];
+        if (reg1 < DemiEngine_Registers::TOTAL_REGISTERS && reg2 < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t v1 = cpu.get_register_mode_aware(static_cast<Register>(reg1));
+            uint64_t v2 = cpu.get_register_mode_aware(static_cast<Register>(reg2));
+            cpu.set_register_mode_aware(static_cast<Register>(reg1), v2);
+            cpu.set_register_mode_aware(static_cast<Register>(reg2), v1);
+        }
+        cpu.set_pc(pc + 3);
+    } else { running = false; }
+    cpu.print_state("XCHG");
+}
+
+// BSWAP — Byte Swap
+void handle_bswap(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 1 < program.size()) {
+        uint8_t reg = program[pc + 1];
+        if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(reg));
+            uint64_t result;
+            if (cpu.is_32bit_mode()) {
+                uint32_t v = static_cast<uint32_t>(val);
+                v = ((v & 0xFF) << 24) | ((v & 0xFF00) << 8) | ((v & 0xFF0000) >> 8) | ((v & 0xFF000000) >> 24);
+                result = (val & 0xFFFFFFFF00000000ULL) | v;
+            } else {
+                result = ((val & 0xFFULL) << 56) | ((val & 0xFF00ULL) << 40) | ((val & 0xFF0000ULL) << 24) |
+                         ((val & 0xFF000000ULL) << 8) | ((val & 0xFF00000000ULL) >> 8) |
+                         ((val & 0xFF0000000000ULL) >> 24) | ((val & 0xFF000000000000ULL) >> 40) |
+                         ((val & 0xFF00000000000000ULL) >> 56);
+            }
+            cpu.set_register_mode_aware(static_cast<Register>(reg), result);
+        }
+        cpu.set_pc(pc + 2);
+    } else { running = false; }
+    cpu.print_state("BSWAP");
+}
+
+// MOVSX — Move with Sign Extension
+void handle_movsx(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t dst = program[pc + 1], src = program[pc + 2];
+        if (dst < DemiEngine_Registers::TOTAL_REGISTERS && src < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t sval = cpu.get_register_mode_aware(static_cast<Register>(src));
+            uint64_t result;
+            if (cpu.is_32bit_mode()) {
+                result = static_cast<uint64_t>(static_cast<uint32_t>(static_cast<int8_t>(sval & 0xFF)));
+            } else {
+                result = static_cast<uint64_t>(static_cast<int64_t>(static_cast<int32_t>(sval & 0xFFFFFFFF)));
+            }
+            cpu.set_register_mode_aware(static_cast<Register>(dst), result);
+            uint32_t flags = cpu.get_flags();
+            if ((result & cpu.get_operand_mask()) == 0) flags |= FLAG_ZERO; else flags &= ~FLAG_ZERO;
+            if (cpu.is_32bit_mode() ? (result & 0x80000000) : (result & 0x8000000000000000ULL)) flags |= FLAG_SIGN; else flags &= ~FLAG_SIGN;
+            cpu.set_flags(flags);
+        }
+        cpu.set_pc(pc + 3);
+    } else { running = false; }
+    cpu.print_state("MOVSX");
+}
+
+// MOVZX — Move with Zero Extension
+void handle_movzx(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t dst = program[pc + 1], src = program[pc + 2];
+        if (dst < DemiEngine_Registers::TOTAL_REGISTERS && src < DemiEngine_Registers::TOTAL_REGISTERS) {
+            uint64_t sval = cpu.get_register_mode_aware(static_cast<Register>(src));
+            uint64_t result = cpu.is_32bit_mode() ? (sval & 0xFF) : (sval & 0xFFFFFFFF);
+            cpu.set_register_mode_aware(static_cast<Register>(dst), result);
+            uint32_t flags = cpu.get_flags();
+            if (result == 0) flags |= FLAG_ZERO; else flags &= ~FLAG_ZERO;
+            flags &= ~FLAG_SIGN;
+            cpu.set_flags(flags);
+        }
+        cpu.set_pc(pc + 3);
+    } else { running = false; }
+    cpu.print_state("MOVZX");
+}
+
+// === CMOVcc — Conditional Move (14 handlers, 16 mnemonics) ===
+
+static void cmovcc_impl(CPU& cpu, const std::vector<uint8_t>& program, bool& running,
+                         bool condition, const char* name) {
+    uint32_t pc = cpu.get_pc();
+    if (pc + 2 < program.size()) {
+        uint8_t dst = program[pc + 1], src = program[pc + 2];
+        if (dst < DemiEngine_Registers::TOTAL_REGISTERS && src < DemiEngine_Registers::TOTAL_REGISTERS) {
+            if (condition) {
+                uint64_t val = cpu.get_register_mode_aware(static_cast<Register>(src));
+                cpu.set_register_mode_aware(static_cast<Register>(dst), val);
+            }
+        }
+        cpu.set_pc(pc + 3);
+    } else { running = false; }
+    cpu.print_state(name);
+}
+
+void handle_cmovo(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_OVERFLOW) != 0, "CMOVO");
+}
+void handle_cmovno(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_OVERFLOW) == 0, "CMOVNO");
+}
+void handle_cmovc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_CARRY) != 0, "CMOVC");
+}
+void handle_cmovnc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_CARRY) == 0, "CMOVNC");
+}
+void handle_cmovz(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_ZERO) != 0, "CMOVZ");
+}
+void handle_cmovnz(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_ZERO) == 0, "CMOVNZ");
+}
+void handle_cmovs(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_SIGN) != 0, "CMOVS");
+}
+void handle_cmovns(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    cmovcc_impl(cpu, program, running, (cpu.get_flags() & FLAG_SIGN) == 0, "CMOVNS");
+}
+void handle_cmovg(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    cmovcc_impl(cpu, program, running,
+        !(f & FLAG_ZERO) && ((f & FLAG_SIGN) != 0) == ((f & FLAG_OVERFLOW) != 0), "CMOVG");
+}
+void handle_cmovge(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    cmovcc_impl(cpu, program, running, ((f & FLAG_SIGN) != 0) == ((f & FLAG_OVERFLOW) != 0), "CMOVGE");
+}
+void handle_cmovl(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    cmovcc_impl(cpu, program, running, ((f & FLAG_SIGN) != 0) != ((f & FLAG_OVERFLOW) != 0), "CMOVL");
+}
+void handle_cmovle(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    cmovcc_impl(cpu, program, running,
+        (f & FLAG_ZERO) || (((f & FLAG_SIGN) != 0) != ((f & FLAG_OVERFLOW) != 0)), "CMOVLE");
+}
+void handle_cmova(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    cmovcc_impl(cpu, program, running, !(f & FLAG_CARRY) && !(f & FLAG_ZERO), "CMOVA");
+}
+void handle_cmovbe(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t f = cpu.get_flags();
+    cmovcc_impl(cpu, program, running, (f & FLAG_CARRY) || (f & FLAG_ZERO), "CMOVBE");
+}
+
+// === String Operations ===
+static int string_step(CPU& cpu) {
+    return (cpu.get_flags() & FLAG_DIRECTION) ? -1 : 1;
+}
+void handle_movsb(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc(); auto& mem = cpu.get_memory();
+    uint64_t esi = cpu.get_register_mode_aware(static_cast<Register>(6));
+    uint64_t edi = cpu.get_register_mode_aware(static_cast<Register>(7));
+    int step = string_step(cpu);
+    uint32_t si=esi&0xFFFFFFFF, di=edi&0xFFFFFFFF;
+    if(si<mem.size()&&di<mem.size()) mem[di]=mem[si];
+    cpu.set_register_mode_aware(static_cast<Register>(6),esi+step);
+    cpu.set_register_mode_aware(static_cast<Register>(7),edi+step);
+    cpu.set_pc(pc+1); cpu.print_state("MOVSB");
+}
+void handle_movsw(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc = cpu.get_pc(); auto& mem = cpu.get_memory();
+    uint64_t esi=cpu.get_register_mode_aware(static_cast<Register>(6));
+    uint64_t edi=cpu.get_register_mode_aware(static_cast<Register>(7));
+    int step=string_step(cpu)*2;
+    uint32_t si=esi&0xFFFFFFFF,di=edi&0xFFFFFFFF;
+    if(si+1<mem.size()&&di+1<mem.size()){mem[di]=mem[si];mem[di+1]=mem[si+1];}
+    cpu.set_register_mode_aware(static_cast<Register>(6),esi+step);
+    cpu.set_register_mode_aware(static_cast<Register>(7),edi+step);
+    cpu.set_pc(pc+1); cpu.print_state("MOVSW");
+}
+void handle_movsd(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); auto& mem=cpu.get_memory();
+    uint64_t esi=cpu.get_register_mode_aware(static_cast<Register>(6));
+    uint64_t edi=cpu.get_register_mode_aware(static_cast<Register>(7));
+    int step=string_step(cpu)*4;
+    uint32_t si=esi&0xFFFFFFFF,di=edi&0xFFFFFFFF;
+    if(si+3<mem.size()&&di+3<mem.size()){for(int i=0;i<4;i++)mem[di+i]=mem[si+i];}
+    cpu.set_register_mode_aware(static_cast<Register>(6),esi+step);
+    cpu.set_register_mode_aware(static_cast<Register>(7),edi+step);
+    cpu.set_pc(pc+1); cpu.print_state("MOVSD");
+}
+void handle_stosb(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); auto& mem=cpu.get_memory();
+    uint64_t edi=cpu.get_register_mode_aware(static_cast<Register>(7));
+    uint8_t al=cpu.get_register_mode_aware(static_cast<Register>(0))&0xFF;
+    int step=string_step(cpu); uint32_t di=edi&0xFFFFFFFF;
+    if(di<mem.size())mem[di]=al;
+    cpu.set_register_mode_aware(static_cast<Register>(7),edi+step);
+    cpu.set_pc(pc+1); cpu.print_state("STOSB");
+}
+void handle_stosw(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); auto& mem=cpu.get_memory();
+    uint64_t edi=cpu.get_register_mode_aware(static_cast<Register>(7));
+    uint16_t ax=cpu.get_register_mode_aware(static_cast<Register>(0))&0xFFFF;
+    int step=string_step(cpu)*2; uint32_t di=edi&0xFFFFFFFF;
+    if(di+1<mem.size()){mem[di]=(uint8_t)ax;mem[di+1]=(uint8_t)(ax>>8);}
+    cpu.set_register_mode_aware(static_cast<Register>(7),edi+step);
+    cpu.set_pc(pc+1); cpu.print_state("STOSW");
+}
+void handle_stosd(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); auto& mem=cpu.get_memory();
+    uint64_t edi=cpu.get_register_mode_aware(static_cast<Register>(7));
+    uint32_t eax=cpu.get_register_mode_aware(static_cast<Register>(0))&0xFFFFFFFF;
+    int step=string_step(cpu)*4; uint32_t di=edi&0xFFFFFFFF;
+    if(di+3<mem.size()){for(int i=0;i<4;i++)mem[di+i]=(eax>>(i*8))&0xFF;}
+    cpu.set_register_mode_aware(static_cast<Register>(7),edi+step);
+    cpu.set_pc(pc+1); cpu.print_state("STOSD");
+}
+void handle_lodsb(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); auto& mem=cpu.get_memory();
+    uint64_t esi=cpu.get_register_mode_aware(static_cast<Register>(6));
+    int step=string_step(cpu); uint32_t si=esi&0xFFFFFFFF;
+    uint64_t rax=cpu.get_register_mode_aware(static_cast<Register>(0));
+    if(si<mem.size())rax=(rax&~0xFFULL)|mem[si];
+    cpu.set_register_mode_aware(static_cast<Register>(0),rax);
+    cpu.set_register_mode_aware(static_cast<Register>(6),esi+step);
+    cpu.set_pc(pc+1); cpu.print_state("LODSB");
+}
+void handle_lodsw(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); auto& mem=cpu.get_memory();
+    uint64_t esi=cpu.get_register_mode_aware(static_cast<Register>(6));
+    int step=string_step(cpu)*2; uint32_t si=esi&0xFFFFFFFF;
+    uint64_t rax=cpu.get_register_mode_aware(static_cast<Register>(0));
+    if(si+1<mem.size()){uint16_t v=mem[si]|((uint16_t)mem[si+1]<<8);rax=(rax&~0xFFFFULL)|v;}
+    cpu.set_register_mode_aware(static_cast<Register>(0),rax);
+    cpu.set_register_mode_aware(static_cast<Register>(6),esi+step);
+    cpu.set_pc(pc+1); cpu.print_state("LODSW");
+}
+void handle_lodsd(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); auto& mem=cpu.get_memory();
+    uint64_t esi=cpu.get_register_mode_aware(static_cast<Register>(6));
+    int step=string_step(cpu)*4; uint32_t si=esi&0xFFFFFFFF;
+    if(si+3<mem.size()){uint32_t v=mem[si]|((uint32_t)mem[si+1]<<8)|((uint32_t)mem[si+2]<<16)|((uint32_t)mem[si+3]<<24);uint64_t rax=cpu.get_register_mode_aware(static_cast<Register>(0));rax=(rax&0xFFFFFFFF00000000ULL)|v;cpu.set_register_mode_aware(static_cast<Register>(0),rax);}
+    cpu.set_register_mode_aware(static_cast<Register>(6),esi+step);
+    cpu.set_pc(pc+1); cpu.print_state("LODSD");
+}
+
+// === Bit Test + Atomics ===
+void handle_bt(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc(); uint32_t f=cpu.get_flags();
+    if(pc+2<program.size()){uint8_t r=program[pc+1];uint8_t bit=program[pc+2];
+    if(r<DemiEngine_Registers::TOTAL_REGISTERS){uint64_t v=cpu.get_register_mode_aware(static_cast<Register>(r));
+    uint64_t mask=cpu.get_operand_mask();uint8_t pos=bit&(cpu.is_32bit_mode()?0x1F:0x3F);
+    if(v&(1ULL<<pos))f|=FLAG_CARRY;else f&=~FLAG_CARRY;cpu.set_flags(f);}
+    cpu.set_pc(pc+3);}else running=false;cpu.print_state("BT");}
+void handle_bts(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();uint32_t f=cpu.get_flags();
+    if(pc+2<program.size()){uint8_t r=program[pc+1];uint8_t bit=program[pc+2];
+    if(r<DemiEngine_Registers::TOTAL_REGISTERS){uint64_t v=cpu.get_register_mode_aware(static_cast<Register>(r));
+    uint64_t mask=cpu.get_operand_mask();uint8_t pos=bit&(cpu.is_32bit_mode()?0x1F:0x3F);
+    if(v&(1ULL<<pos))f|=FLAG_CARRY;else f&=~FLAG_CARRY;
+    v|=(1ULL<<pos);cpu.set_register_mode_aware(static_cast<Register>(r),v&mask);cpu.set_flags(f);}
+    cpu.set_pc(pc+3);}else running=false;cpu.print_state("BTS");}
+void handle_btr(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();uint32_t f=cpu.get_flags();
+    if(pc+2<program.size()){uint8_t r=program[pc+1];uint8_t bit=program[pc+2];
+    if(r<DemiEngine_Registers::TOTAL_REGISTERS){uint64_t v=cpu.get_register_mode_aware(static_cast<Register>(r));
+    uint64_t mask=cpu.get_operand_mask();uint8_t pos=bit&(cpu.is_32bit_mode()?0x1F:0x3F);
+    if(v&(1ULL<<pos))f|=FLAG_CARRY;else f&=~FLAG_CARRY;
+    v&=~(1ULL<<pos);cpu.set_register_mode_aware(static_cast<Register>(r),v&mask);cpu.set_flags(f);}
+    cpu.set_pc(pc+3);}else running=false;cpu.print_state("BTR");}
+void handle_btc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();uint32_t f=cpu.get_flags();
+    if(pc+2<program.size()){uint8_t r=program[pc+1];uint8_t bit=program[pc+2];
+    if(r<DemiEngine_Registers::TOTAL_REGISTERS){uint64_t v=cpu.get_register_mode_aware(static_cast<Register>(r));
+    uint64_t mask=cpu.get_operand_mask();uint8_t pos=bit&(cpu.is_32bit_mode()?0x1F:0x3F);
+    if(v&(1ULL<<pos))f|=FLAG_CARRY;else f&=~FLAG_CARRY;
+    v^=(1ULL<<pos);cpu.set_register_mode_aware(static_cast<Register>(r),v&mask);cpu.set_flags(f);}
+    cpu.set_pc(pc+3);}else running=false;cpu.print_state("BTC");}
+void handle_cmpxchg(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    if(pc+2<program.size()){uint8_t dst=program[pc+1];uint8_t src=program[pc+2];
+    if(dst<DemiEngine_Registers::TOTAL_REGISTERS&&src<DemiEngine_Registers::TOTAL_REGISTERS){
+    uint64_t eax=cpu.get_register_mode_aware(static_cast<Register>(0));
+    uint64_t dval=cpu.get_register_mode_aware(static_cast<Register>(dst));
+    uint64_t sval=cpu.get_register_mode_aware(static_cast<Register>(src));
+    uint64_t mask=cpu.get_operand_mask();uint32_t f=cpu.get_flags();
+    uint64_t diff=(eax&mask)-(dval&mask);uint64_t mdiff=diff&mask;
+    if(mdiff==0)f|=FLAG_ZERO;else f&=~FLAG_ZERO;
+    bool borrow;if(cpu.is_32bit_mode())borrow=((uint32_t)(eax&mask)<(uint32_t)(dval&mask));
+    else borrow=((eax&mask)<(dval&mask));
+    if(borrow)f|=FLAG_CARRY;else f&=~FLAG_CARRY;
+    bool s1,s2,sr;if(cpu.is_32bit_mode()){s1=(eax&0x80000000)!=0;s2=(dval&0x80000000)!=0;sr=(mdiff&0x80000000)!=0;}
+    else{s1=(eax&0x8000000000000000ULL)!=0;s2=(dval&0x8000000000000000ULL)!=0;sr=(mdiff&0x8000000000000000ULL)!=0;}
+    if((s1!=s2)&&(s1!=sr))f|=FLAG_OVERFLOW;else f&=~FLAG_OVERFLOW;
+    if(mdiff==0){cpu.set_register_mode_aware(static_cast<Register>(dst),sval);}
+    else{cpu.set_register_mode_aware(static_cast<Register>(0),dval);}
+    cpu.set_flags(f);}
+    cpu.set_pc(pc+3);}else running=false;cpu.print_state("CMPXCHG");}
+void handle_xadd(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    if(pc+2<program.size()){uint8_t dst=program[pc+1];uint8_t src=program[pc+2];
+    if(dst<DemiEngine_Registers::TOTAL_REGISTERS&&src<DemiEngine_Registers::TOTAL_REGISTERS){
+    uint64_t dval=cpu.get_register_mode_aware(static_cast<Register>(dst));
+    uint64_t sval=cpu.get_register_mode_aware(static_cast<Register>(src));
+    uint64_t sum=dval+sval;uint64_t mask=cpu.get_operand_mask();uint64_t msum=sum&mask;
+    uint32_t f=cpu.get_flags();
+    if(msum==0)f|=FLAG_ZERO;else f&=~FLAG_ZERO;
+    bool carry;if(cpu.is_32bit_mode())carry=(sum>0xFFFFFFFF);else carry=(sum<dval);
+    if(carry)f|=FLAG_CARRY;else f&=~FLAG_CARRY;
+    bool s1,s2,sr;if(cpu.is_32bit_mode()){s1=(dval&0x80000000)!=0;s2=(sval&0x80000000)!=0;sr=(msum&0x80000000)!=0;}
+    else{s1=(dval&0x8000000000000000ULL)!=0;s2=(sval&0x8000000000000000ULL)!=0;sr=(msum&0x8000000000000000ULL)!=0;}
+    if((s1==s2)&&(s1!=sr))f|=FLAG_OVERFLOW;else f&=~FLAG_OVERFLOW;
+    if(cpu.is_32bit_mode()){if((msum&0x80000000)!=0)f|=FLAG_SIGN;else f&=~FLAG_SIGN;}
+    else{if((msum&0x8000000000000000ULL)!=0)f|=FLAG_SIGN;else f&=~FLAG_SIGN;}
+    cpu.set_flags(f);
+    cpu.set_register_mode_aware(static_cast<Register>(dst),sum);
+    cpu.set_register_mode_aware(static_cast<Register>(src),dval);}
+    cpu.set_pc(pc+3);}else running=false;cpu.print_state("XADD");}
+
+// === Platform-Specific Opcodes ===
+#include <ctime>
+void handle_cpuid(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    uint64_t eax=cpu.get_register_mode_aware(static_cast<Register>(0));
+    uint32_t leaf=eax&0xFFFFFFFF;
+    if(leaf==0){
+        cpu.set_register_mode_aware(static_cast<Register>(0),1);  // max leaf=1
+        cpu.set_register_mode_aware(static_cast<Register>(3),0x696D6544); // EBX: "Demi"
+        cpu.set_register_mode_aware(static_cast<Register>(2),0x69676E45); // EDX: "Engi"
+        cpu.set_register_mode_aware(static_cast<Register>(1),0x4D56656E); // ECX: "neVM"
+    }else if(leaf==1){
+        cpu.set_register_mode_aware(static_cast<Register>(0),0x00010000); // version 1.0
+        cpu.set_register_mode_aware(static_cast<Register>(3),0x00000800); // feature flags
+        cpu.set_register_mode_aware(static_cast<Register>(2),0x00000000);
+        cpu.set_register_mode_aware(static_cast<Register>(1),0x00000000);
+    }
+    cpu.set_pc(pc+1); cpu.print_state("CPUID");
+}
+void handle_rdtsc(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    static uint64_t counter=0; counter+=100;
+    uint32_t edx_val=static_cast<uint32_t>(counter>>32);
+    uint32_t eax_val=static_cast<uint32_t>(counter);
+    cpu.set_register_mode_aware(static_cast<Register>(2),edx_val);
+    cpu.set_register_mode_aware(static_cast<Register>(0),eax_val);
+    cpu.set_pc(pc+1); cpu.print_state("RDTSC");
+}
+void handle_syscall(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    cpu.trigger_interrupt(0x80);
+    cpu.set_pc(pc+1); cpu.print_state("SYSCALL");
+}
+void handle_sysenter(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    cpu.trigger_interrupt(0x80);
+    cpu.set_pc(pc+1); cpu.print_state("SYSENTER");
+}
+
+// === Final Opcodes: ENTER + REP ===
+void handle_enter(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    if(pc+3<program.size()){
+        uint16_t frame_size=program[pc+1]|(static_cast<uint16_t>(program[pc+2])<<8);
+        uint8_t nesting=program[pc+3];
+        // Push RBP
+        uint64_t rbp=cpu.get_register_mode_aware(static_cast<Register>(5));
+        uint32_t sp=cpu.get_sp()-4;
+        cpu.set_sp(sp); cpu.get_registers()[4]=sp;
+        if(sp+3<cpu.get_memory().size()){
+            cpu.get_memory()[sp]=rbp&0xFF;
+            cpu.get_memory()[sp+1]=(rbp>>8)&0xFF;
+            cpu.get_memory()[sp+2]=(rbp>>16)&0xFF;
+            cpu.get_memory()[sp+3]=(rbp>>24)&0xFF;
+        }
+        // RBP = RSP
+        uint64_t rsp=cpu.get_register_mode_aware(static_cast<Register>(4));
+        cpu.set_register_mode_aware(static_cast<Register>(5),rsp);
+        // RSP -= frame_size
+        cpu.set_register_mode_aware(static_cast<Register>(4),rsp-frame_size);
+        cpu.set_pc(pc+4);
+    }else running=false;
+    cpu.print_state("ENTER");
+}
+void handle_rep(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
+    uint32_t pc=cpu.get_pc();
+    if(pc+1<program.size()){
+        uint8_t next_op=program[pc+1];
+        bool is_string=(next_op>=0x9A&&next_op<=0x9F)||(next_op>=0xB7&&next_op<=0xB9);
+        if(!is_string){cpu.set_pc(pc+1);cpu.print_state("REP");return;}
+        uint64_t ecx=cpu.get_register_mode_aware(static_cast<Register>(1));
+        uint64_t mask=cpu.get_operand_mask();uint64_t count=ecx&mask;
+        if(count==0){cpu.set_pc(pc+2);cpu.print_state("REP");return;}
+        // Set PC to string op and execute count times
+        cpu.set_pc(pc+1);
+        for(uint64_t i=0;i<count&&running;i++){
+            switch(next_op){
+                case 0x9A: handle_movsb(cpu,program,running);break;
+                case 0x9B: handle_movsw(cpu,program,running);break;
+                case 0x9C: handle_movsd(cpu,program,running);break;
+                case 0x9D: handle_stosb(cpu,program,running);break;
+                case 0x9E: handle_stosw(cpu,program,running);break;
+                case 0x9F: handle_stosd(cpu,program,running);break;
+                case 0xB7: handle_lodsb(cpu,program,running);break;
+                case 0xB8: handle_lodsw(cpu,program,running);break;
+                case 0xB9: handle_lodsd(cpu,program,running);break;
+            }
+            if(!running)break;
+            // Re-point PC at string op for next iteration (handlers advance PC by 1)
+            cpu.set_pc(pc+1);
+        }
+        // Skip past both REP and string op
+        if(running)cpu.set_pc(pc+2);
+    }else running=false;
+    cpu.print_state("REP");
 }
