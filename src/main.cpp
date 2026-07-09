@@ -963,6 +963,7 @@ public:
         // Memory dump argument
         parser.add_bool_arg("memdump", "--memdump", "-m", "Print memory dump after execution", "Debugging", [this](bool value) { Config::memdump = value; });
         parser.add_bool_arg("interactive", "--interactive", "-i", "Start interactive REPL (Demi language)", "Execution", [this](bool value) { Config::interactive = value; });
+        parser.add_bool_arg("debug_step", "--debug-step", "-ds", "Run with step-through debugger", "Debugging", [this](bool value) { Config::debug_step = value; });
 
         // Entry point argument
         parser.add_value_arg("entry_point", "--entry-point", "-e", "Specify entry point symbol (default: _start)", "Execution",
@@ -1412,7 +1413,11 @@ public:
         // Initialize the device system
         initialize_devices(&cpu);
 
-    cpu.execute(program, 0);
+    if (Config::debug_step) {
+        run_step_debug(program, 0);
+    } else {
+        cpu.execute(program, 0);
+    }
 
         // Print CPU state
         cpu.print_state("End");
@@ -1816,7 +1821,11 @@ private:
             
             std::cout.flush();
             // Execute the assembled bytecode, starting at entry address
-            cpu.execute(bytecode, entry_addr);
+            if (Config::debug_step) {
+                run_step_debug(bytecode, entry_addr);
+            } else {
+                cpu.execute(bytecode, entry_addr);
+            }
             DEBUG_INFO(Logging::DebugCategory::CPU_EXECUTION, "cpu.execute() completed successfully{}", "");
 
             // Print CPU state and registers (same as regular program mode)

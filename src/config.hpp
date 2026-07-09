@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <cstddef>
+#include <vector>
+#include <cstdint>
 
 // DemiEngine Version Information
 #define DEMI_VERSION_MAJOR 1
@@ -60,6 +62,7 @@ public:
     inline static bool assembly_mode = false;  // Assembly mode enabled
     inline static bool memdump = false; // Print memory dump after execution if true
     inline static bool interactive = false; // Interactive REPL mode
+    inline static bool debug_step = false; // Step-through debugger mode
     inline static bool quiet_assembly_test = false;  // Quiet mode for assembly tests
     inline static bool quiet = false;  // Global quiet mode - suppress logs and only show results
     inline static bool test_mode = false;  // Test mode - suppress verbose logs during testing
@@ -105,3 +108,4 @@ public:
 class CPU;
 void initialize_devices(CPU* cpu = nullptr);
 void run_repl();
+void run_step_debug(const std::vector<uint8_t>& program, uint32_t entry_addr = 0);
