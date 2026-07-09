@@ -39,7 +39,6 @@ enum : uint8_t {
     OP_NOT = 0x17,
     OP_SHL = 0x18,
     OP_SHR = 0x19,
-    OP_NEG = 0x2B,
     OP_HALT = 0xFF,
 };
 
