@@ -49,6 +49,31 @@ let t = sys.time_ms()          // → e.g., 10922465
 let r = sys.random()           // → e.g., 0xD3DC167E
 ```
 
+## mem — Memory
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `mem.copy(dst: i32, src: i32, n: i32) → i32` | Syscall 204 | Copy n bytes from src to dst in VM memory |
+| `mem.zero(addr: i32, n: i32)` | Syscall 205 | Zero n bytes starting at addr |
+
+```
+let buf = sys.alloc(16)
+mem.zero(buf, 16)             // clear buffer
+mem.copy(buf, other, 8)       // copy 8 bytes
+```
+
+## str — Strings
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `str.len(addr: i32) → i32` | Syscall 206 | Count bytes until null terminator |
+
+```
+let s = sys.alloc(5)
+mem.zero(s, 5)                // clear buffer
+let n = str.len(s)            // → 0 (all zeros = empty string)
+```
+
 ## Heap Memory Model
 
 - Heap starts at `0x10000` (64KB offset from VM memory base)
