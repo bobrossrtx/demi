@@ -1,0 +1,31 @@
+// Demi Standard Library — example program
+// Shows all stdlib functions with proper import syntax
+import "console";
+import "math";
+import "sys";
+import "mem";
+import "str";
+
+fn main() {
+    // === console ===
+    let r = sys.random();
+    console.print_hex(r);      // prints 8 hex digits
+    console.print_hex(0x2A);   // → "0000002A"
+    console.print_i32(65);     // outputs raw byte 'A'
+
+    // === math ===
+    let a = math.abs(10);       // → 10
+    let m = math.max(65, 70);   // → 70
+    let n = math.min(3, 5);     // → 3
+    let c = math.clamp(100, 50, 75); // → 75
+
+    // === sys ===
+    let p = sys.alloc(16);      // → 0x10000 (heap addr)
+    let t = sys.time_ms();      // → monotonic millis
+    let r2 = sys.random();      // → random u32
+
+    // === mem + str ===
+    let buf = sys.alloc(16);
+    mem.zero(buf, 16);          // clear buffer
+    let len = str.len(buf);     // → 0 (empty string)
+}
