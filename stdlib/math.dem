@@ -1,0 +1,8 @@
+// Demi Standard Library — math module
+// Usage: import "math";
+// Provides: math.abs, math.min, math.max, math.clamp
+
+fn abs(n: i32) -> i32;
+fn min(a: i32, b: i32) -> i32;
+fn max(a: i32, b: i32) -> i32;
+fn clamp(x: i32, lo: i32, hi: i32) -> i32;

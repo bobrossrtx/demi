@@ -1,0 +1,5 @@
+// Demi Standard Library — sys module
+fn alloc(bytes: i32) -> i32;
+fn time_ms() -> i32;
+fn random() -> i32;
+fn exit(code: i32) -> void;

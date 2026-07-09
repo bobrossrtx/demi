@@ -49,8 +49,14 @@ void run_repl() {
         if (!prog.empty()) prog += "\n";
         prog += input + ";";
 
-        // Wrap accumulated program into a main function
-        std::string wrapped = "fn main() {\n" + prog + "\n}";
+        // Wrap accumulated program into a main function with stdlib imports
+        std::string wrapped =
+            "import \"console\";\n"
+            "import \"math\";\n"
+            "import \"sys\";\n"
+            "import \"mem\";\n"
+            "import \"str\";\n"
+            "fn main() {\n" + prog + "\n}";
 
         Lexer lexer(wrapped);
         auto tokens = lexer.tokenize();

@@ -1,0 +1,8 @@
+// Demi Standard Library — console module
+// Usage: import "console";
+// Provides: console.print_i32, console.print_hex, console.print, console.println
+
+fn print_i32(n: i32) -> void;
+fn print_hex(n: i32) -> void;
+fn print(s: str) -> void;
+fn println(s: str) -> void;
