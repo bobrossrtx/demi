@@ -192,6 +192,10 @@ void handle_mod64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 #include "and64.hpp"
 #include "or64.hpp"
 #include "xor64.hpp"
+#include "shl64.hpp"
+#include "shr64.hpp"
+#include "or64.hpp"
+#include "xor64.hpp"
 #include "cmp64.hpp"
 #include "movex.hpp"
 #include "addex.hpp"
@@ -3332,7 +3336,13 @@ void dispatch_opcode(CPU& cpu, const std::vector<uint8_t>& program, bool& runnin
             handle_xor64(cpu, program, running);
             break;
         case Opcode::NOT64:
-            handle_not64(cpu, program, running);
+            break;
+        case Opcode::SHL64:
+            handle_shl64(cpu, program, running);
+            break;
+        case Opcode::SHR64:
+            handle_shr64(cpu, program, running);
+            
             break;
         case Opcode::CMP64:
             handle_cmp64(cpu, program, running);

@@ -153,6 +153,8 @@ extern void handle_mod64(CPU& cpu, const std::vector<uint8_t>& program, bool& ru
 extern void handle_cmp64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_inc64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_not64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_shl64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_shr64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_dec64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_load_imm64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_loadex(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
@@ -830,6 +832,8 @@ void dispatch_opcode_inlined(CPU& cpu, const std::vector<uint8_t>& program, bool
             case 0x57: handle_or64(cpu, program, running); break;   // OR64
             case 0x58: handle_xor64(cpu, program, running); break;  // XOR64
             case 0x59: handle_not64(cpu, program, running); break;  // NOT64
+            case 0x5A: handle_shl64(cpu, program, running); break;  // SHL64
+            case 0x5B: handle_shr64(cpu, program, running); break;  // SHR64
             case 0x5C: handle_cmp64(cpu, program, running); break;  // CMP64
             case 0x5D: handle_inc64(cpu, program, running); break;  // INC64
             case 0x5E: handle_dec64(cpu, program, running); break;  // DEC64

@@ -72,6 +72,8 @@ extern void handle_cmp64(CPU& cpu, const std::vector<uint8_t>& program, bool& ru
 extern void handle_mov64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_inc64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_not64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_shl64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_shr64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_dec64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_load_imm64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_movex(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
@@ -386,6 +388,8 @@ void OpcodeRegistry::initialize_handlers() {
     REGISTER_OPCODE(0x57, handle_or64);       // OR64
     REGISTER_OPCODE(0x58, handle_xor64);      // XOR64
     REGISTER_OPCODE(0x59, handle_not64);      // NOT64
+    REGISTER_OPCODE(0x5A, handle_shl64);      // SHL64
+    REGISTER_OPCODE(0x5B, handle_shr64);      // SHR64
     REGISTER_OPCODE(0x5F, handle_mod64);      // MOD64
     REGISTER_OPCODE(0x5C, handle_cmp64);      // CMP64
     REGISTER_OPCODE(0x5D, handle_inc64);      // INC64

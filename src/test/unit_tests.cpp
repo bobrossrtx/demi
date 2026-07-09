@@ -1,4 +1,5 @@
 #include "test_framework.hpp"
+#include <cstring>
 #include "../engine/cpu_flags.hpp"
 #include "../codegen/x86_encoder.hpp"
 #include "../codegen/register_allocator.hpp"
@@ -3584,6 +3585,213 @@ TEST_CASE(encoder_map_no_operands_simd, "encoder_map") {
     ctx.assert_byte_at(1, 0xD5); // VMUL
     ctx.assert_byte_at(2, 0xD6); // VDOT
     ctx.assert_byte_at(3, 0xFF); // HALT
+}
+
+
+// Helper: pack a uint64_t into 8 little-endian bytes
+static std::vector<uint8_t> pack_u64(uint64_t val) {
+    std::vector<uint8_t> b(8);
+    for (int i = 0; i < 8; i++) b[i] = static_cast<uint8_t>((val >> (8 * i)) & 0xFF);
+    return b;
+}
+
+TEST_CASE(vm_64bit_or64, "64bit_ops") {
+    // LOAD_IMM64 R0, val1; LOAD_IMM64 R1, val2; OR64 R0, R0, R1
+    std::vector<uint8_t> prog;
+    prog.push_back(0x53); prog.push_back(0x00);  // LOAD_IMM64 R0
+    auto v1 = pack_u64(0xAAAAAAAA00000000ULL);
+    prog.insert(prog.end(), v1.begin(), v1.end());
+    prog.push_back(0x53); prog.push_back(0x01);  // LOAD_IMM64 R1
+    auto v2 = pack_u64(0x00000000FFFFFFFFULL);
+    prog.insert(prog.end(), v2.begin(), v2.end());
+    prog.push_back(0x57); prog.push_back(0x00);  // OR64 R0=R0|R1
+    prog.push_back(0x00); prog.push_back(0x01);
+    prog.push_back(0xFF);  // HALT
+    ctx.load_program(prog);
+    ctx.execute_program();
+    ctx.assert_register_64_eq(0, 0xAAAAAAAAFFFFFFFFULL);
+}
+
+TEST_CASE(vm_64bit_xor64, "64bit_ops") {
+    std::vector<uint8_t> prog;
+    prog.push_back(0x53); prog.push_back(0x00);
+    auto v1 = pack_u64(0xAAAAAAAA00000000ULL);
+    prog.insert(prog.end(), v1.begin(), v1.end());
+    prog.push_back(0x53); prog.push_back(0x01);
+    auto v2 = pack_u64(0xAAAAAAAAFFFFFFFFULL);
+    prog.insert(prog.end(), v2.begin(), v2.end());
+    prog.push_back(0x58); prog.push_back(0x00);  // XOR64
+    prog.push_back(0x00); prog.push_back(0x01);
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    ctx.assert_register_64_eq(0, 0x00000000FFFFFFFFULL);
+}
+
+TEST_CASE(vm_64bit_not64, "64bit_ops") {
+    std::vector<uint8_t> prog;
+    prog.push_back(0x53); prog.push_back(0x00);
+    auto v1 = pack_u64(0x00000000FFFFFFFFULL);
+    prog.insert(prog.end(), v1.begin(), v1.end());
+    prog.push_back(0x59); prog.push_back(0x00);  // NOT64 R0
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    ctx.assert_register_64_eq(0, 0xFFFFFFFF00000000ULL);
+}
+
+TEST_CASE(vm_64bit_shl64, "64bit_ops") {
+    std::vector<uint8_t> prog;
+    prog.push_back(0x53); prog.push_back(0x00);
+    auto v1 = pack_u64(0x000000000000000FULL);
+    prog.insert(prog.end(), v1.begin(), v1.end());
+    prog.push_back(0x5A); prog.push_back(0x00);  // SHL64 R0, 4
+    prog.push_back(0x04);
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    ctx.assert_register_64_eq(0, 0x00000000000000F0ULL);
+}
+
+TEST_CASE(vm_64bit_shr64, "64bit_ops") {
+    std::vector<uint8_t> prog;
+    prog.push_back(0x53); prog.push_back(0x00);
+    auto v1 = pack_u64(0xABCD000000000000ULL);
+    prog.insert(prog.end(), v1.begin(), v1.end());
+    prog.push_back(0x5B); prog.push_back(0x00);  // SHR64 R0, 8
+    prog.push_back(0x08);
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    ctx.assert_register_64_eq(0, 0x00ABCD0000000000ULL);
+}
+
+
+// Helper: pack a double into 8 little-endian bytes for FPU immediate mode
+static std::vector<uint8_t> pack_double(double val) {
+    uint64_t raw;
+    std::memcpy(&raw, &val, sizeof(raw));
+    return {
+        static_cast<uint8_t>(raw & 0xFF),
+        static_cast<uint8_t>((raw >> 8) & 0xFF),
+        static_cast<uint8_t>((raw >> 16) & 0xFF),
+        static_cast<uint8_t>((raw >> 24) & 0xFF),
+        static_cast<uint8_t>((raw >> 32) & 0xFF),
+        static_cast<uint8_t>((raw >> 40) & 0xFF),
+        static_cast<uint8_t>((raw >> 48) & 0xFF),
+        static_cast<uint8_t>((raw >> 56) & 0xFF)
+    };
+}
+
+TEST_CASE(vm_fpu_fsqrt, "fpu") {
+    // FSQRT (0xAD): sqrt of ST(0). Push 16.0, FSQRT, check 4.0
+    std::vector<uint8_t> prog;
+    prog.push_back(0xA0);  prog.push_back(0x02);  // FLD imm
+    auto d = pack_double(16.0);
+    prog.insert(prog.end(), d.begin(), d.end());
+    prog.push_back(0xAD);  // FSQRT
+    prog.push_back(0xFF);  // HALT
+    ctx.load_program(prog);
+    ctx.execute_program();
+    double result = ctx.cpu.fpu_peek(0);
+    if (std::abs(result - 4.0) > 0.0001)
+        throw std::runtime_error("FSQRT: expected 4.0, got " + std::to_string(result));
+}
+
+TEST_CASE(vm_fpu_fsqrt_zero, "fpu") {
+    std::vector<uint8_t> prog;
+    prog.push_back(0xA0);  prog.push_back(0x02);
+    auto d = pack_double(0.0);
+    prog.insert(prog.end(), d.begin(), d.end());
+    prog.push_back(0xAD);  // FSQRT
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    double result = ctx.cpu.fpu_peek(0);
+    if (std::abs(result - 0.0) > 0.0001)
+        throw std::runtime_error("FSQRT(0): expected 0.0, got " + std::to_string(result));
+}
+
+TEST_CASE(vm_fpu_fabs, "fpu") {
+    // FABS (0xAE): abs of ST(0). Push -3.5, FABS, check 3.5
+    std::vector<uint8_t> prog;
+    prog.push_back(0xA0);  prog.push_back(0x02);
+    auto d = pack_double(-3.5);
+    prog.insert(prog.end(), d.begin(), d.end());
+    prog.push_back(0xAE);  // FABS
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    double result = ctx.cpu.fpu_peek(0);
+    if (std::abs(result - 3.5) > 0.0001)
+        throw std::runtime_error("FABS: expected 3.5, got " + std::to_string(result));
+}
+
+TEST_CASE(vm_fpu_fadd_imm, "fpu") {
+    // FADD (0xA6): ST(0) += immediate
+    std::vector<uint8_t> prog;
+    prog.push_back(0xA0);  prog.push_back(0x02);
+    auto d10 = pack_double(10.0);
+    prog.insert(prog.end(), d10.begin(), d10.end());
+    prog.push_back(0xA6);  prog.push_back(0x02);  // FADD imm
+    auto d5 = pack_double(5.0);
+    prog.insert(prog.end(), d5.begin(), d5.end());
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    double result = ctx.cpu.fpu_peek(0);
+    if (std::abs(result - 15.0) > 0.0001)
+        throw std::runtime_error("FADD: expected 15.0, got " + std::to_string(result));
+}
+
+TEST_CASE(vm_fpu_fmul_imm, "fpu") {
+    std::vector<uint8_t> prog;
+    prog.push_back(0xA0);  prog.push_back(0x02);
+    auto d3 = pack_double(3.0);
+    prog.insert(prog.end(), d3.begin(), d3.end());
+    prog.push_back(0xA8);  prog.push_back(0x02);  // FMUL imm
+    auto d4 = pack_double(4.0);
+    prog.insert(prog.end(), d4.begin(), d4.end());
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    double result = ctx.cpu.fpu_peek(0);
+    if (std::abs(result - 12.0) > 0.0001)
+        throw std::runtime_error("FMUL: expected 12.0, got " + std::to_string(result));
+}
+
+TEST_CASE(vm_fpu_fsub_imm, "fpu") {
+    // FSUB (0xA7): ST(0) -= immediate
+    std::vector<uint8_t> prog;
+    prog.push_back(0xA0);  prog.push_back(0x02);
+    auto d = pack_double(10.0);
+    prog.insert(prog.end(), d.begin(), d.end());
+    prog.push_back(0xA7);  prog.push_back(0x02);  // FSUB imm
+    auto d3 = pack_double(3.0);
+    prog.insert(prog.end(), d3.begin(), d3.end());
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    double result = ctx.cpu.fpu_peek(0);
+    if (std::abs(result - 7.0) > 0.0001)
+        throw std::runtime_error("FSUB: expected 7.0, got " + std::to_string(result));
+}
+
+TEST_CASE(vm_fpu_fdiv_imm, "fpu") {
+    // FDIV (0xA9): ST(0) /= immediate
+    std::vector<uint8_t> prog;
+    prog.push_back(0xA0);  prog.push_back(0x02);
+    auto d = pack_double(20.0);
+    prog.insert(prog.end(), d.begin(), d.end());
+    prog.push_back(0xA9);  prog.push_back(0x02);  // FDIV imm
+    auto d5 = pack_double(5.0);
+    prog.insert(prog.end(), d5.begin(), d5.end());
+    prog.push_back(0xFF);
+    ctx.load_program(prog);
+    ctx.execute_program();
+    double result = ctx.cpu.fpu_peek(0);
+    if (std::abs(result - 4.0) > 0.0001)
+        throw std::runtime_error("FDIV: expected 4.0, got " + std::to_string(result));
 }
 
 
