@@ -1579,6 +1579,56 @@ void CPU::handle_syscall(bool& running) {
             break;
         }
 
+        case Syscall::SYS_ARRAY_NEW: {
+            // Allocate (size+1)*4 bytes, store size at offset 0, return addr+4
+            uint32_t size = arg1;
+            uint32_t bytes = (size + 1) * 4;
+            uint32_t addr = heap_ptr_;
+            if (addr + bytes <= memory.size()) {
+                heap_ptr_ = addr + bytes;
+                // Store element count at offset 0
+                uint32_t* hdr = reinterpret_cast<uint32_t*>(&memory[addr]);
+                hdr[0] = size;
+                result = addr + 4; // return address of first element
+            } else {
+                result = -1;
+            }
+            break;
+        }
+        case Syscall::SYS_ARRAY_GET: {
+            // Get element i from array at arr (R3=arr, R1=i). arr points to data, header at arr-4.
+            uint32_t arr = arg1, i = arg2;
+            if (arr >= 4 && arr + (i+1)*4 <= memory.size()) {
+                uint32_t* hdr = reinterpret_cast<uint32_t*>(&memory[arr - 4]);
+                if (i < hdr[0]) {
+                    uint32_t* data = reinterpret_cast<uint32_t*>(&memory[arr]);
+                    result = static_cast<long>(data[i]);
+                } else {
+                    result = -1; // index out of bounds
+                }
+            } else {
+                result = -1;
+            }
+            break;
+        }
+        case Syscall::SYS_ARRAY_SET: {
+            // Set element i to val (R3=arr, R1=i, R2=val)
+            uint32_t arr = arg1, i = arg2, val = arg3;
+            if (arr >= 4 && arr + (i+1)*4 <= memory.size()) {
+                uint32_t* hdr = reinterpret_cast<uint32_t*>(&memory[arr - 4]);
+                if (i < hdr[0]) {
+                    uint32_t* data = reinterpret_cast<uint32_t*>(&memory[arr]);
+                    data[i] = val;
+                    result = 0;
+                } else {
+                    result = -1;
+                }
+            } else {
+                result = -1;
+            }
+            break;
+        }
+
         default:
             Logging::ErrorHandler::instance().report_runtime(
                 Logging::ErrorCode::IO_GENERIC,

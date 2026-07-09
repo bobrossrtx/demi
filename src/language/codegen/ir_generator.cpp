@@ -638,6 +638,47 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                             emit_load_imm(dest_reg, 0);
                             break;
                         }
+                        if (obj == "array" && method == "new") {
+                            // array.new(size) — SYS_ARRAY_NEW(208)
+                            int sz_reg = next_local_reg_++;
+                            if (!expr.args.empty()) generate_expr(*expr.args[0], sz_reg);
+                            else emit_load_imm(sz_reg, 0);
+                            emit_load_imm(0, 208);
+                            emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(sz_reg));
+                            emit_opcode(0xCD); emit_byte(0x80);
+                            if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            break;
+                        }
+                        if (obj == "array" && method == "get") {
+                            // array.get(arr, i) — SYS_ARRAY_GET(209)
+                            if (expr.args.size() >= 2) {
+                                int arr_reg = next_local_reg_++, idx_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], arr_reg);
+                                generate_expr(*expr.args[1], idx_reg);
+                                emit_load_imm(0, 209);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(arr_reg));
+                                emit_opcode(OP_MOV); emit_byte(1); emit_byte(static_cast<uint8_t>(idx_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
+                        if (obj == "array" && method == "set") {
+                            // array.set(arr, i, val) — SYS_ARRAY_SET(210)
+                            if (expr.args.size() >= 3) {
+                                int arr_reg = next_local_reg_++, idx_reg = next_local_reg_++, val_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], arr_reg);
+                                generate_expr(*expr.args[1], idx_reg);
+                                generate_expr(*expr.args[2], val_reg);
+                                emit_load_imm(0, 210);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(arr_reg));
+                                emit_opcode(OP_MOV); emit_byte(1); emit_byte(static_cast<uint8_t>(idx_reg));
+                                emit_opcode(OP_MOV); emit_byte(2); emit_byte(static_cast<uint8_t>(val_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
                     }
                     emit_load_imm(dest_reg, 0);
                     break;
