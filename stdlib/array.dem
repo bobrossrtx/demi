@@ -1,0 +1,4 @@
+// Demi Standard Library — array module
+fn new(size: i32) -> i32;
+fn get(arr: i32, i: i32) -> i32;
+fn set(arr: i32, i: i32, val: i32) -> void;

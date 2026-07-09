@@ -213,6 +213,7 @@ void run_repl() {
             "import \"sys\";\n"
             "import \"mem\";\n"
             "import \"str\";\n"
+            "import \"array\";\n"
             "fn main() {\n" + prog + "\n}";
 
         Lexer lexer(wrapped);
