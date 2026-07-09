@@ -217,6 +217,7 @@ void handle_mod64(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 #include "vcmpgt.hpp"
 #include "packb.hpp"
 #include "unpackb.hpp"
+#include "avx_mmx_handlers.hpp"
 
 // Consolidated implementations of all opcodes
 
@@ -1447,7 +1448,7 @@ void handle_outb(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         ), DebugLevel::DETAIL);
 
         if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
-            cpu.write_port(port, cpu.get_registers()[reg]);
+            cpu.write_port(port, static_cast<uint32_t>(cpu.get_register_mode_aware(static_cast<Register>(reg))));
         }
 
         cpu.set_pc(pc + 3);
@@ -1472,7 +1473,7 @@ void handle_out(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
         ), DebugLevel::DETAIL);
 
         if (reg < DemiEngine_Registers::TOTAL_REGISTERS) {
-            cpu.write_port(port, cpu.get_registers()[reg]);
+            cpu.write_port(port, static_cast<uint32_t>(cpu.get_register_mode_aware(static_cast<Register>(reg))));
         }
 
         cpu.set_pc(pc + 3);

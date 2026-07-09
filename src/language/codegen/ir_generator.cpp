@@ -399,9 +399,24 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                         }
                         if (obj == "console" && method == "print_i32") {
                             if (!expr.args.empty()) {
-                                generate_expr(*expr.args[0], 0); // arg in R0
+                                // For literals: LOAD_IMM R0, literal → OUT R0, 1
+                                // For variables (Identifier): OUT directly from the var's register
+                                // This avoids the MOV opcode path which has an R8+ dispatch bug
+                                if (expr.args[0]->kind == DemiExpr::Kind::Identifier) {
+                                    int var_reg = get_var_reg(expr.args[0]->literal);
+                                    if (var_reg >= 0) {
+                                        emit_opcode(0x31); emit_byte(static_cast<uint8_t>(var_reg)); emit_byte(1);
+                                    } else {
+                                        generate_expr(*expr.args[0], 0);
+                                        emit_opcode(0x31); emit_byte(0); emit_byte(1);
+                                    }
+                                } else {
+                                    generate_expr(*expr.args[0], 0);
+                                    emit_opcode(0x31); emit_byte(0); emit_byte(1);
+                                }
+                            } else {
+                                emit_opcode(0x31); emit_byte(0); emit_byte(1);
                             }
-                            emit_opcode(0x31); emit_byte(0); emit_u32(1); // OUT R0, port 1
                             emit_load_imm(dest_reg, 0);
                             break;
                         }

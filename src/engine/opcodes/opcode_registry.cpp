@@ -202,6 +202,34 @@ extern void handle_VCMPGT(CPU& cpu, const std::vector<uint8_t>& program, bool& r
 extern void handle_PACKB(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 extern void handle_UNPACKB(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
 
+// AVX Packed Single handlers
+extern void handle_VADDPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VSUBPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VMULPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VDIVPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VSQRTPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VMAXPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VMINPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VANDPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VORPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VXORPS(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+// AVX Packed Double handlers
+extern void handle_VADDPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VSUBPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VMULPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VDIVPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VSQRTPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VMAXPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VMINPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_VANDPD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+// MMX handlers
+extern void handle_MMX_ADD(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_MMX_SUB(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_MMX_MUL(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_MMX_AND(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_MMX_OR(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+extern void handle_MMX_XOR(CPU& cpu, const std::vector<uint8_t>& program, bool& running);
+
 // Get the singleton instance
 OpcodeRegistry& OpcodeRegistry::instance() {
     static OpcodeRegistry instance;
@@ -438,6 +466,34 @@ void OpcodeRegistry::initialize_handlers() {
     REGISTER_OPCODE(0xD9, handle_VCMPGT);    // VCMPGT - Vector compare greater than
     REGISTER_OPCODE(0xDA, handle_PACKB);     // PACKB - Pack bytes
     REGISTER_OPCODE(0xDB, handle_UNPACKB);   // UNPACKB - Unpack bytes
+
+    // AVX Packed Single (0xC0-0xC9)
+    REGISTER_OPCODE(0xC0, handle_VADDPS);
+    REGISTER_OPCODE(0xC1, handle_VSUBPS);
+    REGISTER_OPCODE(0xC2, handle_VMULPS);
+    REGISTER_OPCODE(0xC3, handle_VDIVPS);
+    REGISTER_OPCODE(0xC4, handle_VSQRTPS);
+    REGISTER_OPCODE(0xC5, handle_VMAXPS);
+    REGISTER_OPCODE(0xC6, handle_VMINPS);
+    REGISTER_OPCODE(0xC7, handle_VANDPS);
+    REGISTER_OPCODE(0xC8, handle_VORPS);
+    REGISTER_OPCODE(0xC9, handle_VXORPS);
+    // AVX Packed Double (0xCA-0xDD)
+    REGISTER_OPCODE(0xCA, handle_VADDPD);
+    REGISTER_OPCODE(0xCB, handle_VSUBPD);
+    REGISTER_OPCODE(0xCC, handle_VMULPD);
+    REGISTER_OPCODE(0xCE, handle_VDIVPD);
+    REGISTER_OPCODE(0xDC, handle_VMAXPD);
+    REGISTER_OPCODE(0xD0, handle_VMINPD);
+    REGISTER_OPCODE(0xD1, handle_VANDPD);
+    REGISTER_OPCODE(0xDD, handle_VSQRTPD);
+    // MMX (0xE0-0xEA)
+    REGISTER_OPCODE(0xE0, handle_MMX_ADD);
+    REGISTER_OPCODE(0xE1, handle_MMX_SUB);
+    REGISTER_OPCODE(0xE2, handle_MMX_MUL);
+    REGISTER_OPCODE(0xE3, handle_MMX_AND);
+    REGISTER_OPCODE(0xE4, handle_MMX_OR);
+    REGISTER_OPCODE(0xE5, handle_MMX_XOR);
     
     REGISTER_OPCODE(static_cast<uint8_t>(Opcode::OUT), handle_out);        // OUT
     REGISTER_OPCODE(0x41, handle_loadr);      // LOADR - Load indirect (address in register)

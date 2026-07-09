@@ -1204,7 +1204,7 @@ void dispatch_opcode_inlined_fallback(CPU& cpu, const std::vector<uint8_t>& prog
                 value |= static_cast<uint32_t>(program[pc + 5]) << 24;
                 
                 #ifndef NDEBUG
-                if (__builtin_expect(reg >= cpu.get_registers().size(), 0)) {
+                if (__builtin_expect(reg >= TOTAL_REGISTERS, 0)) {
                     running = false;
                     break;
                 }
@@ -1243,7 +1243,7 @@ void dispatch_opcode_inlined_fallback(CPU& cpu, const std::vector<uint8_t>& prog
                 uint8_t reg2 = program[pc + 2];
                 
                 #ifndef NDEBUG
-                if (__builtin_expect(reg1 >= cpu.get_registers().size() || reg2 >= cpu.get_registers().size(), 0)) {
+                if (__builtin_expect(reg1 >= TOTAL_REGISTERS || reg2 >= TOTAL_REGISTERS, 0)) {
                     running = false;
                     break;
                 }
@@ -1288,7 +1288,7 @@ void dispatch_opcode_inlined_fallback(CPU& cpu, const std::vector<uint8_t>& prog
                 uint8_t reg_src = program[pc + 2];
                 
                 #ifndef NDEBUG
-                if (__builtin_expect(reg_dst >= cpu.get_registers().size() || reg_src >= cpu.get_registers().size(), 0)) {
+                if (__builtin_expect(reg_dst >= TOTAL_REGISTERS || reg_src >= TOTAL_REGISTERS, 0)) {
                     running = false;
                     break;
                 }
@@ -1396,7 +1396,7 @@ void dispatch_opcode_inlined_fallback(CPU& cpu, const std::vector<uint8_t>& prog
                 uint8_t reg = program[pc + 1];
                 
                 #ifndef NDEBUG
-                if (__builtin_expect(reg >= cpu.get_registers().size(), 0)) {
+                if (__builtin_expect(reg >= TOTAL_REGISTERS, 0)) {
                     running = false;
                     break;
                 }
