@@ -32,6 +32,7 @@ enum class Syscall : uint32_t {
     SYS_FILE_READ   = 212,   // Demi: file.read(fd, buf, n) → bytes_read
     SYS_FILE_WRITE  = 213,   // Demi: file.write(fd, buf, n) → bytes_written
     SYS_FILE_CLOSE  = 214,   // Demi: file.close(fd)
+    SYS_SQRT_F      = 215,   // Demi: math.sqrt_f(x) → i32
     SYS_FORK        = 2,
     SYS_ACCESS       = 33,
     SYS_WAITPID     = 7,
@@ -124,6 +125,7 @@ inline Syscall to_syscall(uint32_t num) {
         case 212: return Syscall::SYS_FILE_READ;
         case 213: return Syscall::SYS_FILE_WRITE;
         case 214: return Syscall::SYS_FILE_CLOSE;
+        case 215: return Syscall::SYS_SQRT_F;
         case 7: return Syscall::SYS_WAITPID;
         case 2: return Syscall::SYS_FORK;
         case 33: return Syscall::SYS_ACCESS;
@@ -165,6 +167,7 @@ inline const char* syscall_name(Syscall sc) {
         case Syscall::SYS_FILE_READ: return "sys_file_read";
         case Syscall::SYS_FILE_WRITE: return "sys_file_write";
         case Syscall::SYS_FILE_CLOSE: return "sys_file_close";
+        case Syscall::SYS_SQRT_F: return "sys_sqrt_f";
             case Syscall::SYS_ACCESS: return "sys_access";
             case Syscall::SYS_GETDENTS: return "sys_getdents";
             case Syscall::SYS_GETCWD: return "sys_getcwd";

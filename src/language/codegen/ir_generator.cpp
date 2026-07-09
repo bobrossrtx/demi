@@ -583,6 +583,18 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                             }
                             break;
                         }
+                        if (obj == "math" && method == "sqrt_f") {
+                            // math.sqrt_f(x) — SYS_SQRT_F(215)
+                            if (!expr.args.empty()) {
+                                int v_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], v_reg);
+                                emit_load_imm(0, 215);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(v_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
                         if (obj == "mem" && method == "copy") {
                             // mem.copy(dst, src, n): SYS_MEMCPY(204)
                             if (expr.args.size() >= 3) {

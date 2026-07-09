@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <chrono>
 #include <thread>
+#include <cmath>
 #include <ctime>
 #include <sstream>
 #include <unordered_set>
@@ -1662,6 +1663,15 @@ void CPU::handle_syscall(bool& running) {
         case Syscall::SYS_FILE_CLOSE: {
             int fd = static_cast<int>(arg1);
             result = close(fd);
+            break;
+        }
+
+        case Syscall::SYS_SQRT_F: {
+            float fval; int32_t iv = static_cast<int32_t>(arg1);
+            std::memcpy(&fval, &iv, sizeof(fval));
+            float r = sqrtf(fval);
+            int32_t res; std::memcpy(&res, &r, sizeof(res));
+            result = static_cast<long>(res);
             break;
         }
 
