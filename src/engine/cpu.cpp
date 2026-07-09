@@ -1629,6 +1629,42 @@ void CPU::handle_syscall(bool& running) {
             break;
         }
 
+        case Syscall::SYS_FILE_OPEN: {
+            // file.open(path_addr, flags) → fd. path is null-terminated string in VM memory.
+            const char* path = reinterpret_cast<const char*>(&memory[arg1]);
+            int flags = static_cast<int>(arg2);
+            int fd = open(path, flags, 0644);
+            result = fd;
+            break;
+        }
+        case Syscall::SYS_FILE_READ: {
+            // file.read(fd, buf_addr, n) → bytes_read
+            int fd = static_cast<int>(arg1);
+            if (arg2 + arg3 <= memory.size()) {
+                ssize_t n = read(fd, &memory[arg2], arg3);
+                result = static_cast<long>(n);
+            } else {
+                result = -1;
+            }
+            break;
+        }
+        case Syscall::SYS_FILE_WRITE: {
+            // file.write(fd, buf_addr, n) → bytes_written
+            int fd = static_cast<int>(arg1);
+            if (arg2 + arg3 <= memory.size()) {
+                ssize_t n = write(fd, &memory[arg2], arg3);
+                result = static_cast<long>(n);
+            } else {
+                result = -1;
+            }
+            break;
+        }
+        case Syscall::SYS_FILE_CLOSE: {
+            int fd = static_cast<int>(arg1);
+            result = close(fd);
+            break;
+        }
+
         default:
             Logging::ErrorHandler::instance().report_runtime(
                 Logging::ErrorCode::IO_GENERIC,

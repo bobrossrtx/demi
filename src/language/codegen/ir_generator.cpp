@@ -679,6 +679,62 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                             }
                             break;
                         }
+                        if (obj == "file" && method == "open") {
+                            // file.open(path_addr, flags) — SYS_FILE_OPEN(211)
+                            if (expr.args.size() >= 2) {
+                                int p_reg = next_local_reg_++, f_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], p_reg);
+                                generate_expr(*expr.args[1], f_reg);
+                                emit_load_imm(0, 211);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(p_reg));
+                                emit_opcode(OP_MOV); emit_byte(1); emit_byte(static_cast<uint8_t>(f_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
+                        if (obj == "file" && method == "read") {
+                            // file.read(fd, buf, n) — SYS_FILE_READ(212)
+                            if (expr.args.size() >= 3) {
+                                int f_reg = next_local_reg_++, b_reg = next_local_reg_++, n_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], f_reg);
+                                generate_expr(*expr.args[1], b_reg);
+                                generate_expr(*expr.args[2], n_reg);
+                                emit_load_imm(0, 212);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(f_reg));
+                                emit_opcode(OP_MOV); emit_byte(1); emit_byte(static_cast<uint8_t>(b_reg));
+                                emit_opcode(OP_MOV); emit_byte(2); emit_byte(static_cast<uint8_t>(n_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
+                        if (obj == "file" && method == "write") {
+                            // file.write(fd, buf, n) — SYS_FILE_WRITE(213)
+                            if (expr.args.size() >= 3) {
+                                int f_reg = next_local_reg_++, b_reg = next_local_reg_++, n_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], f_reg);
+                                generate_expr(*expr.args[1], b_reg);
+                                generate_expr(*expr.args[2], n_reg);
+                                emit_load_imm(0, 213);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(f_reg));
+                                emit_opcode(OP_MOV); emit_byte(1); emit_byte(static_cast<uint8_t>(b_reg));
+                                emit_opcode(OP_MOV); emit_byte(2); emit_byte(static_cast<uint8_t>(n_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
+                        if (obj == "file" && method == "close") {
+                            if (!expr.args.empty()) {
+                                int f_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], f_reg);
+                                emit_load_imm(0, 214);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(f_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                            }
+                            break;
+                        }
                     }
                     emit_load_imm(dest_reg, 0);
                     break;
