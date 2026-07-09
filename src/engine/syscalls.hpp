@@ -24,6 +24,7 @@ enum class Syscall : uint32_t {
     SYS_MEMCPY      = 204,   // Demi: mem.copy(dst, src, n)
     SYS_MEMSET      = 205,   // Demi: mem.set(addr, val, n)
     SYS_STRLEN      = 206,   // Demi: str.len(addr)
+    SYS_PRINT_INT   = 207,   // Demi: console.print_int(n)
     SYS_FORK        = 2,
     SYS_ACCESS       = 33,
     SYS_WAITPID     = 7,
@@ -108,6 +109,7 @@ inline Syscall to_syscall(uint32_t num) {
         case 204: return Syscall::SYS_MEMCPY;
         case 205: return Syscall::SYS_MEMSET;
         case 206: return Syscall::SYS_STRLEN;
+        case 207: return Syscall::SYS_PRINT_INT;
         case 7: return Syscall::SYS_WAITPID;
         case 2: return Syscall::SYS_FORK;
         case 33: return Syscall::SYS_ACCESS;
@@ -141,6 +143,7 @@ inline const char* syscall_name(Syscall sc) {
         case Syscall::SYS_MEMCPY: return "sys_memcpy";
         case Syscall::SYS_MEMSET: return "sys_memset";
         case Syscall::SYS_STRLEN: return "sys_strlen";
+        case Syscall::SYS_PRINT_INT: return "sys_print_int";
             case Syscall::SYS_ACCESS: return "sys_access";
             case Syscall::SYS_GETDENTS: return "sys_getdents";
             case Syscall::SYS_GETCWD: return "sys_getcwd";

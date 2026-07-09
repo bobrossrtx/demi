@@ -1554,6 +1554,31 @@ void CPU::handle_syscall(bool& running) {
             break;
         }
 
+        case Syscall::SYS_PRINT_INT: {
+            // Print i32 as decimal ASCII digits to stdout (arg1 = value)
+            int32_t val = static_cast<int32_t>(arg1);
+            char buf[16];
+            int pos = 0;
+            if (val < 0) {
+                std::cout << '-';
+                val = -val;
+            }
+            if (val == 0) {
+                std::cout << '0';
+            } else {
+                while (val > 0 && pos < 15) {
+                    buf[pos++] = '0' + (val % 10);
+                    val /= 10;
+                }
+                // Reverse and output
+                for (int i = pos - 1; i >= 0; i--) {
+                    std::cout << buf[i];
+                }
+            }
+            result = 0;
+            break;
+        }
+
         default:
             Logging::ErrorHandler::instance().report_runtime(
                 Logging::ErrorCode::IO_GENERIC,

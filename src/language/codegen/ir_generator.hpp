@@ -33,6 +33,12 @@ private:
     // Register allocator state
     int next_local_reg_ = 8;  // R8+ for local variables
     std::unordered_map<std::string, int> var_regs_;  // variable name → register index
+
+    // String literal pool: index → (offset_in_code, string_data)
+    std::vector<std::pair<uint32_t, std::string>> string_pool_;
+
+    // String heap counter — advances per string literal (starts at 0xC0)
+    int string_heap_ = 0xC0;
     
     // Current function context
     std::string current_func_;

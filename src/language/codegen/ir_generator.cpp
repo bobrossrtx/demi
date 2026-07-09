@@ -258,9 +258,9 @@ void IRGenerator::generate_stmt(const DemiStmt& stmt) {
 void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
     switch (expr.kind) {
         case DemiExpr::Kind::LiteralString: {
-            // Write string to fixed memory using STORE+reg
-            static int str_heap = 0xC0;
-            int addr = str_heap;
+            // Write string to VM memory via STORE instructions
+            // Use heap-based allocation so strings don't overlap
+            int addr = string_heap_;
             int len = static_cast<int>(expr.literal.size());
             
             // Store each char: LOAD_IMM temp, char; STORE temp, addr+i
@@ -279,7 +279,7 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
             emit_byte(null_addr & 0xFF); emit_byte((null_addr>>8)&0xFF); emit_byte((null_addr>>16)&0xFF); emit_byte((null_addr>>24)&0xFF);
             
             emit_load_imm(dest_reg, static_cast<uint32_t>(addr));
-            str_heap += len + 1;
+            string_heap_ += len + 1;
             break;
         }
         case DemiExpr::Kind::LiteralInt:
@@ -624,6 +624,18 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                                 emit_opcode(0xCD); emit_byte(0x80);
                                 if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
                             }
+                            break;
+                        }
+                        if (obj == "console" && method == "print_int") {
+                            // console.print_int(n) — SYS_PRINT_INT(207) via INT 0x80
+                            if (!expr.args.empty()) {
+                                int val_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], val_reg);
+                                emit_load_imm(0, 207);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(val_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                            }
+                            emit_load_imm(dest_reg, 0);
                             break;
                         }
                     }
