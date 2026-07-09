@@ -64,7 +64,9 @@ static std::string readline_repl(std::deque<std::string>& history, size_t& hist_
     while (true) {
         if (sigint_received) {
             sigint_received = 0;
-            std::cout << "\n[Ctrl+C] Use .exit, Ctrl+D, or sys.exit() to quit.\n>>> " << line << std::flush;
+            line.clear();
+            cursor = 0;
+            std::cout << "\n>>> " << std::flush;
             continue;
         }
 
