@@ -680,6 +680,10 @@ bool CPU::step(const std::vector<uint8_t>& program) {
 
     bool running = true;
     
+    // Check for pending interrupts before executing instruction
+    handle_pending_interrupts(program, running);
+    if (!running) return false;
+    
     // Try instruction fusion first, fall back to optimized dispatch
     if (!InstructionFusion::try_instruction_fusion(*this, program, running)) {
         dispatch_opcode_inlined_optimized(*this, program, running);

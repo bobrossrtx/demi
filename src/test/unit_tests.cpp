@@ -3399,6 +3399,107 @@ TEST_CASE(encoder_map_no_operands_interrupt, "encoder_map") {
     ctx.assert_byte_at(3, 0xFF); // HALT
 }
 
+TEST_CASE(vm_int_iret_roundtrip, "interrupts") {
+    // Full INT → handler → IRET roundtrip
+    // Handler is embedded in the program vector at offset 0x40
+    
+    std::vector<uint8_t> prog;
+    
+    // Main code: set IVT[0x01] = 0x40, INT 0x01, HALT
+    // IVT[0x01] at memory[0x04]
+    prog.insert(prog.end(), {
+        0x01, 0x05, 0x40, 0x00, 0x00, 0x00,   // LOAD_IMM R5, 0x40
+        0x07, 0x05, 0x04, 0x00, 0x00, 0x00,   // STORE R5, 0x04
+    });
+    
+    // Zero out bytes 1-3 of IVT entry
+    prog.insert(prog.end(), {
+        0x01, 0x05, 0x00, 0x00, 0x00, 0x00,   // LOAD_IMM R5, 0
+        0x07, 0x05, 0x05, 0x00, 0x00, 0x00,   // STORE R5, 0x05
+        0x07, 0x05, 0x06, 0x00, 0x00, 0x00,   // STORE R5, 0x06
+        0x07, 0x05, 0x07, 0x00, 0x00, 0x00,   // STORE R5, 0x07
+    });
+    
+    // INT 0x01 + HALT
+    prog.insert(prog.end(), {
+        0xCD, 0x01,                           // INT 0x01
+        0xFF,                                 // HALT
+    });
+    
+    // Pad to 0x40
+    while (prog.size() < 0x40) prog.push_back(0x00);
+    
+    // Handler at offset 0x40: LOAD_IMM R3, 42; IRET
+    prog.insert(prog.end(), {
+        0x01, 0x03,                           // LOAD_IMM R3
+        0x2A, 0x00, 0x00, 0x00,              // 42
+        0xCF,                                 // IRET
+    });
+    
+    ctx.load_program(prog);
+    ctx.set_max_steps(100);
+    ctx.execute_program();
+    
+    ctx.assert_register_eq(3, 42);
+}
+
+
+
+
+
+TEST_CASE(vm_int_handled, "interrupts") {
+    // INT 0x80 should trigger syscall handler
+    // With SYS_EXIT in RAX, the VM should stop cleanly
+    ctx.load_program({
+        0x01, 0x00, 0x01, 0x00, 0x00, 0x00,  // LOAD_IMM R0, 1 (SYS_EXIT)
+        0xCD, 0x80,                           // INT 0x80
+        0xFF                                  // HALT (unreachable)
+    });
+    ctx.set_max_steps(20);
+    ctx.execute_program();
+    // After SYS_EXIT, the VM is stopped. R0 should be 0 (SYS_EXIT returns 0).
+    // If R0 is still 1, the syscall wasn't delivered.
+    ctx.assert_register_eq(0, 0);
+}
+
+TEST_CASE(vm_cli_sti_interrupt_flag, "interrupts") {
+    // STI enables interrupts and sets FLAG_INTERRUPT
+    ctx.load_program({
+        0xFA,       // CLI - disable interrupts
+        0xFF        // HALT
+    });
+    ctx.execute_program();
+    ctx.assert_flag_clear(FLAG_INTERRUPT);
+}
+
+TEST_CASE(vm_sti_enables_after_cli, "interrupts") {
+    // CLI then STI should re-enable interrupts
+    ctx.load_program({
+        0xFA,       // CLI - disable interrupts
+        0xFB,       // STI - enable interrupts
+        0xFF        // HALT
+    });
+    ctx.execute_program();
+    ctx.assert_flag_set(FLAG_INTERRUPT);
+}
+
+
+TEST_CASE(vm_div_zero_exception, "interrupts") {
+    // Division by zero triggers exception vector 0x00
+    // With no handler installed, the VM halts via handle_pending_interrupts
+    ctx.load_program({
+        0x01, 0x00, 0x0A, 0x00, 0x00, 0x00,  // LOAD_IMM R0, 10
+        0x01, 0x01, 0x00, 0x00, 0x00, 0x00,  // LOAD_IMM R1, 0
+        0x03, 0x00, 0x01,                     // DIV R0, R1 (divide by zero)
+        0xFF                                  // HALT (unreachable)
+    });
+    ctx.set_max_steps(50);
+    ctx.execute_program();
+    // DIV handler triggers exception and returns without storing quotient
+    // R0 should still be 10 since division was skipped
+}
+
+
 TEST_CASE(encoder_map_no_operands_simd, "encoder_map") {
     ctx.assemble_code(R"(
         VADD

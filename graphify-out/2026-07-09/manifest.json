@@ -1,0 +1,2287 @@
+{
+  ".vscode/c_cpp_properties.json": {
+    "mtime": 1781017664.7683327,
+    "ast_hash": "7735eb35b51af78ea2c1fa96a62b34c9",
+    "semantic_hash": ""
+  },
+  ".vscode/launch.json": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "236b68df4d2564751b9038f743370cd6",
+    "semantic_hash": ""
+  },
+  ".vscode/settings.json": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "f7ff86630d92e819bd8892e25cdf88e2",
+    "semantic_hash": ""
+  },
+  ".vscode/tasks.json": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "c597447a9c576ed5b2da607c0fd0d2d7",
+    "semantic_hash": ""
+  },
+  "audit_examples.sh": {
+    "mtime": 1781017664.7683327,
+    "ast_hash": "c8b7daac632b0681e7fbf1a61fe72478",
+    "semantic_hash": ""
+  },
+  "clean_changelog.sh": {
+    "mtime": 1781216836.4855766,
+    "ast_hash": "e982bd71af1d80da83a72f167cb32f9c",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_01/main.cpp": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "12e9597f6fdeacc7589cbcfa55c47e21",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_02_c/main.c": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "9e05da998e059c88369d8251dd7f7506",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_03_output_capture/main.c": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "aa7da508998cabf63c904b5b4d94c9e1",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_04_introspection/main.cpp": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "eb992f77ca5eccac67105841387405f5",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_05_stdin_cpp/main.cpp": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "43a4ca94e067b15090f79e4f0727b11f",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_06_stdin_c/main.c": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "0a6c96f338a446b990337d850cde7682",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_07_calculator_stdin_cpp/main.cpp": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "f6e000a23f306a4b36748c863027f9cc",
+    "semantic_hash": ""
+  },
+  "examples/x64/shared/dasm-import/build.sh": {
+    "mtime": 1781498342.319573,
+    "ast_hash": "0e08d5bc5177bba001da191029609984",
+    "semantic_hash": ""
+  },
+  "examples/x64/shared/hello-world/build.sh": {
+    "mtime": 1781496746.151346,
+    "ast_hash": "f5bc5d4fecf079f70f50fcdcdd8039b9",
+    "semantic_hash": ""
+  },
+  "examples/x64/shared/hello-world/test_stub.c": {
+    "mtime": 1781496711.7326372,
+    "ast_hash": "6fb8a56b8b7c38be48da385d2e51b367",
+    "semantic_hash": ""
+  },
+  "examples/x64/shared/math-lib/build.sh": {
+    "mtime": 1781496740.2272215,
+    "ast_hash": "8d188aae1f0ce914d56bf1b35b529db8",
+    "semantic_hash": ""
+  },
+  "examples/x64/shared/math-lib/test_stub.c": {
+    "mtime": 1781496781.3847694,
+    "ast_hash": "b93e9c43d9248d970b4b55c27d13a0ee",
+    "semantic_hash": ""
+  },
+  "examples/x64/shared/return-42/build.sh": {
+    "mtime": 1781496728.65375,
+    "ast_hash": "95bec902179c6a5cf082be638b06a2ed",
+    "semantic_hash": ""
+  },
+  "examples/x64/shared/return-42/test_stub.c": {
+    "mtime": 1781496577.1292,
+    "ast_hash": "f6e7dcba7dd7515a4e5bd246633a41b8",
+    "semantic_hash": ""
+  },
+  "examples/x86/ground-up/macros.inc": {
+    "mtime": 1781268374.8573337,
+    "ast_hash": "0615238f9109338f690f9e088fd44df2",
+    "semantic_hash": ""
+  },
+  "generate_changelog.sh": {
+    "mtime": 1781216836.4855766,
+    "ast_hash": "60a651a7312f8a81e04a80abaac6b26f",
+    "semantic_hash": ""
+  },
+  "generate_compile_commands.py": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "11f1dfd233cf074419aaaff02a95eb3d",
+    "semantic_hash": ""
+  },
+  "include/demi/engine.hpp": {
+    "mtime": 1781017664.7827327,
+    "ast_hash": "300e4406de1369c7856b927dc78eba53",
+    "semantic_hash": ""
+  },
+  "include/demi/engine_c_api.h": {
+    "mtime": 1781017664.7827327,
+    "ast_hash": "3422a0fa2717f72c4ee3dbe121584ded",
+    "semantic_hash": ""
+  },
+  "scripts/pentest_c_api.py": {
+    "mtime": 1781017664.7863326,
+    "ast_hash": "d6d7d21c74b498dc1277e706559d5cd4",
+    "semantic_hash": ""
+  },
+  "scripts/phase2-launch.sh": {
+    "mtime": 1781017664.7863326,
+    "ast_hash": "b3cd077c794c71912f9c942031d74164",
+    "semantic_hash": ""
+  },
+  "show_version.sh": {
+    "mtime": 1781216836.4855766,
+    "ast_hash": "348249b23feee63a3cafebf501c6f69b",
+    "semantic_hash": ""
+  },
+  "src/assembler/assembler.cpp": {
+    "mtime": 1783558484.2484398,
+    "ast_hash": "f99d3ee7ee2d38152d8a05af411e970b",
+    "semantic_hash": ""
+  },
+  "src/assembler/assembler.hpp": {
+    "mtime": 1781491220.7357438,
+    "ast_hash": "56919e302aacc6dddc7d3296dc502fe4",
+    "semantic_hash": ""
+  },
+  "src/assembler/ast.hpp": {
+    "mtime": 1781492056.1850147,
+    "ast_hash": "cb4d991b6028761e63239f3aad0136ad",
+    "semantic_hash": ""
+  },
+  "src/assembler/backend.hpp": {
+    "mtime": 1781498273.71488,
+    "ast_hash": "65bd8f5c9179d527f380efd8f6b9999c",
+    "semantic_hash": ""
+  },
+  "src/assembler/demi_assembler.cpp": {
+    "mtime": 1781493008.6986148,
+    "ast_hash": "560919c03da66c3da0d6266281d896c4",
+    "semantic_hash": ""
+  },
+  "src/assembler/demi_assembler.hpp": {
+    "mtime": 1781491021.9658175,
+    "ast_hash": "3f5a570447fdd3b669d718a9ac150e00",
+    "semantic_hash": ""
+  },
+  "src/assembler/dwarf_emitter.cpp": {
+    "mtime": 1781483178.8134987,
+    "ast_hash": "020703c7094a80ff6869250ed1e24e44",
+    "semantic_hash": ""
+  },
+  "src/assembler/dwarf_emitter.hpp": {
+    "mtime": 1781464051.378599,
+    "ast_hash": "9b541e822ab78f18b3d3461d9121c185",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf32_executable.cpp": {
+    "mtime": 1781261778.306123,
+    "ast_hash": "4578cc2d9f39182fe468f18b14d7a59d",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf32_executable.hpp": {
+    "mtime": 1781261332.7600465,
+    "ast_hash": "87fefd49b38b93b6fd120159d5a7ec3e",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf32_writer.cpp": {
+    "mtime": 1781488604.4288168,
+    "ast_hash": "43d23cfc735419e86f4ee81c0273d74e",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf32_writer.hpp": {
+    "mtime": 1781257996.1297996,
+    "ast_hash": "43b319028a203ca473a6c0b3eafa45aa",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf64_executable.cpp": {
+    "mtime": 1783559375.7553558,
+    "ast_hash": "550cdf38e99b8dfd1c2dac858f949f20",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf64_executable.hpp": {
+    "mtime": 1781493395.4073844,
+    "ast_hash": "73e1896e3a70a6997cd98290135ce682",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf64_writer.cpp": {
+    "mtime": 1781498061.1419268,
+    "ast_hash": "87910b0578e8add7a92c655aec18fd0a",
+    "semantic_hash": ""
+  },
+  "src/assembler/elf64_writer.hpp": {
+    "mtime": 1781194579.2717705,
+    "ast_hash": "b8798f0704ad87c46b4cf0a3a53f00fd",
+    "semantic_hash": ""
+  },
+  "src/assembler/ir.hpp": {
+    "mtime": 1781492638.8141887,
+    "ast_hash": "f0f1eed7163bfbf2c8b78172c2601cc3",
+    "semantic_hash": ""
+  },
+  "src/assembler/lexer.cpp": {
+    "mtime": 1781489989.7702699,
+    "ast_hash": "1d1988b7c71c705cb1a5e86b885466de",
+    "semantic_hash": ""
+  },
+  "src/assembler/lexer.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "299ee971c66ceee9d695da2fd7599363",
+    "semantic_hash": ""
+  },
+  "src/assembler/lowering.cpp": {
+    "mtime": 1783378434.2741516,
+    "ast_hash": "71b5ea981d32fe6d3311f1798377234e",
+    "semantic_hash": ""
+  },
+  "src/assembler/lowering.hpp": {
+    "mtime": 1781193214.470125,
+    "ast_hash": "b195357a2b80bded8c1527002e5b0dcf",
+    "semantic_hash": ""
+  },
+  "src/assembler/opcodes.hpp": {
+    "mtime": 1783558638.1834211,
+    "ast_hash": "0a2efe6a3a8733867b41e9885c1830ab",
+    "semantic_hash": ""
+  },
+  "src/assembler/parser.cpp": {
+    "mtime": 1781492147.2275565,
+    "ast_hash": "a24894d70f67110d5638587401d48418",
+    "semantic_hash": ""
+  },
+  "src/assembler/parser.hpp": {
+    "mtime": 1781189731.8910625,
+    "ast_hash": "ce27d594edd2ba0e67488266ef94feb3",
+    "semantic_hash": ""
+  },
+  "src/assembler/preprocessor.cpp": {
+    "mtime": 1781490019.0376396,
+    "ast_hash": "694e548f08fb08569b550a4952deab19",
+    "semantic_hash": ""
+  },
+  "src/assembler/preprocessor.hpp": {
+    "mtime": 1781270779.0463655,
+    "ast_hash": "f21f03a9aea78d92a946422d110b7a1c",
+    "semantic_hash": ""
+  },
+  "src/assembler/token.hpp": {
+    "mtime": 1781017664.7899327,
+    "ast_hash": "3a729d00135e9a9e004060ac741a05e2",
+    "semantic_hash": ""
+  },
+  "src/assembler/x86_backend.cpp": {
+    "mtime": 1783382924.7191339,
+    "ast_hash": "a8941be013a10d3fce2d064f51fb0ffd",
+    "semantic_hash": ""
+  },
+  "src/assembler/x86_backend.hpp": {
+    "mtime": 1781265086.114057,
+    "ast_hash": "297a36307fd0d4c904e79cdae13b0dd1",
+    "semantic_hash": ""
+  },
+  "src/codegen/disa_compiler.cpp": {
+    "mtime": 1781528865.3898664,
+    "ast_hash": "48196a78367fe81beae6ecc59f875620",
+    "semantic_hash": ""
+  },
+  "src/codegen/disa_compiler.hpp": {
+    "mtime": 1781486484.2012305,
+    "ast_hash": "affa98432da139dab577f0c6e9111685",
+    "semantic_hash": ""
+  },
+  "src/codegen/elf_emitter.cpp": {
+    "mtime": 1781500464.6486099,
+    "ast_hash": "4841fe232a5cb01370eaa6b4d0eea43b",
+    "semantic_hash": ""
+  },
+  "src/codegen/elf_emitter.hpp": {
+    "mtime": 1781486497.1620219,
+    "ast_hash": "07fcc240bf5a9fe2e00e0c5d0ded2d4a",
+    "semantic_hash": ""
+  },
+  "src/codegen/register_allocator.cpp": {
+    "mtime": 1781500258.404926,
+    "ast_hash": "b8f665087200e91293a6b9f1666b88c1",
+    "semantic_hash": ""
+  },
+  "src/codegen/register_allocator.hpp": {
+    "mtime": 1781500252.6591144,
+    "ast_hash": "8f4a4f69432d02a5e7d75d110c8cdefc",
+    "semantic_hash": ""
+  },
+  "src/codegen/x86_encoder.cpp": {
+    "mtime": 1781488234.6184561,
+    "ast_hash": "9e7e7a85b621c9aaf2e31e1cc832595e",
+    "semantic_hash": ""
+  },
+  "src/codegen/x86_encoder.hpp": {
+    "mtime": 1781486403.950425,
+    "ast_hash": "0fe3a47c703eb7c2af0a55baae92bff3",
+    "semantic_hash": ""
+  },
+  "src/config.hpp": {
+    "mtime": 1781492918.9907277,
+    "ast_hash": "033c1c5d802ed4fea8457db7037b453e",
+    "semantic_hash": ""
+  },
+  "src/debug/debug_config.cpp": {
+    "mtime": 1781017664.7899327,
+    "ast_hash": "230c410fe51fffd598799308b009b927",
+    "semantic_hash": ""
+  },
+  "src/debug/debug_config.hpp": {
+    "mtime": 1781017664.7899327,
+    "ast_hash": "89155dff23a166bd54817727d679295b",
+    "semantic_hash": ""
+  },
+  "src/debug/debug_handler.cpp": {
+    "mtime": 1781017664.7899327,
+    "ast_hash": "8559639523b6d0fec6fa75b724e43af0",
+    "semantic_hash": ""
+  },
+  "src/debug/debug_handler.hpp": {
+    "mtime": 1781017664.7899327,
+    "ast_hash": "7c154a0c49fd7282fd302449655b05c8",
+    "semantic_hash": ""
+  },
+  "src/debug/error_handler.cpp": {
+    "mtime": 1781017664.7899327,
+    "ast_hash": "9bb9648cd4af493e92563007c8be361a",
+    "semantic_hash": ""
+  },
+  "src/debug/error_handler.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "d337b3487f0ac4920205ef72818bf16a",
+    "semantic_hash": ""
+  },
+  "src/debug/hexdumper.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "95d9d684e63f1070df1581a701e40895",
+    "semantic_hash": ""
+  },
+  "src/debug/logger.cpp": {
+    "mtime": 1781017664.7899327,
+    "ast_hash": "46d47e1c7184be41c80bf4014ba95935",
+    "semantic_hash": ""
+  },
+  "src/debug/logger.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "96a7fa6221eeb232a85ff861faec43da",
+    "semantic_hash": ""
+  },
+  "src/engine/branch_prediction.cpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "52a0fdce24127c13c7a749dc5c28b81f",
+    "semantic_hash": ""
+  },
+  "src/engine/branch_prediction.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "adb74145a9a4dc41536d06ec1986476d",
+    "semantic_hash": ""
+  },
+  "src/engine/cpu.cpp": {
+    "mtime": 1781090873.5487583,
+    "ast_hash": "2a3495b507830a5e0c88b1e6c8f82b0b",
+    "semantic_hash": ""
+  },
+  "src/engine/cpu.hpp": {
+    "mtime": 1783560059.4545534,
+    "ast_hash": "aec1267eded62a81bb0f9aa0c2873e08",
+    "semantic_hash": ""
+  },
+  "src/engine/cpu_flags.hpp": {
+    "mtime": 1783554400.8359175,
+    "ast_hash": "173b6570f5f17e577339169ffd12378e",
+    "semantic_hash": ""
+  },
+  "src/engine/cpu_registers.cpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "4ceed14783a08cb222b140902390fe7d",
+    "semantic_hash": ""
+  },
+  "src/engine/cpu_registers.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "48e3d86b6d074dbf085615f17d30296f",
+    "semantic_hash": ""
+  },
+  "src/engine/device.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "cda8087e347652a1e1eb9220527b0636",
+    "semantic_hash": ""
+  },
+  "src/engine/device_factory.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "eddbe294f9d9160ba4ddd65d6158638c",
+    "semantic_hash": ""
+  },
+  "src/engine/device_manager.cpp": {
+    "mtime": 1781089857.132003,
+    "ast_hash": "1c7b09df40f49ca820e8812fd74ba56e",
+    "semantic_hash": ""
+  },
+  "src/engine/device_manager.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "2b2c777d6b73766dcc6178e10aeaa707",
+    "semantic_hash": ""
+  },
+  "src/engine/devices/console_device.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "61349fc3a9d87a390fdde53711f6adf0",
+    "semantic_hash": ""
+  },
+  "src/engine/devices/counter_device.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "fddc91a738ad7cb7167d012febde28d8",
+    "semantic_hash": ""
+  },
+  "src/engine/devices/file_device.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "cc85bd593cec2690f80adc5f8e50550f",
+    "semantic_hash": ""
+  },
+  "src/engine/devices/ramdisk_device.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "01012457d8a9bef5134c8e610eee1334",
+    "semantic_hash": ""
+  },
+  "src/engine/devices/serial_port_device.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "d0afa55cb1f98afe131c86920d0adb67",
+    "semantic_hash": ""
+  },
+  "src/engine/engine.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "0db25ea4f362ddd05d923483b7045673",
+    "semantic_hash": ""
+  },
+  "src/engine/engine_api.cpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "c769d7669dbbe336d5169f86d00ec2c0",
+    "semantic_hash": ""
+  },
+  "src/engine/engine_c_api.cpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "5483223fd50b4aea41c7d8ef7e3d9134",
+    "semantic_hash": ""
+  },
+  "src/engine/engine_c_api.h": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "85cf4905c3b4cc252f875a56fd938583",
+    "semantic_hash": ""
+  },
+  "src/engine/init.cpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "faa7263112055d2113f5c577a179df17",
+    "semantic_hash": ""
+  },
+  "src/engine/interrupt_controller.cpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "ecddc06a4bc3f750b9290aed3a110d9e",
+    "semantic_hash": ""
+  },
+  "src/engine/interrupt_controller.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "fe1464d1c8cdf112d13c65e91e90b81d",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/add.hpp": {
+    "mtime": 1779989769.3621032,
+    "ast_hash": "3eb8389818a74668b198ecdd6ebfd4eb",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/add64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "3aaec3bd29ebc826051bb92b8077d1eb",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/addex.cpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "e55b281534779507febde387073ccc84",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/addex.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "181ae1ea57632f3714f28217a36b0850",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/and.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "422cc284178cecdd1a871c1ae6b88d92",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/and64.cpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "456c91cd1d2e820f10215897f8c96572",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/and64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "8a715286670620f91a27e8571df4a8e9",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/call.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "5e9e58bbd7e65651abda0e170d34f67c",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cli.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "711800542b76f25ccc751248a35dd800",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmp.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "47fd1175818a1b7bbd31a574ef76a756",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmp64.cpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "d7cc0480cc8ab41d23f11c3526896c51",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmp64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "cf48fa84949b79444eef50926a9f4690",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/db.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "b9c4854358c33b03635c26fa63793b5a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/dec.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "7cc2cf3ac598574247f76ece2fbddcb0",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/div.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "b728a73fcda323b5b90572b0cb692314",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/div64.cpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "a912b145626347bfc1284da2bc642347",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/div64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "629c1fa10447d58bbc25e28663d72994",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fabs.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "bb00329a571f58504ee28bc1e04139cc",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fadd.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "c44ac491c8a126c642d8726c12de3376",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fchs.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "bcaef8c65195d9fef6fadf5c2bef1f08",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fclex.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "b3a0fdac4595102701a4aaabc83838a6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fcompp.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "de0ed49287ad87dfae21cabab3e6216c",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fcos.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "3e9332472c167327942871e150c0b337",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fdiv.hpp": {
+    "mtime": 1781017664.7935326,
+    "ast_hash": "4070fefeb3186d2b49e7e0018afc6906",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fild.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "2ec05cdb4e810cd1ad72e6719b2fe12f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/finit.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "8aacc940a322baf185795c36da855cb3",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fist.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "95c916d4d68945ba3158694803bd7d61",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fistp.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "605158b816fefdb838f8399566d9a82e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fld.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "8592ea4ba05d1cdc3843c160712c573a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fldcw.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "4ecd7ee17f30dfee73b3d02d74b83aee",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fmul.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "7a0d8b45b2ae67c0242ebb718fa083c6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fsin.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "1a3806c76743a6482e5d897002dab752",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fsqrt.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "db088d53b8c48001e6ca150bf426ac1d",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fst.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "361051e52f460dc496bbdada0a847f58",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fstcw.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "c50d4ebec1e34fe6e5ceef19a4855b9f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fstp.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "19a78332ce56fcabe4ebddb47f77b6c8",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fstsw.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "b89a632e8c65734ae339807776747e78",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fsub.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "c3b25cb867a721be83239dbf14670b28",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/ftan.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "3695e11e80cc3ee4c71291ac2bf03f39",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/fucompp.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "12910538cd4f65138c25b800bb075f5d",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/halt.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "75354d604acf73e816c9a1239e1d7a8b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/in.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "12cb936c63c4297666acfe04f26422ff",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/inb.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "a01327dca36eb159f33790f895b4a855",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/inc.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "1c0af15e42e43131a3e696010cdab2a4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/inl.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "6445a0ed09b2c5eadf62bd7bcfd4ea21",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/instr.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "7e9ea0857d4657e4e0478de162d69856",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/instruction_fusion.cpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "d4bbd18a4b778fbdd688406b3ae06f25",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/instruction_fusion.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "734dbfba87b60c38bd5759eb2ae6aad6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/int.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "638ede28fefe41c0f3a952fe9754d187",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/inw.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "39fd63b5b54f0f128f2a1759e047c98b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/iret.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "1ec7198697c5517b23f68f6e0952cb14",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jc.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "97f7f09dd33df7c8a4a091f04872d7e8",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jmp.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "c9a021eb412962cbe1bf8c4d35fd63e9",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jnc.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "57bdd80b52f6ab50cb259480fec57eee",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jno.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "551617f8cd97a946d29e0a4dde460241",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jns.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "e47ce7f748515a1451e009b3235b1446",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jnz.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "447adf5f4aedb3e1943a6809d3bf3901",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jo.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "0f8d55db63e8783f6c5c8b6109b6456f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/js.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "0eb1affd11b4f6f43e1d13cb624c861f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/jz.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "cb7a7b651a44bac88808a4433786661f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/lea.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "77f30a664ea8a7d5ecedac97acfc2679",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/load.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "53ef96eff5283eed33466beb5d9f36e4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/load_imm.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "e0599cfc509479c52e9c442d0dd0566e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/load_imm64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "444f3b180669c2c1bb81ade547b5a1fb",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/loadex.cpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "c0800512deb94d84e8189fa4112fd739",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/loadex.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "73ee2cf536de7ed452f7600f8a5d032f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/loadr.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "035f78b87409d5ed0d21c61b9d69ebc4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/mode32.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "95558e1967388d392d2696683b6c6ed5",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/mode64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "b4c52bc7d2d8edb15f17022c9f93ce56",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/modecmp.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "4b657b24abd8ac94d15adb4d29d0f0c9",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/mov.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "dab506a13181f335aaad9fdbea178067",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/mov64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "d9045883a3d591c610bb98058744da7b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/movex.cpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "ff48241f622f24abf88bee58cd3f674c",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/movex.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "345b003767c9d0796037025ab87aca24",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/mul.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "51377b9f2c73e9057d01f6e1132f3b72",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/mul64.cpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "e3a5d5d24b3f0761cd75ee01f212ccf6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/mul64.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "c0cc20039ee94178323b19e5e7fe3603",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/nop.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "8c3544c8d09e1704f1682406cbe63558",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/not.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "8d31169a1e499999d942bf86a5f64f80",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "7c5d3342609b1ae9e2d71af667ec8583",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_inlined.cpp": {
+    "mtime": 1783558484.24451,
+    "ast_hash": "3ba2facee37a86f749657e9cd7b7ac51",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_inlined.hpp": {
+    "mtime": 1781017664.7971325,
+    "ast_hash": "f155b0a2193a002ce744f91163ce930e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_predictive.cpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "4eaa74ea9a689110040a7daf59cb81ac",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_predictive.hpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "b7c94414cd468553153d06778e40f0d3",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_threaded.cpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "21ba495cf2b4939eb5c126c18df6e5dc",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_threaded.hpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "3621d9209252275a8cb4552bd253ed00",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_unified.cpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "0ec992443dd5a3b81beef8a7dcb1f340",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_dispatcher_unified.hpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "2d485c52264575d2e7aeb0dced79332a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_handler.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "db62f6ba238a91caa552aad4fd78b892",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_profiler.cpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "1877dd66b1c61abf9c03cd12de97cade",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_profiler.hpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "278fa3ff81378330b3d65c3c0aa9d9c3",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_registry.cpp": {
+    "mtime": 1783558484.2327204,
+    "ast_hash": "3b8a7ce75f83466089ac35205ab933bc",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcode_registry.hpp": {
+    "mtime": 1779989769.3661728,
+    "ast_hash": "c06225a5d993836a6d8d867cc8b6c005",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/opcodes_consolidated.cpp": {
+    "mtime": 1783558473.286232,
+    "ast_hash": "dbef4a88d5b36c694225ffc86c99a5ea",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/or.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "d5f84ae14e02c771c4f292cd8f611f81",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/or64.cpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "8090996445d81c13ed24d7e2fb1f8594",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/or64.hpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "9bb97c7839993d756f00f8d5d320a05d",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/out.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "37666a2200ffbde3b5a7e781c0369cbe",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/outb.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "9f6bfa322dea838e66f82ea171c02181",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/outl.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "c6314c6f200d8a615552fde9057fcfcd",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/outstr.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "afbccd4b121d2d5f191844180e81f3c5",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/outw.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "fa2fe48dca17acf5f9d51dc54e8967da",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/packb.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "cb42f22468f927ee9276e23ca105ae73",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/packb.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "56fc7800b5ce8ea2b7d5614a23d68587",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/pop.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "3a9fd9dd99a2e45afc591d30e94265b3",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/pop_arg.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "6da69df6d269e21b47efa66e5b5557a4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/pop_flag.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "06dba76f30c6a94bffd086068552ec12",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/push.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "1e2e9c3fd4aae8b2961de387245cad78",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/push_arg.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "54f0cf185701b0f605740e080de3cc3e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/push_flag.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "94816ed8bd0c895c0c95b54f2e30c2ec",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/ret.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "db473822ec74ed9b1f1cb1047fae025f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/shl.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "65845b6c9f2cd392ece6998334f42862",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/shr.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "13ba6268cdfce4c6a53546f94d964be8",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sti.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "f4a7e7109f4956293432adca62b01891",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/store.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "c0fecc6d0c4ff378c34dfbc052323dc2",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/storex.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "1ad8576817fcdc8b61c85150ee3e2dd9",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/storex.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "681dd872f0442201eae4a3024e573f5e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sub.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "7c20cd76cff5a3182bd4df459ba03bda",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sub64.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "aced0ef642c2e64780bd9b582239cf6f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/subex.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "dd3fbfa1fdb1175435e234480e320bf5",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/subex.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "a82ea4fde9a36ff9b7023eee9523ed1f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/swap.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "742568c4cf9b93f4e42e35f3521cbf76",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/unpackb.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "20a812c67f31d3e9c2ce765113c8c9d6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/unpackb.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "4dad2d70acbd0fef7052d29fa7011158",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vadd.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "ac869822ebb6cfc5710a697c7d10a690",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vadd.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "09ed46620ce426aacda4584034cb97b4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vbroadcast.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "5e8bfa14a746390435897f45bdce566c",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vbroadcast.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "1dd2f066ab08f41ccbc483756e80c752",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vcmpgt.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "76d60d240fe9902e073bcea849affa06",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vcmpgt.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "aad737ac158e40d794c95ae7c2473bf5",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vdot.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "9fa12fbc1f00f326753131f06b53b3e6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vdot.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "b24c050037622c054923231742ed63c2",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vmax.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "d4124d57b85f6e938a4d44dd42bbdaf4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vmax.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "febdf6e6b0d53db703e740ec63589025",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vmul.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "c6d4485f2607707080f74b67465e1092",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/vmul.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "262a7ffeb90e1494f6cae47d6cb6fb8b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/xor.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "11b7d5e3f6abe8f83c9cea7577ce1f4f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/xor64.cpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "7f0597f15bef21974e227c6c68346480",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/xor64.hpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "a7775cdc1231fac585a9b566a46ea01d",
+    "semantic_hash": ""
+  },
+  "src/engine/safe_memcpy.hpp": {
+    "mtime": 1781017664.8007326,
+    "ast_hash": "a48ce1521fab1166568a101208d8d2d4",
+    "semantic_hash": ""
+  },
+  "src/engine/sandbox_policy.hpp": {
+    "mtime": 1781017664.8043325,
+    "ast_hash": "80480ea92461b24e8166aa1149f8d167",
+    "semantic_hash": ""
+  },
+  "src/engine/syscalls.hpp": {
+    "mtime": 1781017664.8043325,
+    "ast_hash": "bf4bc9eab4cb39c82fbf46e5d04d6bf8",
+    "semantic_hash": ""
+  },
+  "src/engine/system_info.hpp": {
+    "mtime": 1781017664.8043325,
+    "ast_hash": "0807fd8a411c617992c1eba8da580a58",
+    "semantic_hash": ""
+  },
+  "src/engine/vfs.hpp": {
+    "mtime": 1781017664.8043325,
+    "ast_hash": "9af6738a8fcc1e7fb40a3743532162c1",
+    "semantic_hash": ""
+  },
+  "src/engine/virtual_disk.cpp": {
+    "mtime": 1781017664.8043325,
+    "ast_hash": "f777296e020428d84f52995cb3250268",
+    "semantic_hash": ""
+  },
+  "src/engine/virtual_disk.hpp": {
+    "mtime": 1781017664.8043325,
+    "ast_hash": "10879d16dc39d001ab6cd6dc57ca1999",
+    "semantic_hash": ""
+  },
+  "src/main.cpp": {
+    "mtime": 1781492930.365409,
+    "ast_hash": "02d59651dc9edc3678b05c30373ed876",
+    "semantic_hash": ""
+  },
+  "src/test/assembly_test_executor.cpp": {
+    "mtime": 1781017664.8043325,
+    "ast_hash": "afd792aa724fba9b1cf94dc7e36f89df",
+    "semantic_hash": ""
+  },
+  "src/test/assembly_test_executor.hpp": {
+    "mtime": 1781017664.8079326,
+    "ast_hash": "bfae1ea2544f20d080c22c6cafa4b09a",
+    "semantic_hash": ""
+  },
+  "src/test/fusion_tests.cpp": {
+    "mtime": 1781017664.8079326,
+    "ast_hash": "26a3a4250835ed0db95b918aa2cde979",
+    "semantic_hash": ""
+  },
+  "src/test/in_assembly_test_executor.hpp": {
+    "mtime": 1781017664.8079326,
+    "ast_hash": "5527efdd79e22b75703d0dbb84d28953",
+    "semantic_hash": ""
+  },
+  "src/test/in_assembly_test_validator.hpp": {
+    "mtime": 1781017664.8079326,
+    "ast_hash": "550e0ac442e8ab7a0d4b17cd53b9403b",
+    "semantic_hash": ""
+  },
+  "src/test/sandbox_tests.cpp": {
+    "mtime": 1781017664.8079326,
+    "ast_hash": "b93de0cc9f4d6f3de3c4623d79619dae",
+    "semantic_hash": ""
+  },
+  "src/test/structure_unit_tests.cpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "e06135350634fb4712a59c3386d5e589",
+    "semantic_hash": ""
+  },
+  "src/test/test.hpp": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "5c1e6cc0a355493e7f8e84056e9cbc50",
+    "semantic_hash": ""
+  },
+  "src/test/test_assembler.cpp": {
+    "mtime": 1781262880.543965,
+    "ast_hash": "3a8c2b75431611d81f1727c314be4d50",
+    "semantic_hash": ""
+  },
+  "src/test/test_framework.hpp": {
+    "mtime": 1783560196.7336147,
+    "ast_hash": "4ac5b2e6bcf7aa089e2eae3530defd31",
+    "semantic_hash": ""
+  },
+  "src/test/test_level2.cpp": {
+    "mtime": 1781217934.8975902,
+    "ast_hash": "7796050b24f1fd40df446b29a9df6cec",
+    "semantic_hash": ""
+  },
+  "src/test/unit_tests.cpp": {
+    "mtime": 1783559768.6780143,
+    "ast_hash": "d3f904daac4f7e72a7753491e2e5d88b",
+    "semantic_hash": ""
+  },
+  "src/test/vfs_tests.cpp": {
+    "mtime": 1781017664.8079326,
+    "ast_hash": "1b6482fbb489c41d4e3de748bf13a9ca",
+    "semantic_hash": ""
+  },
+  "tests/includes/common.inc": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "62da331fb584e64363b8744042b557c7",
+    "semantic_hash": ""
+  },
+  "tests/includes/math.inc": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "bee4cb5785d49beb87d2e0b7a30e6d83",
+    "semantic_hash": ""
+  },
+  "tests/regression_x64.sh": {
+    "mtime": 1781460000.6557748,
+    "ast_hash": "32a0189134f55b3409d6eb970cc0e3b2",
+    "semantic_hash": ""
+  },
+  "website_datasets/assembly_language.json": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "63a133f1484a9e9920c132e92e444d92",
+    "semantic_hash": ""
+  },
+  "website_datasets/cli_reference.json": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "40b66d512e11cdbd4cbd7d3bdf13d344",
+    "semantic_hash": ""
+  },
+  "website_datasets/examples.json": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "a1258c442187eedd2333a3479c66f107",
+    "semantic_hash": ""
+  },
+  "website_datasets/getting_started.json": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "70244fe248fcd1f4b733ad6e470143dc",
+    "semantic_hash": ""
+  },
+  "website_datasets/instruction_set.json": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "76e21275c4b4829554fc109582991e64",
+    "semantic_hash": ""
+  },
+  "website_datasets/register_memory.json": {
+    "mtime": 1779989769.3783815,
+    "ast_hash": "641acdc9c04194e52ba5746297afa65f",
+    "semantic_hash": ""
+  },
+  "website_datasets/testing.json": {
+    "mtime": 1779989769.3783815,
+    "ast_hash": "b8465406f854e1e103ab984f592aae30",
+    "semantic_hash": ""
+  },
+  "website_datasets/troubleshooting.json": {
+    "mtime": 1779989769.3783815,
+    "ast_hash": "d0a2996e1d245baf6fa4ce51c582a8f3",
+    "semantic_hash": ""
+  },
+  ".codacy.yml": {
+    "mtime": 1781017664.7683327,
+    "ast_hash": "e0b6a30c62242608d0f781b9eeea05cd",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/bug-report.md": {
+    "mtime": 1779989769.3336163,
+    "ast_hash": "5be8d1d3826e76fe40c8207a19227ae8",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/config.yml": {
+    "mtime": 1781216836.4855766,
+    "ast_hash": "56f0ff714e7332a724c9653871ef1ff3",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/feature_request.md": {
+    "mtime": 1779989769.3336163,
+    "ast_hash": "1e24dbf6b31e9fcf875aa1715b470e41",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/question.md": {
+    "mtime": 1779989769.3336163,
+    "ast_hash": "38692f214ca1cc0b492dba00e4ca3904",
+    "semantic_hash": ""
+  },
+  ".github/pull_request_template.md": {
+    "mtime": 1781017664.7683327,
+    "ast_hash": "b3b9d308642e109c068f0f134ebc255b",
+    "semantic_hash": ""
+  },
+  ".github/workflows/build.yml": {
+    "mtime": 1779989769.3336163,
+    "ast_hash": "fb9e700304a50735f7e988389356a120",
+    "semantic_hash": ""
+  },
+  ".github/workflows/flawfinder.yml": {
+    "mtime": 1779989769.3336163,
+    "ast_hash": "167fb8f09c77aacd8132b937844022b4",
+    "semantic_hash": ""
+  },
+  ".github/workflows/test.yml": {
+    "mtime": 1781020463.2574778,
+    "ast_hash": "42458a163eee055e0ce491e4b657327a",
+    "semantic_hash": ""
+  },
+  "CHANGELOG.md": {
+    "mtime": 1781200998.8427632,
+    "ast_hash": "ccff1e323314ec37b8a3adbe36a12777",
+    "semantic_hash": ""
+  },
+  "CODE_OF_CONDUCT.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "1656f39cafbc831405c5e92c123cca43",
+    "semantic_hash": ""
+  },
+  "CONTRIBUTING.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "c46adbcdd0a3ed4f74794b9c21be9961",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1781201053.6751442,
+    "ast_hash": "943ea6021c8f49de35605c3b3d85f187",
+    "semantic_hash": ""
+  },
+  "SECURITY.md": {
+    "mtime": 1781012679.2122946,
+    "ast_hash": "2ad7685eaa5941eb9d69eaf3ba273d3f",
+    "semantic_hash": ""
+  },
+  "benchmarks/README.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "c08f61345d65fccc0d88795bbdb80e6a",
+    "semantic_hash": ""
+  },
+  "docs/CROSS_REFERENCE.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "38bc3b56529f8e9024bb40f891f74be1",
+    "semantic_hash": ""
+  },
+  "docs/DEBUG_DIRECTIVES_IMPLEMENTATION.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "02740148576d69baeb62cb15071b0413",
+    "semantic_hash": ""
+  },
+  "docs/DOCUMENTATION_INDEX.md": {
+    "mtime": 1781187379.3701801,
+    "ast_hash": "9f7f425034b6d6a5bf6d1bc600501474",
+    "semantic_hash": ""
+  },
+  "docs/PROMOTION_PLAN.md": {
+    "mtime": 1781017664.7683327,
+    "ast_hash": "ec323007983756162ef7482d044e59c9",
+    "semantic_hash": ""
+  },
+  "docs/README.md": {
+    "mtime": 1781187379.3701801,
+    "ast_hash": "d85059f0b7addc2db5d57824c8794566",
+    "semantic_hash": ""
+  },
+  "docs/RELEASE_NOTES_v1.0.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "7d5c0b92f29c21ecd6fdbb7e1b3385de",
+    "semantic_hash": ""
+  },
+  "docs/SOCIAL_TEMPLATES.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "ea4ed17a75b32043e16e72f514e17444",
+    "semantic_hash": ""
+  },
+  "docs/archive/DOCUMENTATION_CORRECTIONS_SUMMARY.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "9c3a6f836f1f2e1f65eb3cb83c256704",
+    "semantic_hash": ""
+  },
+  "docs/archive/DOCUMENTATION_ORGANIZATION_COMPLETE.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "e116721bbcbd221d200d902d7ba3224d",
+    "semantic_hash": ""
+  },
+  "docs/archive/DOCUMENTATION_UPDATE_SUMMARY.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "4783deb319f8fbb7088cc99849d93e4a",
+    "semantic_hash": ""
+  },
+  "docs/archive/DOCUMENTATION_VERIFICATION_FINDINGS.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "1fb104626aef9b79f134157a6b06ed82",
+    "semantic_hash": ""
+  },
+  "docs/archive/README.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "97105a8ebe7457de47a752f0faa0605b",
+    "semantic_hash": ""
+  },
+  "docs/archive/RENAME_CHECKLIST.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "992c91c2d6cf2db74d9421c733bbbfd2",
+    "semantic_hash": ""
+  },
+  "docs/codebase/API_REFERENCE.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "3d45d2d294623df604aaa314b7724388",
+    "semantic_hash": ""
+  },
+  "docs/codebase/README.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "c23560ddf6a4068cde0522ac9d7ba125",
+    "semantic_hash": ""
+  },
+  "docs/codebase/SYSCALLS_IMPLEMENTATION.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "0c83229e65776e21e1a1ca59f408f641",
+    "semantic_hash": ""
+  },
+  "docs/codebase/modules/assembler.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "4cbf0a14baab4bfb7a1c7db6303e618e",
+    "semantic_hash": ""
+  },
+  "docs/codebase/modules/cpu.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "c1ad06ee097d6e224281b0241a3349ae",
+    "semantic_hash": ""
+  },
+  "docs/codebase/modules/debug.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "ec7c9126a1f3a30c974e9901966dfa3b",
+    "semantic_hash": ""
+  },
+  "docs/codebase/modules/device_manager.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "c33c201bafdc9856776dd1ab296b6ee8",
+    "semantic_hash": ""
+  },
+  "docs/codebase/modules/main.md": {
+    "mtime": 1779989769.3376858,
+    "ast_hash": "55007f7f536bb04eee059199736cd03d",
+    "semantic_hash": ""
+  },
+  "docs/codebase/modules/testing.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "9d7f9864413353d58a44f520e599fe39",
+    "semantic_hash": ""
+  },
+  "docs/development/CALCULATOR_DEBUG_SESSION.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "fcfa90884d8288b55d35b4c2a29e7767",
+    "semantic_hash": ""
+  },
+  "docs/development/CHANGELOG_CLI_TESTS.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "5efde1015af9c7b0a8a5248131d23bb7",
+    "semantic_hash": ""
+  },
+  "docs/development/CLI_IMPROVEMENTS.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "b3c7838729128fd23005bad71f9300a6",
+    "semantic_hash": ""
+  },
+  "docs/development/COMMIT_SUMMARY.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "792d90e305ac78794565955232cc56ea",
+    "semantic_hash": ""
+  },
+  "docs/development/DEMI_LANGUAGE_PLAN.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "710fa13dfd53525fc8134b0b7632be69",
+    "semantic_hash": ""
+  },
+  "docs/development/DEVELOPMENT_PLAN_UPDATE.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "f6c520a8eeef1c86add2769c3fbec654",
+    "semantic_hash": ""
+  },
+  "docs/development/DOCUMENTATION_COMPLETION.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "2160089f1628ce69b108fad0390f4d5d",
+    "semantic_hash": ""
+  },
+  "docs/development/ERROR_HANDLING_IMPLEMENTATION.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "51ddbea80f52e33212960065c866804f",
+    "semantic_hash": ""
+  },
+  "docs/development/FUTURE_FEATURES_ROADMAP.md": {
+    "mtime": 1781020084.3697457,
+    "ast_hash": "6472f440e3bd10b46b29f348c94fc9fa",
+    "semantic_hash": ""
+  },
+  "docs/development/FUTURE_OPCODES.md": {
+    "mtime": 1781020060.9481456,
+    "ast_hash": "0338589702b26c7973f0827e4af260e3",
+    "semantic_hash": ""
+  },
+  "docs/development/HEXDUMP_USAGE_GUIDE.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "b6cd8c1b7dec9575cebc7262a8ca741d",
+    "semantic_hash": ""
+  },
+  "docs/development/IMPLEMENTATION_STATUS.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "b6238605bf920898c1c711583cfde0ae",
+    "semantic_hash": ""
+  },
+  "docs/development/INSTRUCTION_FUSION_IMPLEMENTATION.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "99492a474acdc31e63f51cd2e12a03c6",
+    "semantic_hash": ""
+  },
+  "docs/development/INTERRUPTS_PREPARATION.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "5586d03611c562dd9fdc0db40861f3cf",
+    "semantic_hash": ""
+  },
+  "docs/development/MAKEFILE_FEATURES.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "00fc7476a90efae7270dc1b0a23015b6",
+    "semantic_hash": ""
+  },
+  "docs/development/MISSING_CURRENTLY.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "694bebb21de21e7dff6cdae06beae18c",
+    "semantic_hash": ""
+  },
+  "docs/development/NATIVE_COMPILER_PLAN.md": {
+    "mtime": 1781187379.3701801,
+    "ast_hash": "63dfbc857493f74638e6c6a6cdf9f18d",
+    "semantic_hash": ""
+  },
+  "docs/development/README.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "f4c14550c37e226f22a7f396695f1b6e",
+    "semantic_hash": ""
+  },
+  "docs/development/REAL_SYSTEM_IO_INTEGRATION.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "6b0561bbe1d4177bda56a0e2f5f50e1c",
+    "semantic_hash": ""
+  },
+  "docs/development/REGISTER_IMPLEMENTATION_NOTES.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "b28d1d59be2e17b0608d131d949f1316",
+    "semantic_hash": ""
+  },
+  "docs/development/SESSION_SUMMARY_TEST_DEVELOPMENT.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "2386bed498ee7cc11381d478fe184ae6",
+    "semantic_hash": ""
+  },
+  "docs/development/SIMD_IMPLEMENTATION_COMPLETE.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "156b92aee3fa8bfddbc3baa803f4c29d",
+    "semantic_hash": ""
+  },
+  "docs/development/STANDARDS_ALIGNMENT_PLAN.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "3b30d633351f939b50e59b6352d5b4e3",
+    "semantic_hash": ""
+  },
+  "docs/development/STANDARDS_UPDATE_SUMMARY.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "f929b098a30dd6c7ccd3cbaa74ee3f1d",
+    "semantic_hash": ""
+  },
+  "docs/development/SYSTEM_CALLS_PLAN.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "dce210b47844795817f40deb680a1d8a",
+    "semantic_hash": ""
+  },
+  "docs/development/VERSION_MANAGEMENT.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "f91fd3855793fd77d2f664512ecf94bb",
+    "semantic_hash": ""
+  },
+  "docs/development/VM_PERFORMANCE_ANALYSIS.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "b933e3c372b8c884eb1612deeb71142c",
+    "semantic_hash": ""
+  },
+  "docs/development/WORKSPACE_STANDARDS_ANALYSIS.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "d14bbcf45a464f8fea19bc2a72fc81b1",
+    "semantic_hash": ""
+  },
+  "docs/reference/FPU_REFERENCE.md": {
+    "mtime": 1781187379.3701801,
+    "ast_hash": "c6d3ab8a8a8c7ca644f110c2454b2c4b",
+    "semantic_hash": ""
+  },
+  "docs/reference/OPCODE_STATUS.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "1966455db0fd3ad5ab11674210cff251",
+    "semantic_hash": ""
+  },
+  "docs/reference/QUICK_REFERENCE.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "2c8fa4be0b7b11f9049c12182c666580",
+    "semantic_hash": ""
+  },
+  "docs/reference/SIMD_COMPARISON.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "90acf5b8853f6ced40d1b7a3f028830c",
+    "semantic_hash": ""
+  },
+  "docs/reference/SIMD_REFERENCE.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "a3b2c1e7ce5cbadc4f09b4912b2cd72d",
+    "semantic_hash": ""
+  },
+  "docs/reference/opcode_edgecases.md": {
+    "mtime": 1779989769.3417554,
+    "ast_hash": "dd81b90b6c021aa61b709709ddcfbba9",
+    "semantic_hash": ""
+  },
+  "docs/testing/NEGATIVE_TEST_IMPLEMENTATION.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "45af04b0c398a27385434bdcab06a093",
+    "semantic_hash": ""
+  },
+  "docs/testing/OPCODE_VERIFICATION_REPORT.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "cd84800e630f7ad7ab7154d717adba25",
+    "semantic_hash": ""
+  },
+  "docs/testing/README.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "0ff71944e99dfea2753ea23deee9a26a",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_ENHANCEMENT_SUMMARY.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "ba6e6c992a862922920bd8c08176c08b",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_EXECUTION_COMPLETE.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "157100567bbe1ec900afd1070d69e6d8",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_FLAGS.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "e0d2345c3650fd7113d4c96060ca8bfd",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_FLAG_IMPLEMENTATION.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "bc88fa76bab9a0437c242c6ac792b6d1",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_FRAMEWORK_DESIGN.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "00f8b093d80e7472655709d2d28dd2d6",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_FRAMEWORK_ENHANCEMENTS.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "d0fe4c703761da1cdd89f91754cc70b9",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_FRAMEWORK_STATUS.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "af0bbbdb99d199c91d2a870460a25569",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_QUICK_REFERENCE.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "97b998bc7aea779c09f85b92fd4dd69f",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_STATUS_SUMMARY.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "028e5a55693f8cd706c511bb5b76530c",
+    "semantic_hash": ""
+  },
+  "docs/testing/TEST_SUITE_SUMMARY.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "259eb8c70310ceb6c8a744ebc3c7df41",
+    "semantic_hash": ""
+  },
+  "docs/testing/VALIDATION_TEST_RESULTS.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "e27b69429305353d653fa3889708a17e",
+    "semantic_hash": ""
+  },
+  "docs/usage/EMBEDDING_API.md": {
+    "mtime": 1781017664.7719326,
+    "ast_hash": "3e7937e9158f74fe568d68018b5d76f6",
+    "semantic_hash": ""
+  },
+  "docs/usage/FEATURES.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "c8c47616ab855a89615b8e9901b71401",
+    "semantic_hash": ""
+  },
+  "docs/usage/NETWORKING.md": {
+    "mtime": 1781529306.5107408,
+    "ast_hash": "621c43af6203962a89c9c1b78a45f141",
+    "semantic_hash": ""
+  },
+  "docs/usage/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "a1fde3bd9eb269bbd21ee8618c1cafb6",
+    "semantic_hash": ""
+  },
+  "docs/usage/REAL_SYSCALLS.md": {
+    "mtime": 1781529320.7585695,
+    "ast_hash": "5fa399d63fb3af101cdeeb0364f813a8",
+    "semantic_hash": ""
+  },
+  "docs/usage/SYSCALLS_AND_INTERRUPTS_STATUS.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "4bc04cb13f877b93047bb8c213cf01fe",
+    "semantic_hash": ""
+  },
+  "docs/usage/TROUBLESHOOTING.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "e214443923dc25279855542b68a3be52",
+    "semantic_hash": ""
+  },
+  "examples/README.md": {
+    "mtime": 1779989769.345825,
+    "ast_hash": "72f982d9fc8b5aced00517b7dcc6e182",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_01/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "125649217e7a174c4d2adaba4e4139d6",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_02_c/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "8f196ebd0dd7e9e22bcdcc91cc00a5ca",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_03_output_capture/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "d55aed7a1acb329c6bcd8ef1be6673f8",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_04_introspection/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "24b4c2617b90c93b0f2d083d38d2b8e1",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_05_stdin_cpp/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "e0210726e10a275d982bd56a87e33b5e",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_06_stdin_c/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "34c6c6c23c76fd458140d91250313277",
+    "semantic_hash": ""
+  },
+  "examples/embedding/embedding_07_calculator_stdin_cpp/README.md": {
+    "mtime": 1781017664.7755327,
+    "ast_hash": "c3103b141d4a20cab9e38633e4ddf729",
+    "semantic_hash": ""
+  },
+  "examples/x64/README.md": {
+    "mtime": 1781501570.691135,
+    "ast_hash": "02c5af5841268b561c14a8e52111df51",
+    "semantic_hash": ""
+  },
+  "examples/x86/README.md": {
+    "mtime": 1781275768.0875375,
+    "ast_hash": "bd99ef0c749970c3b21bea2ef24f2257",
+    "semantic_hash": ""
+  },
+  "notes/codacy-before-after.md": {
+    "mtime": 1781017664.7827327,
+    "ast_hash": "67899f256b9ba7450c53547e894cf564",
+    "semantic_hash": ""
+  },
+  "notes/codacy-cleanup-session.md": {
+    "mtime": 1781017664.7827327,
+    "ast_hash": "de455c30aa9149b5920b76924f3d9862",
+    "semantic_hash": ""
+  },
+  "notes/dasm-next-steps.md": {
+    "mtime": 1781262281.1364498,
+    "ast_hash": "09f5f17ba696df677b0f79cb44254af3",
+    "semantic_hash": ""
+  },
+  "notes/demi/pentest-c-engine-api.md": {
+    "mtime": 1781017664.7827327,
+    "ast_hash": "2e4039e73b903819973c6b00ebf45f55",
+    "semantic_hash": ""
+  },
+  "notes/vm_missing_opcodes.md": {
+    "mtime": 1783558945.1633449,
+    "ast_hash": "6c6dd45372958a3c11a75d4f548e4910",
+    "semantic_hash": ""
+  },
+  "roadmap.md": {
+    "mtime": 1781201064.9245715,
+    "ast_hash": "4fcaf3b69176c92c79215ef29cb11ee4",
+    "semantic_hash": ""
+  },
+  "tests/64bit/README.md": {
+    "mtime": 1779989769.3702424,
+    "ast_hash": "0cb198270ec74958c7c7cce8b96b2727",
+    "semantic_hash": ""
+  },
+  "tests/README.md": {
+    "mtime": 1779989769.374312,
+    "ast_hash": "13da7ab8b52051a355c8f19e7e62660f",
+    "semantic_hash": ""
+  },
+  "virtual_storage/test.txt": {
+    "mtime": 1781017664.8115325,
+    "ast_hash": "3c7c11b844c16fedf89bba12c12a0119",
+    "semantic_hash": ""
+  },
+  "virtual_storage/welcome.txt": {
+    "mtime": 1781017664.8115325,
+    "ast_hash": "e71ffa37c88c603570e83fb6d50d0c92",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/adc.hpp": {
+    "mtime": 1783553840.0410526,
+    "ast_hash": "2b1a6b743245d60a2152c84df5507c7a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/idiv.hpp": {
+    "mtime": 1783553840.1269827,
+    "ast_hash": "ca905055451da66b560e2f28aa35dc74",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/imul.hpp": {
+    "mtime": 1783553840.068394,
+    "ast_hash": "48fa1eb027ae578b2077730d03280f32",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sal.hpp": {
+    "mtime": 1783553840.1113591,
+    "ast_hash": "39af622807f519f1a487efdcefdb715a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sar.hpp": {
+    "mtime": 1783553840.154324,
+    "ast_hash": "bab690e87f3df4396875f273ca041e55",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sbb.hpp": {
+    "mtime": 1783553840.0918295,
+    "ast_hash": "5701531a27e9d69ce1dad43384174756",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cbw.hpp": {
+    "mtime": 1783554466.5441592,
+    "ast_hash": "753a06bc532dc160c8c69db0e7d3a947",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cdq.hpp": {
+    "mtime": 1783554466.5753107,
+    "ast_hash": "8fc648b663ccfedd100d49623dbc4aa4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/clc.hpp": {
+    "mtime": 1783554458.495764,
+    "ast_hash": "0ceb909f3975553fb68e9a17f0d20e00",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cld.hpp": {
+    "mtime": 1783554458.581424,
+    "ast_hash": "ef53dfedd560a5cc33f474f1456915a3",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmc.hpp": {
+    "mtime": 1783554458.5347004,
+    "ast_hash": "9ac56dad41f5b9fb0d79dd57a8a175ce",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cwd.hpp": {
+    "mtime": 1783554466.551947,
+    "ast_hash": "0459f24c19fde2cb340be2959dbf998b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cwde.hpp": {
+    "mtime": 1783554466.567523,
+    "ast_hash": "623bf648c66b5f9b8edf74b4751f1c50",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/lahf.hpp": {
+    "mtime": 1783554458.5658493,
+    "ast_hash": "9b3518cb9f9e6d1a7840bc11d26b1ca6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/loop.hpp": {
+    "mtime": 1783554473.2379315,
+    "ast_hash": "63ab15d8e3aaed72579c58c183142964",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/loope.hpp": {
+    "mtime": 1783554473.257402,
+    "ast_hash": "14f2c3e2e09781af31772a0fa5da9c8f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/loopne.hpp": {
+    "mtime": 1783554473.2885547,
+    "ast_hash": "90eb4ab3c36e13ae9adf9d4382f858f7",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/rol.hpp": {
+    "mtime": 1783554466.5714169,
+    "ast_hash": "4425bbd95cb764a353e6c3cb789e1e98",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/ror.hpp": {
+    "mtime": 1783554473.2690842,
+    "ast_hash": "3130c44718e660eb8dae8bbfa4fd9b4b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sahf.hpp": {
+    "mtime": 1783554466.5169015,
+    "ast_hash": "f438374a9b18b40143e2534eb5cfa82a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/stc.hpp": {
+    "mtime": 1783554458.495764,
+    "ast_hash": "5cb7348c7b8d2f1e17cb8aea6f0b8e5b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/std.hpp": {
+    "mtime": 1783554458.5308068,
+    "ast_hash": "5609c7fdc80a737c0f64a2858f88038a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/rcl.hpp": {
+    "mtime": 1783555181.05046,
+    "ast_hash": "c85cb41f94bc3c43cc0a9b147914d013",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/rcr.hpp": {
+    "mtime": 1783555182.1997333,
+    "ast_hash": "ffe1359a3c53436f8fe9948a723771cc",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setc.hpp": {
+    "mtime": 1783555630.178262,
+    "ast_hash": "a5951915965c7f0cefe1bd3a466964c6",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setg.hpp": {
+    "mtime": 1783555635.6144626,
+    "ast_hash": "5a6e4beda121336ee2126301412f9c30",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setge.hpp": {
+    "mtime": 1783555636.6580489,
+    "ast_hash": "e6a5ec87138a84af53c49ea39d5c3e55",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setl.hpp": {
+    "mtime": 1783555637.4602084,
+    "ast_hash": "e729503d44b8dc82b0cb4a4abd55bbb9",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setle.hpp": {
+    "mtime": 1783555638.3285656,
+    "ast_hash": "f6b21d3f64acc11ecfc3012590a07efa",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setnc.hpp": {
+    "mtime": 1783555631.3232746,
+    "ast_hash": "73c330df447eff834d2eab1070d3968e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setno.hpp": {
+    "mtime": 1783555633.0016031,
+    "ast_hash": "3005ebf6b6916f35e477ff1fa6979eab",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setns.hpp": {
+    "mtime": 1783555634.6993778,
+    "ast_hash": "93ada790b7273de3d45a2246d570606a",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setnz.hpp": {
+    "mtime": 1783555629.217432,
+    "ast_hash": "4f89f88526c14153319fbf5a8ef1a6bb",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/seto.hpp": {
+    "mtime": 1783555632.148822,
+    "ast_hash": "68c06a013ae9d46b934efa7ca6aa3391",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sets.hpp": {
+    "mtime": 1783555633.8855362,
+    "ast_hash": "1556f650893298bd9275edfacdb1ce8d",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/setz.hpp": {
+    "mtime": 1783555628.4198132,
+    "ast_hash": "e760635c5c95e71918dec43fea8c987e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/bswap.hpp": {
+    "mtime": 1783555968.7945616,
+    "ast_hash": "616ef52d716c24585237d38a5091e26d",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/movsx.hpp": {
+    "mtime": 1783555969.8327107,
+    "ast_hash": "8cabac90b9f28cc017c92ea7d037f8a8",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/movzx.hpp": {
+    "mtime": 1783555970.9257057,
+    "ast_hash": "a75b56efb8ebcf8190a3b0040c8d98de",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/xchg.hpp": {
+    "mtime": 1783555967.6528347,
+    "ast_hash": "35e19789e9ceed5cc195821f061142f3",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmova.hpp": {
+    "mtime": 1783556282.2738318,
+    "ast_hash": "e33d8ee176f484968334d5e4ab9672d1",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovbe.hpp": {
+    "mtime": 1783556283.131832,
+    "ast_hash": "d18f7bf8f839469c7183c625ce795359",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovc.hpp": {
+    "mtime": 1783556273.2288578,
+    "ast_hash": "5a47dcce227ca4ae03dbace02188b6ef",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovg.hpp": {
+    "mtime": 1783556278.8418317,
+    "ast_hash": "3f4e22b3060d12b63cd47d47404db23c",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovge.hpp": {
+    "mtime": 1783556279.7144983,
+    "ast_hash": "1c62b6ecc7529e8a90043e2d3c322076",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovl.hpp": {
+    "mtime": 1783556280.4808316,
+    "ast_hash": "fff432246f9752c7cf830792801eab68",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovle.hpp": {
+    "mtime": 1783556281.390165,
+    "ast_hash": "73f3bc949d4c11b2e9080f93d4956232",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovnc.hpp": {
+    "mtime": 1783556274.081432,
+    "ast_hash": "67ab3704a0f8f232a61ec4f9061f9a45",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovno.hpp": {
+    "mtime": 1783556272.1040998,
+    "ast_hash": "da26622729f0fb2266c6733d6f405fc4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovns.hpp": {
+    "mtime": 1783556277.8439677,
+    "ast_hash": "3a34be3795295c57c73aee10a77392f3",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovnz.hpp": {
+    "mtime": 1783556276.2188725,
+    "ast_hash": "8140ec25738e095459931ac4f020fc1e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovo.hpp": {
+    "mtime": 1783556270.6549234,
+    "ast_hash": "b491f8102b06b3347129235262d2b6dc",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovs.hpp": {
+    "mtime": 1783556277.0234146,
+    "ast_hash": "21db9c9f09b3d9afceb186d2027e08fc",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmovz.hpp": {
+    "mtime": 1783556275.2422144,
+    "ast_hash": "aa2be5f8ade13f8e717bfffa8c9c5297",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/lodsb.hpp": {
+    "mtime": 1783556771.9483783,
+    "ast_hash": "d3bc7113926e62ad9b6b3b61ae5c7a4e",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/lodsd.hpp": {
+    "mtime": 1783556773.6029248,
+    "ast_hash": "ba965fbe347790e6abcbee82e67d8004",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/lodsw.hpp": {
+    "mtime": 1783556772.7594213,
+    "ast_hash": "4b945746ef3ec5cd0eb168c91d8128fb",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/movsb.hpp": {
+    "mtime": 1783556766.4521847,
+    "ast_hash": "f7b737be5a5af808fa55f29078a2c573",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/movsd.hpp": {
+    "mtime": 1783556768.3026223,
+    "ast_hash": "e55a11a5e22b1a4eecb4dacd9990a0a2",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/movsw.hpp": {
+    "mtime": 1783556767.3852777,
+    "ast_hash": "b705010f33e07689f3bca7050d57c275",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/stosb.hpp": {
+    "mtime": 1783556769.3026462,
+    "ast_hash": "4c533b7e1393187a378065b00fcd01d1",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/stosd.hpp": {
+    "mtime": 1783556771.1294613,
+    "ast_hash": "80954eef05d7f313001c6086a06dac92",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/stosw.hpp": {
+    "mtime": 1783556770.1806197,
+    "ast_hash": "508c04b61dc3a7f220f144876b7691eb",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/bt.hpp": {
+    "mtime": 1783557302.027521,
+    "ast_hash": "f74067a8ecf3bb6fdaad34bc1cba965c",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/btc.hpp": {
+    "mtime": 1783557306.4209247,
+    "ast_hash": "3b77d61915d7491d8b365d21938510d7",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/btr.hpp": {
+    "mtime": 1783557305.342183,
+    "ast_hash": "3af876037c7a8981563848486009745b",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/bts.hpp": {
+    "mtime": 1783557303.8718517,
+    "ast_hash": "fef0ead5a9001622299d9381ab95cb93",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cmpxchg.hpp": {
+    "mtime": 1783557307.772923,
+    "ast_hash": "4496dd4831de4894adeae5939eab3778",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/xadd.hpp": {
+    "mtime": 1783557308.9729211,
+    "ast_hash": "c3419f2fd45d9dda835fcf4dfc5676d1",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/cpuid.hpp": {
+    "mtime": 1783557848.8019946,
+    "ast_hash": "eb175a8d2f6694948bfdc442d36ac36d",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/rdtsc.hpp": {
+    "mtime": 1783557851.6046977,
+    "ast_hash": "1a4832cabdac66635460bca1e68dea51",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/syscall.hpp": {
+    "mtime": 1783557852.5468159,
+    "ast_hash": "437dd49cee09e5aed6e4047a4657cdda",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/sysenter.hpp": {
+    "mtime": 1783557853.4692245,
+    "ast_hash": "f94b1ea888112089459e2086e70227e4",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/enter.hpp": {
+    "mtime": 1783558413.7673867,
+    "ast_hash": "6a36be6685953e35033684583a4afa1f",
+    "semantic_hash": ""
+  },
+  "src/engine/opcodes/rep.hpp": {
+    "mtime": 1783558418.7933393,
+    "ast_hash": "172cd356fc45b3029c659bf23b7de07f",
+    "semantic_hash": ""
+  },
+  "docs/development/DEMI_LANGUAGE_ARCHITECTURE.md": {
+    "mtime": 1783560444.9429922,
+    "ast_hash": "8e364601753f734a1b5e1aa8b1c290ea",
+    "semantic_hash": ""
+  }
+}

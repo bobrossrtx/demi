@@ -594,8 +594,12 @@ void handle_div(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
                 std::string context = fmt::format("R{} = {}, R{} = 0", reg1, val1, reg2);
                 std::string message = "Division by zero: attempted to divide by register with value 0";
                 ErrorHandler::instance().report_runtime(ErrorCode::CPU_DIVISION_BY_ZERO, message, cpu.get_pc(), context);
-                running = false;
-                throw CPUException(message);
+                // Trigger divide-by-zero exception (vector 0x00) via interrupt controller
+                // If no handler is installed, handle_pending_interrupts will halt the VM
+                cpu.get_interrupt_controller().trigger_exception(
+                    DemiEngine_Interrupts::CPUException::DIVIDE_BY_ZERO);
+                cpu.set_pc(cpu.get_pc() + 3);
+                return;
             }
             
             uint64_t quotient = val1 / val2;
@@ -680,7 +684,7 @@ void handle_int(CPU& cpu, const std::vector<uint8_t>& program, bool& running) {
 }
 
 // Implementation for IRET opcode - Return from interrupt
-void handle_iret(CPU& cpu, [[maybe_unused]] const std::vector<uint8_t>& program, bool& running) {
+void handle_iret(CPU& cpu, [[maybe_unused]] const std::vector<uint8_t>& program, [[maybe_unused]] bool& running) {
     uint32_t pc = cpu.get_pc();
     
     DebugHandler::instance().report(DebugCategory::IO_INTERRUPT, fmt::format(
@@ -688,24 +692,9 @@ void handle_iret(CPU& cpu, [[maybe_unused]] const std::vector<uint8_t>& program,
         pc
     ), DebugLevel::INFO);
     
-    // Check for stack underflow
-    if (cpu.get_sp() + 8 > cpu.get_memory().size()) {
-        std::string context = fmt::format("Stack pointer: 0x{:X}, memory size: 0x{:X}", 
-            cpu.get_sp(), cpu.get_memory().size());
-        std::string message = "Stack underflow during IRET: insufficient data to pop";
-        ErrorHandler::instance().report_runtime(ErrorCode::CPU_STACK_UNDERFLOW, message, pc, context);
-        running = false;
-        throw CPUException(message);
-    }
-    
-    // Pop flags and return address from stack
-    uint32_t flags = cpu.read_mem32(cpu.get_sp());
-    cpu.set_sp(cpu.get_sp() + 4);
-    uint32_t ret_addr = cpu.read_mem32(cpu.get_sp());
-    cpu.set_sp(cpu.get_sp() + 4);
-    
-    cpu.set_flags(flags);
-    cpu.set_pc(ret_addr);
+    // Use the full restore_interrupt_state which properly unwinds the
+    // interrupt stack frame (flags + CS + return address + 16 GPRs)
+    cpu.restore_interrupt_state();
     
     cpu.print_state("IRET");
 }
@@ -715,11 +704,11 @@ void handle_cli(CPU& cpu, [[maybe_unused]] const std::vector<uint8_t>& program, 
     uint32_t pc = cpu.get_pc();
     
     DebugHandler::instance().report(DebugCategory::IO_INTERRUPT, 
-        "[CLI] Disabling interrupts (placeholder - interrupt system not fully implemented)",
+        "[CLI] Disabling interrupts",
         DebugLevel::INFO);
     
-    // TODO: Implement interrupt flag when interrupt system is complete
-    // For now, this is a no-op
+    cpu.get_interrupt_controller().disable_interrupts();
+    cpu.set_flags(cpu.get_flags() & ~FLAG_INTERRUPT);
     cpu.set_pc(pc + 1);
     
     cpu.print_state("CLI");
@@ -730,11 +719,11 @@ void handle_sti(CPU& cpu, [[maybe_unused]] const std::vector<uint8_t>& program, 
     uint32_t pc = cpu.get_pc();
     
     DebugHandler::instance().report(DebugCategory::IO_INTERRUPT, 
-        "[STI] Enabling interrupts (placeholder - interrupt system not fully implemented)",
+        "[STI] Enabling interrupts",
         DebugLevel::INFO);
     
-    // TODO: Implement interrupt flag when interrupt system is complete
-    // For now, this is a no-op
+    cpu.get_interrupt_controller().enable_interrupts();
+    cpu.set_flags(cpu.get_flags() | FLAG_INTERRUPT);
     cpu.set_pc(pc + 1);
     
     cpu.print_state("STI");
@@ -3231,6 +3220,15 @@ void dispatch_opcode(CPU& cpu, const std::vector<uint8_t>& program, bool& runnin
             break;
         case Opcode::HALT:
             handle_halt(cpu, program, running);
+            break;
+        case Opcode::CLI:
+            handle_cli(cpu, program, running);
+            break;
+        case Opcode::STI:
+            handle_sti(cpu, program, running);
+            break;
+        case Opcode::IRET:
+            handle_iret(cpu, program, running);
             break;
         case Opcode::AND:
             handle_and(cpu, program, running);

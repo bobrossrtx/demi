@@ -872,11 +872,19 @@ void dispatch_opcode_inlined(CPU& cpu, const std::vector<uint8_t>& program, bool
     op_invalid: {
         uint8_t opcode = program[cpu.get_pc()];
         DEBUG_CRITICAL(Logging::DebugCategory::CPU_EXECUTION, "Invalid opcode: 0x{:02X} at PC={}", opcode, cpu.get_pc());
-        running = false;
         
-        // Throw exception to match consolidated dispatcher behavior and allow tests to catch it
-        std::string opcode_hex = fmt::format("{:02X}", static_cast<int>(opcode));
-        throw CPUException("Invalid opcode: 0x" + opcode_hex);
+        // Trigger invalid opcode exception (vector 0x06) via interrupt controller
+        // If no handler is installed, handle_pending_interrupts will halt the VM
+        cpu.get_interrupt_controller().trigger_exception(
+            DemiEngine_Interrupts::CPUException::INVALID_OPCODE);
+        cpu.set_pc(cpu.get_pc() + 1);
+        
+        // If no handler was set up (interrupts disabled or no handler registered), halt
+        if (!cpu.get_interrupt_controller().has_pending_interrupts()) {
+            running = false;
+            std::string opcode_hex = fmt::format("{:02X}", static_cast<int>(opcode));
+            throw CPUException("Invalid opcode: 0x" + opcode_hex);
+        }
     }
 
     // Dispatch table initialization (thread-safe: atomic double-checked locking)
