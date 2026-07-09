@@ -19,15 +19,27 @@ enum : uint8_t {
     OP_CMP = 0x0A,
     OP_JZ = 0x0B,
     OP_JNZ = 0x0C,
+    OP_JS = 0x0D,
+    OP_JNS = 0x0E,
+    OP_JC = 0x0F,
+    OP_JNC = 0x22,
+    OP_JG = 0x25,
+    OP_JL = 0x26,
+    OP_JGE = 0x27,
+    OP_JLE = 0x28,
     OP_CALL = 0x1A,
     OP_RET = 0x1B,
     OP_MUL = 0x10,
     OP_DIV = 0x11,
+    OP_INC = 0x12,
+    OP_DEC = 0x13,
     OP_AND = 0x14,
     OP_OR = 0x15,
     OP_XOR = 0x16,
+    OP_NOT = 0x17,
     OP_SHL = 0x18,
     OP_SHR = 0x19,
+    OP_NEG = 0x2B,
     OP_HALT = 0xFF,
 };
 
@@ -399,9 +411,6 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                         }
                         if (obj == "console" && method == "print_i32") {
                             if (!expr.args.empty()) {
-                                // For literals: LOAD_IMM R0, literal → OUT R0, 1
-                                // For variables (Identifier): OUT directly from the var's register
-                                // This avoids the MOV opcode path which has an R8+ dispatch bug
                                 if (expr.args[0]->kind == DemiExpr::Kind::Identifier) {
                                     int var_reg = get_var_reg(expr.args[0]->literal);
                                     if (var_reg >= 0) {
@@ -418,6 +427,49 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                                 emit_opcode(0x31); emit_byte(0); emit_byte(1);
                             }
                             emit_load_imm(dest_reg, 0);
+                            break;
+                        }
+                        if (obj == "math" && method == "abs") {
+                            int val_reg = next_local_reg_++;
+                            generate_expr(*expr.args[0], val_reg);
+                            // if val >= 0, skip; else neg
+                            int zero_reg = next_local_reg_++;
+                            emit_load_imm(zero_reg, 0);
+                            emit_opcode(OP_CMP); emit_byte(static_cast<uint8_t>(val_reg)); emit_byte(static_cast<uint8_t>(zero_reg));
+                            uint32_t jge_off = static_cast<uint32_t>(code_.size());
+                            emit_opcode(OP_JGE); emit_u32(0);
+                            emit_opcode(OP_NEG); emit_byte(static_cast<uint8_t>(val_reg));
+                            uint32_t skip_off = static_cast<uint32_t>(code_.size());
+                            patch_jump(jge_off, skip_off);
+                            emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(static_cast<uint8_t>(val_reg));
+                            break;
+                        }
+                        if (obj == "math" && method == "min") {
+                            int a_reg = next_local_reg_++;
+                            int b_reg = next_local_reg_++;
+                            generate_expr(*expr.args[0], a_reg);
+                            generate_expr(*expr.args[1], b_reg);
+                            emit_opcode(OP_CMP); emit_byte(static_cast<uint8_t>(a_reg)); emit_byte(static_cast<uint8_t>(b_reg));
+                            uint32_t jle_off = static_cast<uint32_t>(code_.size());
+                            emit_opcode(OP_JLE); emit_u32(0);
+                            emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(a_reg)); emit_byte(static_cast<uint8_t>(b_reg));
+                            uint32_t min_skip = static_cast<uint32_t>(code_.size());
+                            patch_jump(jle_off, min_skip);
+                            emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(static_cast<uint8_t>(a_reg));
+                            break;
+                        }
+                        if (obj == "math" && method == "max") {
+                            int a_reg = next_local_reg_++;
+                            int b_reg = next_local_reg_++;
+                            generate_expr(*expr.args[0], a_reg);
+                            generate_expr(*expr.args[1], b_reg);
+                            emit_opcode(OP_CMP); emit_byte(static_cast<uint8_t>(a_reg)); emit_byte(static_cast<uint8_t>(b_reg));
+                            uint32_t jge_off = static_cast<uint32_t>(code_.size());
+                            emit_opcode(OP_JGE); emit_u32(0);
+                            emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(a_reg)); emit_byte(static_cast<uint8_t>(b_reg));
+                            uint32_t max_skip = static_cast<uint32_t>(code_.size());
+                            patch_jump(jge_off, max_skip);
+                            emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(static_cast<uint8_t>(a_reg));
                             break;
                         }
                     }
