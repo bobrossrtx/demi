@@ -3399,6 +3399,78 @@ TEST_CASE(encoder_map_no_operands_interrupt, "encoder_map") {
     ctx.assert_byte_at(3, 0xFF); // HALT
 }
 
+
+TEST_CASE(vm_timer_interrupt, "interrupts") {
+    // Timer fires periodic interrupts at vector 0x20.
+    // Compact layout: fit in 256 bytes.
+    // Handler at 0xC0: INC R4; IRET (3 bytes)
+    // IVT at 0x80: IVT[0x20] = 0xC0
+    // Main at 0x00: set IVT, set handler, enable timer (via port write), busy-loop, HALT
+    
+    std::vector<uint8_t> prog;
+    
+    // === Main code at 0x00 ===
+    
+    // Write handler at 0xC0: INC R4 (0x12,0x04); IRET (0xCF)
+    prog.insert(prog.end(), {
+        0x01, 0x05, 0x12, 0x00, 0x00, 0x00,   // LOAD_IMM R5, 0x12 (INC opcode)
+        0x07, 0x05, 0xC0, 0x00, 0x00, 0x00,   // STORE R5, 0xC0
+        0x01, 0x05, 0x04, 0x00, 0x00, 0x00,   // LOAD_IMM R5, 4 (R4)
+        0x07, 0x05, 0xC1, 0x00, 0x00, 0x00,   // STORE R5, 0xC1
+        0x01, 0x05, 0xCF, 0x00, 0x00, 0x00,   // LOAD_IMM R5, 0xCF (IRET)
+        0x07, 0x05, 0xC2, 0x00, 0x00, 0x00,   // STORE R5, 0xC2
+    });
+    
+    // Write IVT[0x20] = 0xC0 at memory[0x80] (0x20 * 4 = 0x80)
+    // 0xC0 in little-endian: 0xC0, 0x00, 0x00, 0x00
+    prog.insert(prog.end(), {
+        0x01, 0x05, 0xC0, 0x00, 0x00, 0x00,   // LOAD_IMM R5, 0xC0
+        0x07, 0x05, 0x80, 0x00, 0x00, 0x00,   // STORE R5, 0x80
+        0x01, 0x05, 0x00, 0x00, 0x00, 0x00,   // LOAD_IMM R5, 0
+        0x07, 0x05, 0x81, 0x00, 0x00, 0x00,   // STORE R5, 0x81
+        0x07, 0x05, 0x82, 0x00, 0x00, 0x00,   // STORE R5, 0x82
+        0x07, 0x05, 0x83, 0x00, 0x00, 0x00,   // STORE R5, 0x83
+    });
+    
+    // Busy-loop: LOAD_IMM R1, 30; LOOP self; HALT
+    prog.push_back(0x01); prog.push_back(0x01);  // LOAD_IMM R1
+    prog.push_back(0x1E); prog.push_back(0x00); prog.push_back(0x00); prog.push_back(0x00); // 30
+    
+    uint32_t loop_addr = static_cast<uint32_t>(prog.size());
+    prog.push_back(0x7A);  // LOOP
+    prog.push_back(static_cast<uint8_t>(loop_addr & 0xFF));
+    prog.push_back(static_cast<uint8_t>((loop_addr >> 8) & 0xFF));
+    prog.push_back(static_cast<uint8_t>((loop_addr >> 16) & 0xFF));
+    prog.push_back(static_cast<uint8_t>((loop_addr >> 24) & 0xFF));
+    prog.push_back(0xFF);  // HALT
+    
+    // Pad to 0xC0 with NOPs
+    while (prog.size() < 0xC0) prog.push_back(0x00);
+    
+    // Handler at 0xC0 in program vector
+    prog.push_back(0x12); prog.push_back(0x04);  // INC R4
+    prog.push_back(0xCF);                        // IRET
+    
+    ctx.load_program(prog);
+    
+    // Wire up timer with interval 4 (fires every 4 instructions)
+    auto timer = std::make_shared<vhw::TimerDevice>();
+    timer->set_interrupt_controller(&ctx.cpu.get_interrupt_controller());
+    ctx.cpu.set_timer_device(timer);
+    timer->write(4);
+    
+    ctx.set_max_steps(200);
+    ctx.execute_program();
+    
+    // Timer should have fired multiple times (~7-8 times)
+    uint32_t r4 = ctx.get_register(4);
+    if (r4 == 0) {
+        throw std::runtime_error("Timer interrupt never fired (R4 == 0)");
+    }
+}
+
+
+
 TEST_CASE(vm_int_iret_roundtrip, "interrupts") {
     // Full INT → handler → IRET roundtrip
     // Handler is embedded in the program vector at offset 0x40

@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <memory>
 #include <cstdint>
 #include <string>
 #include <stdexcept>
@@ -11,6 +12,7 @@
 #include "device_manager.hpp"
 #include "branch_prediction.hpp"  // Branch prediction support
 #include "interrupt_controller.hpp"  // Interrupt system support
+#include "devices/timer_device.hpp"  // Timer device
 // #include "speculative_execution.hpp"  // Speculative execution support (temporarily disabled)
 
 #include "sandbox_policy.hpp"
@@ -559,6 +561,9 @@ public:
     // Interrupt System Support
     DemiEngine_Interrupts::InterruptController& get_interrupt_controller() { return interrupt_controller_; }
     const DemiEngine_Interrupts::InterruptController& get_interrupt_controller() const { return interrupt_controller_; }
+
+    void set_timer_device(std::shared_ptr<vhw::TimerDevice> td) { timer_device_ = std::move(td); }
+    bool has_timer_device() const { return timer_device_ != nullptr; }
     
     /**
      * @brief Trigger an interrupt
@@ -658,6 +663,9 @@ private:
 
     // Interrupt Controller
     DemiEngine_Interrupts::InterruptController interrupt_controller_;
+
+    // Timer device for periodic interrupts
+    std::shared_ptr<vhw::TimerDevice> timer_device_;
 
     // Speculative Execution Engine (temporarily disabled)
     // SpeculativeExecution::SpeculativeExecutor speculative_executor;

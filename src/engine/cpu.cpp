@@ -522,6 +522,11 @@ void CPU::execute(const std::vector<uint8_t>& program, uint32_t entry_address, s
         }
         if (!running) {
             DEBUG_INFO(Logging::DebugCategory::CPU_EXECUTION, "Execution stopped by interrupt handler{}", "");
+        
+        // Tick the timer device (fires periodic interrupts)
+        if (has_timer_device()) {
+            timer_device_->tick();
+        }
             break;
         }
         
@@ -683,6 +688,11 @@ bool CPU::step(const std::vector<uint8_t>& program) {
     // Check for pending interrupts before executing instruction
     handle_pending_interrupts(program, running);
     if (!running) return false;
+    
+    // Tick the timer device (fires periodic interrupts)
+    if (has_timer_device()) {
+        timer_device_->tick();
+    }
     
     // Try instruction fusion first, fall back to optimized dispatch
     if (!InstructionFusion::try_instruction_fusion(*this, program, running)) {

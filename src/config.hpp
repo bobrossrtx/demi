@@ -101,4 +101,5 @@ public:
 };
 
 // Declare device initialization for use in tests and main
-void initialize_devices();
+class CPU;
+void initialize_devices(CPU* cpu = nullptr);

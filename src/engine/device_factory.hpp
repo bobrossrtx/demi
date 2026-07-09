@@ -6,6 +6,7 @@
 #include "devices/serial_port_device.hpp"
 #include "devices/file_device.hpp"
 #include "devices/ramdisk_device.hpp"
+#include "devices/timer_device.hpp"
 
 #include <memory>
 
@@ -101,6 +102,16 @@ public:
         DeviceManager::instance().registerDevice(dataPort, dataDevice);
         
         return device;  // Return the control instance
+    }
+    /**
+     * Create and register a timer device
+     * @param port The port to register the device at
+     * @return The created device
+     */
+    static std::shared_ptr<TimerDevice> createTimerDevice(uint8_t port = TimerDevice::DEFAULT_PORT) {
+        auto device = std::make_shared<TimerDevice>();
+        DeviceManager::instance().registerDevice(port, device);
+        return device;
     }
 };
 

@@ -1406,7 +1406,7 @@ public:
         }
 
         // Initialize the device system
-        initialize_devices();
+        initialize_devices(&cpu);
 
     cpu.execute(program, 0);
 
@@ -1536,7 +1536,7 @@ private:
             // Execute on VM
             CPU cpu;
             cpu.reset();
-            initialize_devices();  // register console, devices
+            initialize_devices(&cpu);  // register console, devices
             cpu.execute(result.bytecode, 0);
             return;
         }
@@ -1781,7 +1781,7 @@ private:
                 std::cout << std::endl;
             }
         }
-        initialize_devices();
+        initialize_devices(&cpu);
 
         // Set PC to entry address if available
         // Print hex dump of assembled bytecode

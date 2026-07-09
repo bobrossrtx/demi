@@ -1,9 +1,10 @@
 #include "../config.hpp"
+#include "cpu.hpp"  // Must come before device_factory to avoid CR0 macro conflict
 #include "device_factory.hpp"
 #include "device_manager.hpp"
 #include "../debug/debug_handler.hpp"
 
-void initialize_devices() {
+void initialize_devices(CPU* cpu) {
     using namespace vhw;
 
     DeviceManager::instance().reset();  // Reset device manager to clear any previous state
@@ -24,8 +25,14 @@ void initialize_devices() {
     auto ramdisk = DeviceFactory::createRamDiskDevice(8192, 0x05, 0x06);
     Logging::DebugHandler::instance().report(Logging::DebugCategory::IO_RAMDISK, "RAMDisk created successfully", Logging::DebugLevel::DETAIL);
 
-    // Optionally, create a real serial port device if available
-    // auto serial = DeviceFactory::createSerialPortDevice("/dev/ttyUSB0", 0x03);
+    // Timer on port 0x08 for periodic interrupts
+    auto timer = DeviceFactory::createTimerDevice(0x08);
+    if (cpu) {
+        timer->set_interrupt_controller(&cpu->get_interrupt_controller());
+        cpu->set_timer_device(timer);
+        Logging::DebugHandler::instance().report(Logging::DebugCategory::IO_DEVICE,
+            "Timer device wired to CPU interrupt controller", Logging::DebugLevel::INFO);
+    }
 
     Logging::DebugHandler::instance().report(Logging::DebugCategory::IO_DEVICE, "Device system initialized with standard and storage devices", Logging::DebugLevel::INFO);
 }
