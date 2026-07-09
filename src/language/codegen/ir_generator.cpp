@@ -583,6 +583,49 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                             }
                             break;
                         }
+                        if (obj == "mem" && method == "copy") {
+                            // mem.copy(dst, src, n): SYS_MEMCPY(204)
+                            if (expr.args.size() >= 3) {
+                                int dst_reg = next_local_reg_++, src_reg = next_local_reg_++, n_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], dst_reg);
+                                generate_expr(*expr.args[1], src_reg);
+                                generate_expr(*expr.args[2], n_reg);
+                                emit_load_imm(0, 204);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(dst_reg));
+                                emit_opcode(OP_MOV); emit_byte(1); emit_byte(static_cast<uint8_t>(src_reg));
+                                emit_opcode(OP_MOV); emit_byte(2); emit_byte(static_cast<uint8_t>(n_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
+                        if (obj == "mem" && method == "zero") {
+                            // mem.zero(addr, n): SYS_MEMSET(205) with val=0
+                            if (expr.args.size() >= 2) {
+                                int addr_reg = next_local_reg_++, n_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], addr_reg);
+                                generate_expr(*expr.args[1], n_reg);
+                                emit_load_imm(0, 205);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(addr_reg));
+                                emit_load_imm(1, 0);
+                                emit_opcode(OP_MOV); emit_byte(2); emit_byte(static_cast<uint8_t>(n_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
+                        if (obj == "str" && method == "len") {
+                            // str.len(addr): SYS_STRLEN(206)
+                            if (!expr.args.empty()) {
+                                int addr_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], addr_reg);
+                                emit_load_imm(0, 206);
+                                emit_opcode(OP_MOV); emit_byte(3); emit_byte(static_cast<uint8_t>(addr_reg));
+                                emit_opcode(0xCD); emit_byte(0x80);
+                                if (dest_reg != 0) emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(dest_reg)); emit_byte(0);
+                            }
+                            break;
+                        }
                     }
                     emit_load_imm(dest_reg, 0);
                     break;

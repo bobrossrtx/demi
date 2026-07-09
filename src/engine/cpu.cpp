@@ -1521,6 +1521,39 @@ void CPU::handle_syscall(bool& running) {
             break;
         }
 
+        case Syscall::SYS_MEMCPY: {
+            // mem.copy(dst=R3, src=R1, n=R2)
+            uint32_t dst = arg1, src = arg2, n = arg3;
+            if (dst + n <= memory.size() && src + n <= memory.size()) {
+                std::memmove(&memory[dst], &memory[src], n);
+                result = dst;
+            } else {
+                result = -1;
+            }
+            break;
+        }
+        case Syscall::SYS_MEMSET: {
+            // mem.set(addr=R3, val=R1, n=R2)
+            uint32_t addr = arg1, val = arg2, n = arg3;
+            if (addr + n <= memory.size()) {
+                std::memset(&memory[addr], static_cast<int>(val & 0xFF), n);
+                result = addr;
+            } else {
+                result = -1;
+            }
+            break;
+        }
+        case Syscall::SYS_STRLEN: {
+            // str.len(addr=R3) — count bytes until null
+            uint32_t addr = arg1;
+            uint32_t len = 0;
+            while (addr + len < memory.size() && memory[addr + len] != 0) {
+                len++;
+            }
+            result = (addr + len < memory.size()) ? static_cast<long>(len) : -1;
+            break;
+        }
+
         default:
             Logging::ErrorHandler::instance().report_runtime(
                 Logging::ErrorCode::IO_GENERIC,

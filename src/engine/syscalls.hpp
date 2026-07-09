@@ -21,6 +21,9 @@ enum class Syscall : uint32_t {
     SYS_FREE        = 201,   // Demi: free allocation (no-op for bump)
     SYS_TIME_MS     = 202,   // Demi: get monotonic time in ms
     SYS_RANDOM      = 203,   // Demi: get random u32
+    SYS_MEMCPY      = 204,   // Demi: mem.copy(dst, src, n)
+    SYS_MEMSET      = 205,   // Demi: mem.set(addr, val, n)
+    SYS_STRLEN      = 206,   // Demi: str.len(addr)
     SYS_FORK        = 2,
     SYS_ACCESS       = 33,
     SYS_WAITPID     = 7,
@@ -102,6 +105,9 @@ inline Syscall to_syscall(uint32_t num) {
         case 201: return Syscall::SYS_FREE;
         case 202: return Syscall::SYS_TIME_MS;
         case 203: return Syscall::SYS_RANDOM;
+        case 204: return Syscall::SYS_MEMCPY;
+        case 205: return Syscall::SYS_MEMSET;
+        case 206: return Syscall::SYS_STRLEN;
         case 7: return Syscall::SYS_WAITPID;
         case 2: return Syscall::SYS_FORK;
         case 33: return Syscall::SYS_ACCESS;
@@ -132,6 +138,9 @@ inline const char* syscall_name(Syscall sc) {
         case Syscall::SYS_FREE: return "sys_free";
         case Syscall::SYS_TIME_MS: return "sys_time_ms";
         case Syscall::SYS_RANDOM: return "sys_random";
+        case Syscall::SYS_MEMCPY: return "sys_memcpy";
+        case Syscall::SYS_MEMSET: return "sys_memset";
+        case Syscall::SYS_STRLEN: return "sys_strlen";
             case Syscall::SYS_ACCESS: return "sys_access";
             case Syscall::SYS_GETDENTS: return "sys_getdents";
             case Syscall::SYS_GETCWD: return "sys_getcwd";
