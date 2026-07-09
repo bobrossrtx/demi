@@ -428,6 +428,53 @@ void IRGenerator::generate_expr(const DemiExpr& expr, int dest_reg) {
                             emit_load_imm(dest_reg, 0);
                             break;
                         }
+                        if (obj == "console" && method == "print_hex") {
+                            // Print 32-bit integer as 8 hex digits
+                            // SHR uses 8-bit immediate shift (not register), so hardcode each shift
+                            if (!expr.args.empty()) {
+                                int val_reg = next_local_reg_++;
+                                generate_expr(*expr.args[0], val_reg);
+                                int nibble_reg = next_local_reg_++;
+                                int mask10_reg = next_local_reg_++;
+                                int ascA_reg = next_local_reg_++;
+                                int asc0_reg = next_local_reg_++;
+                                int result_reg = next_local_reg_++;
+                                emit_load_imm(mask10_reg, 10);
+                                emit_load_imm(ascA_reg, 'A');
+                                emit_load_imm(asc0_reg, '0');
+                                int shifts[] = {28, 24, 20, 16, 12, 8, 4, 0};
+                                for (int shift : shifts) {
+                                    // Copy val to nibble_reg
+                                    emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(nibble_reg)); emit_byte(static_cast<uint8_t>(val_reg));
+                                    // SHR nibble, shift (immediate 8-bit)
+                                    emit_opcode(OP_SHR); emit_byte(static_cast<uint8_t>(nibble_reg)); emit_byte(static_cast<uint8_t>(shift));
+                                    // AND nibble, 0xF
+                                    emit_load_imm(result_reg, 0xF);
+                                    emit_opcode(OP_AND); emit_byte(static_cast<uint8_t>(nibble_reg)); emit_byte(static_cast<uint8_t>(result_reg));
+                                    // Convert to ASCII
+                                    emit_opcode(OP_CMP); emit_byte(static_cast<uint8_t>(nibble_reg)); emit_byte(static_cast<uint8_t>(mask10_reg));
+                                    uint32_t jl_off = static_cast<uint32_t>(code_.size());
+                                    emit_opcode(OP_JL); emit_u32(0);
+                                    // nibble >= 10
+                                    emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(result_reg)); emit_byte(static_cast<uint8_t>(nibble_reg));
+                                    emit_opcode(OP_SUB); emit_byte(static_cast<uint8_t>(result_reg)); emit_byte(static_cast<uint8_t>(mask10_reg));
+                                    emit_opcode(OP_ADD); emit_byte(static_cast<uint8_t>(result_reg)); emit_byte(static_cast<uint8_t>(ascA_reg));
+                                    uint32_t jmp_off = static_cast<uint32_t>(code_.size());
+                                    emit_opcode(OP_JMP); emit_u32(0);
+                                    // nibble < 10
+                                    uint32_t lt10_target = static_cast<uint32_t>(code_.size());
+                                    patch_jump(jl_off, lt10_target);
+                                    emit_opcode(OP_MOV); emit_byte(static_cast<uint8_t>(result_reg)); emit_byte(static_cast<uint8_t>(nibble_reg));
+                                    emit_opcode(OP_ADD); emit_byte(static_cast<uint8_t>(result_reg)); emit_byte(static_cast<uint8_t>(asc0_reg));
+                                    uint32_t done_target = static_cast<uint32_t>(code_.size());
+                                    patch_jump(jmp_off, done_target);
+                                    // OUT result, 1
+                                    emit_opcode(0x31); emit_byte(static_cast<uint8_t>(result_reg)); emit_byte(1);
+                                }
+                            }
+                            emit_load_imm(dest_reg, 0);
+                            break;
+                        }
                         if (obj == "math" && method == "abs") {
                             int val_reg = next_local_reg_++;
                             generate_expr(*expr.args[0], val_reg);
